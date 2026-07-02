@@ -51,6 +51,26 @@ running critical workloads.
 
 ## Quickstart (OCI)
 
+The map below is the whole journey — what to read, what to edit and what to
+run at each step, from an empty OCI tenancy to a running production base:
+
+| # | Step | Read | Edit | Run |
+| --- | --- | --- | --- | --- |
+| 0 | Toolchain | this README | — | `mise trust && mise install && mise run doctor` |
+| 1 | OCI API key, profile, compartment, IAM | [bootstrap-state §1–2](terraform/oci/bootstrap-state/README.md#1-oci-credentials) | `~/.oci/config` | `oci os ns get --profile <profile>` |
+| 2 | Remote Terraform state | [bootstrap-state §3](terraform/oci/bootstrap-state/README.md#3-create-the-state-bucket) | `terraform/oci/bootstrap-state/terraform.tfvars` | `mise run oci:state:plan`, then `oci:state:apply -- --yes` |
+| 3 | Discover cluster inputs (OKE version, node image, your IP) | [foundation §3](terraform/oci/foundation/README.md#3-discover-oci-values) | — | `oci ce cluster-options get ...` |
+| 4 | Provision the OKE foundation | [foundation §5](terraform/oci/foundation/README.md#5-configure-variables) | `terraform/oci/foundation/terraform.tfvars` | `mise run oci:cluster:plan`, then `oci:cluster:apply -- --yes` |
+| 5 | Kubeconfig | [foundation §7](terraform/oci/foundation/README.md#7-generate-kubeconfig) | — | `mise run oci:kubeconfig` |
+| 6 | Kubernetes production base | [production-base README](kubernetes/production-base/README.md) | — | `mise run k8s:base:check`, then `k8s:base:apply -- --yes` |
+| 7 | DNS, HTTPS listeners and redirect | [production-base §7](kubernetes/production-base/README.md#7-install-the-default-foundation) | `kubernetes/production-base/resources/cert-manager/gateway-https-listener.yaml` (your domains) | `kubectl apply -f ...` |
+| 8 | Backups, Debezium and other stateful add-ons | [production-base §8](kubernetes/production-base/README.md#8-apply-stateful-resources) | copies of `kubernetes/production-base/resources/*` | `kubectl apply -f ...` |
+| 9 | Optional ZITADEL and Infisical | [production-base §9–10](kubernetes/production-base/README.md#9-optional-zitadel) | `values/zitadel.yaml`, `values/infisical.yaml` (your domains) | `mise run k8s:base:apply -- --environment all-components --yes` |
+
+The only files you ever edit are `~/.oci/config`, the two `terraform.tfvars`
+(copied from the committed `.example` files) and the domain placeholders in the
+Kubernetes values/resources. Everything else is read-only.
+
 Install the pinned toolchain and check prerequisites:
 
 ```sh
@@ -58,11 +78,6 @@ mise trust
 mise install
 mise run doctor
 ```
-
-Provider credentials and IAM setup live with the provider docs:
-[bootstrap-state](terraform/oci/bootstrap-state/README.md) (API key, profile)
-and [foundation](terraform/oci/foundation/README.md) (IAM policies, OKE
-version, node image discovery).
 
 **1. Bootstrap remote Terraform state:**
 

@@ -90,21 +90,24 @@ OKE Kubernetes versions available in a region:
 ```sh
 oci ce cluster-options get \
   --cluster-option-id all \
-  --region sa-saopaulo-1
+  --region sa-saopaulo-1 \
+  --query 'data."kubernetes-versions"'
 ```
 
-Worker image compatible with the node shape:
+Worker image for `node_image_id`. Use an OKE image (pre-baked for worker
+nodes, recommended by Oracle over plain platform images) matching your
+Kubernetes version and node shape architecture — the tfvars example uses
+`VM.Standard.E5.Flex`, which is x86_64:
 
 ```sh
-oci compute image list \
-  --compartment-id <compartment_ocid> \
-  --shape VM.Standard.A1.Flex \
-  --operating-system "Oracle Linux" \
-  --sort-by TIMECREATED \
-  --sort-order DESC \
-  --all \
-  --query 'data[0].{displayName:"display-name",id:id}'
+oci ce node-pool-options get \
+  --node-pool-option-id all \
+  --region sa-saopaulo-1 \
+  --query 'data.sources[?contains("source-name", `OKE-1.35`)].{name:"source-name",id:"image-id"}'
 ```
+
+Pick the newest image without `aarch64` in the name for x86 shapes such as
+E5.Flex; pick an `aarch64` image only for ARM shapes such as A1.Flex.
 
 Your public IP for Kubernetes API allowlisting:
 
@@ -196,10 +199,11 @@ After apply:
 terraform output -raw kubeconfig_command
 ```
 
-Run the returned command. Then:
+Run the returned command. It writes the kubeconfig to
+`~/.kube/<cluster-name>.yaml`. Then:
 
 ```sh
-export KUBECONFIG="$HOME/.kube/pyahu-oci-foundation.yaml"
+export KUBECONFIG="$HOME/.kube/<cluster-name>.yaml"
 kubectl get nodes
 kubectl get pods -A
 ```

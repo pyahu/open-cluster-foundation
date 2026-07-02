@@ -40,18 +40,43 @@ Validate the profile:
 oci os ns get --profile PYAHU_TERRAFORM
 ```
 
-## 2. Minimal IAM Policies
+## 2. Compartment, Group and Policies
 
-Use a dedicated compartment for the cluster. To create only the state bucket,
-the Terraform administrators group needs Object Storage access in that
-compartment:
+These steps need a tenancy administrator identity (they are done once per
+tenancy, not per cluster).
 
-```text
-Allow group pyahu-cluster-admins to manage object-family in compartment <compartment-name>
-Allow group pyahu-cluster-admins to read compartments in tenancy
+Create a dedicated compartment for the cluster:
+
+```sh
+oci iam compartment create \
+  --compartment-id <tenancy_ocid> \
+  --name ocf-clusters \
+  --description "Open Cluster Foundation clusters"
 ```
 
-For the `foundation` module, add the policies listed in its README.
+Create the Terraform administrators group and add your user to it. In the OCI
+console: `Identity & Security > Domains > Default domain > Groups > Create
+group` (name it `ocf-cluster-admins`), then add the user that owns the API key
+from step 1. Tenancies created since 2023 use Identity Domains, so the console
+path is the reliable one; older tenancies can also use
+`oci iam group create` / `oci iam group add-user`.
+
+To create only the state bucket, the group needs Object Storage access in the
+compartment:
+
+```sh
+oci iam policy create \
+  --compartment-id <tenancy_ocid> \
+  --name ocf-cluster-admins-state \
+  --description "Terraform remote state for Open Cluster Foundation" \
+  --statements '[
+    "Allow group ocf-cluster-admins to manage object-family in compartment ocf-clusters",
+    "Allow group ocf-cluster-admins to read compartments in tenancy"
+  ]'
+```
+
+For the `foundation` module, add the policies listed in
+[its README](../foundation/README.md#2-iam-policies).
 
 ## 3. Create the State Bucket
 
