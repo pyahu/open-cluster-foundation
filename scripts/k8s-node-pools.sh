@@ -59,6 +59,7 @@ taint_database() {
   kubectl label nodes \
     -l node-pool=database \
     node-role.kubernetes.io/postgres= \
+    node-role=database \
     open-cluster-foundation.io/workload=database \
     --overwrite
 

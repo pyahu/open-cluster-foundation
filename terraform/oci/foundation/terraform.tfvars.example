@@ -40,9 +40,11 @@ node_pools = {
     availability_domain_count = 3
     # node-role.kubernetes.io labels cannot be set here: kubelet self-labeling
     # is rejected for that prefix. Use k8s:nodes:taint-database to add the
-    # role label through the API after the nodes join.
+    # role label through the API after the nodes join. The plain node-role
+    # label is allowed and is what database workload affinities target.
     labels = {
       "node-pool"                           = "database"
+      "node-role"                           = "database"
       "open-cluster-foundation.io/workload" = "database"
     }
     taints = [
