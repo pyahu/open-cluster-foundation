@@ -1,0 +1,35 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: foundation-rabbitmq
+  namespace: messaging
+spec:
+  replicas: 3
+  persistence:
+    storage: 20Gi
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+  rabbitmq:
+    additionalConfig: |
+      cluster_partition_handling = pause_minority
+      disk_free_limit.relative = 2.0
+      vm_memory_high_watermark.relative = 0.6
+  override:
+    statefulSet:
+      spec:
+        template:
+          spec:
+            # Empty list satisfies the embedded PodSpec schema; the operator
+            # merges this override with the generated containers.
+            containers: []
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: topology.kubernetes.io/zone
+                whenUnsatisfiable: ScheduleAnyway
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: foundation-rabbitmq

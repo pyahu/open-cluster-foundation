@@ -1,0 +1,37 @@
+# Standalone Valkey for cluster-internal caching and for components that need
+# a Redis-compatible store (for example Infisical via REDIS_URL).
+# There is no authentication by default; access control relies on the cluster
+# network boundary. Enable auth.enabled with ACL users before exposing it
+# beyond trusted namespaces.
+
+dataStorage:
+  enabled: true
+  requestedSize: 5Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+metrics:
+  enabled: true
+  exporter:
+    # The cache namespace enforces the restricted Pod Security Standard, so the
+    # exporter sidecar needs an explicit hardened security context.
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+  serviceMonitor:
+    enabled: true

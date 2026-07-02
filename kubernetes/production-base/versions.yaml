@@ -1,0 +1,141 @@
+generatedAt: "2026-06-26"
+minimumKubernetesVersion: "1.30"
+notes:
+  - Chart versions are pinned. App versions document the upstream application version exposed by the chart when available.
+  - Release manifests are pinned to immutable upstream release tags.
+  - When a product release is newer than the latest non-deprecated chart, this blueprint follows the chart-supported appVersion instead of overriding images out of band.
+  - Fields annotated with "# renovate:" are updated automatically by Renovate. Unannotated versions (kafkaVersion, debezium, appVersion documentation fields) are updated manually.
+components:
+  gatewayApi:
+    installMethod: upstream-release-manifest
+    # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
+    version: v1.5.1
+    standardManifest: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+  envoyGateway:
+    installMethod: oci-helm-chart
+    chart: oci://docker.io/envoyproxy/gateway-helm
+    # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
+    chartVersion: v1.8.1
+    appVersion: v1.8.1
+  certManager:
+    installMethod: helm-chart
+    repository: https://charts.jetstack.io
+    chart: jetstack/cert-manager
+    # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
+    chartVersion: v1.20.3
+    appVersion: v1.20.3
+  argoCd:
+    installMethod: helm-chart
+    repository: https://argoproj.github.io/argo-helm
+    chart: argo/argo-cd
+    # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
+    chartVersion: 9.7.1
+    appVersion: v3.4.4
+  cloudNativePg:
+    installMethod: helm-chart
+    repository: https://cloudnative-pg.github.io/charts
+    chart: cnpg/cloudnative-pg
+    # renovate: datasource=helm depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
+    chartVersion: 0.28.3
+    appVersion: 1.29.1
+  pluginBarmanCloud:
+    installMethod: upstream-release-manifest
+    # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
+    version: v0.13.0
+    manifest: https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.13.0/manifest.yaml
+  postgresql:
+    exampleImage: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+  rabbitmqClusterOperator:
+    installMethod: upstream-release-manifest
+    # renovate: datasource=github-releases depName=rabbitmq/cluster-operator
+    version: v2.21.1
+    manifest: https://github.com/rabbitmq/cluster-operator/releases/download/v2.21.1/cluster-operator.yml
+  rabbitmqMessagingTopologyOperator:
+    installMethod: upstream-release-manifest
+    # renovate: datasource=github-releases depName=rabbitmq/messaging-topology-operator
+    version: v1.19.3
+    manifest: https://github.com/rabbitmq/messaging-topology-operator/releases/download/v1.19.3/messaging-topology-operator-with-certmanager.yaml
+  strimzi:
+    installMethod: helm-chart
+    repository: https://strimzi.io/charts/
+    chart: strimzi/strimzi-kafka-operator
+    # renovate: datasource=helm depName=strimzi-kafka-operator registryUrl=https://strimzi.io/charts/
+    chartVersion: 1.0.1
+    appVersion: 1.0.1
+    # kafkaVersion is coupled with resources/kafka/*.yaml (spec.version and the
+    # Kafka Connect build image tag). Update them together, manually.
+    kafkaVersion: 4.2.0
+    kafkaConnectVersion: 4.2.0
+  debezium:
+    installMethod: strimzi-kafkaconnect-plugin
+    # Manual update: bumping the version requires recomputing postgresPluginSha512
+    # and updating resources/kafka/kafka-connect-debezium-postgres.yaml.
+    version: 3.5.2.Final
+    postgresPluginUrl: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.5.2.Final/debezium-connector-postgres-3.5.2.Final-plugin.tar.gz
+    postgresPluginSha512: 7ee20a5106d11068677dd81d06fad7ee1c2fa09ba31658ecfed5dc9611e8fd73417251b9a5661e5425d8cfac1f868afb83dec56027639f54394e8f4d1f7f4c4e
+  zitadel:
+    installMethod: helm-chart
+    repository: https://charts.zitadel.com
+    chart: zitadel/zitadel
+    # renovate: datasource=helm depName=zitadel registryUrl=https://charts.zitadel.com
+    chartVersion: 10.0.4
+    appVersion: v4.15.3
+  infisical:
+    installMethod: helm-chart
+    repository: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+    chart: infisical-helm-charts/infisical-standalone
+    # renovate: datasource=helm depName=infisical-standalone registryUrl=https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+    chartVersion: 1.9.0
+    # renovate: datasource=docker depName=infisical/infisical
+    imageTag: v0.161.8
+  kubePrometheusStack:
+    installMethod: helm-chart
+    repository: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-community/kube-prometheus-stack
+    # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
+    chartVersion: 87.2.1
+    appVersion: v0.92.0
+    prometheusVersion: v3.12.0
+    alertmanagerVersion: v0.33.0
+  loki:
+    installMethod: helm-chart
+    repository: https://grafana-community.github.io/helm-charts
+    chart: grafana-community/loki
+    # renovate: datasource=helm depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+    chartVersion: 18.1.1
+    appVersion: 3.7.3
+  tempo:
+    installMethod: helm-chart
+    repository: https://grafana-community.github.io/helm-charts
+    chart: grafana-community/tempo
+    # renovate: datasource=helm depName=tempo registryUrl=https://grafana-community.github.io/helm-charts
+    chartVersion: 2.2.3
+    appVersion: 2.10.7
+  grafana:
+    installMethod: helm-chart
+    repository: https://grafana-community.github.io/helm-charts
+    chart: grafana-community/grafana
+    # renovate: datasource=helm depName=grafana registryUrl=https://grafana-community.github.io/helm-charts
+    chartVersion: 12.7.1
+    appVersion: 13.1.0
+  alloy:
+    installMethod: helm-chart
+    repository: https://grafana.github.io/helm-charts
+    chart: grafana/alloy
+    # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
+    chartVersion: 1.10.0
+    appVersion: v1.17.0
+  reloader:
+    installMethod: helm-chart
+    repository: https://stakater.github.io/stakater-charts
+    chart: stakater/reloader
+    # renovate: datasource=helm depName=reloader registryUrl=https://stakater.github.io/stakater-charts
+    chartVersion: 2.2.12
+    appVersion: v1.4.17
+  valkey:
+    installMethod: helm-chart
+    repository: https://valkey-io.github.io/valkey-helm/
+    chart: valkey-io/valkey
+    # renovate: datasource=helm depName=valkey registryUrl=https://valkey-io.github.io/valkey-helm/
+    chartVersion: 0.10.0
+    appVersion: 9.1.0

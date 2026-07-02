@@ -1,0 +1,4 @@
+bucket    = "replace-me-terraform-state"
+namespace = "replace-me-object-storage-namespace"
+region    = "sa-saopaulo-1"
+key       = "clusters/replace-me/terraform.tfstate"

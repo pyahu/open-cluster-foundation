@@ -1,0 +1,98 @@
+[tools]
+# Infrastructure as Code.
+terraform = "1.15.7"
+tflint = "0.63.1"
+terraform-docs = "0.24.0"
+
+# Kubernetes operations.
+kubectl = "1.36.2"
+helm = "4.2.2"
+helmfile = "1.6.0"
+kustomize = "5.8.1"
+kubectx = "0.11.0"
+kubens = "0.11.0"
+kubeconform = "0.8.0"
+k9s = "0.51.0"
+stern = "1.34.0"
+
+# Cloud provider CLIs.
+"pipx:oci-cli" = "3.88.0"
+doctl = "1.163.0"
+"github:MagaluCloud/mgccli" = "0.61.2"
+
+# Script helpers.
+jq = "1.8.2"
+yq = "4.53.3"
+shellcheck = "0.11.0"
+
+[tasks.doctor]
+description = "Check local tools required by the Terraform and Kubernetes foundations."
+run = "scripts/doctor.sh"
+
+[tasks."oci:state:plan"]
+description = "Initialize, validate and plan the OCI Terraform remote state bucket."
+run = "scripts/oci-bootstrap-state.sh plan"
+
+[tasks."oci:state:apply"]
+description = "Apply the OCI Terraform remote state bucket and write the foundation backend.hcl."
+run = "scripts/oci-bootstrap-state.sh apply"
+
+[tasks."oci:state:backend"]
+description = "Regenerate terraform/oci/foundation/backend.hcl from the bootstrap-state output."
+run = "scripts/oci-bootstrap-state.sh backend"
+
+[tasks."oci:cluster:plan"]
+description = "Initialize, validate and plan the OCI OKE foundation."
+run = "scripts/oci-foundation.sh plan"
+
+[tasks."oci:cluster:apply"]
+description = "Apply the OCI OKE foundation."
+run = "scripts/oci-foundation.sh apply"
+
+[tasks."oci:kubeconfig"]
+description = "Generate kubeconfig for the OCI OKE foundation from Terraform output."
+run = "scripts/oci-foundation.sh kubeconfig"
+
+[tasks."oci:instance:new"]
+description = "Create a private local OCI foundation instance under .local/instances."
+run = "scripts/oci-instance.sh new"
+
+[tasks."oci:instance:plan"]
+description = "Plan a private local OCI foundation instance under .local/instances."
+run = "scripts/oci-instance.sh plan"
+
+[tasks."oci:instance:apply"]
+description = "Apply a private local OCI foundation instance under .local/instances."
+run = "scripts/oci-instance.sh apply"
+
+[tasks."oci:instance:kubeconfig"]
+description = "Generate kubeconfig for a private local OCI foundation instance."
+run = "scripts/oci-instance.sh kubeconfig"
+
+[tasks."k8s:base:check"]
+description = "Run preflight checks against the current Kubernetes context."
+run = "scripts/k8s-production-base.sh check"
+
+[tasks."k8s:nodes:taint-database"]
+description = "Apply standard labels and taints to database nodes in the current Kubernetes context."
+run = "scripts/k8s-node-pools.sh taint-database"
+
+[tasks."k8s:base:render"]
+description = "Render the Kubernetes production base with helmfile."
+run = "scripts/k8s-production-base.sh render"
+
+[tasks."k8s:base:apply"]
+description = "Apply the Kubernetes production base to the current Kubernetes context."
+run = "scripts/k8s-production-base.sh apply"
+
+[tasks."ci:terraform"]
+description = "Run the Terraform CI checks: fmt, validate and tflint for every stack."
+run = "scripts/ci-terraform.sh"
+
+[tasks."ci:kubernetes"]
+description = "Run the Kubernetes CI checks: helmfile render and kubeconform schema validation."
+run = "scripts/ci-kubernetes.sh"
+
+[tasks."ci:scripts"]
+description = "Run shellcheck on the repository scripts."
+run = "scripts/ci-scripts.sh"

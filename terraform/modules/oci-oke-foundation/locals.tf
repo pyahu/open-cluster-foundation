@@ -1,0 +1,34 @@
+locals {
+  tags = merge(var.tags, {
+    blueprint = "oci-oke-foundation"
+    cluster   = var.cluster_name
+  })
+
+  kube_endpoint_mode = var.api_endpoint_public_enabled ? "PUBLIC_ENDPOINT" : "PRIVATE_ENDPOINT"
+  kubeconfig_path    = "~/.kube/${var.cluster_name}.yaml"
+
+  node_metadata = var.ssh_public_key == null ? {} : {
+    ssh_authorized_keys = var.ssh_public_key
+  }
+
+  # Taints must be registered by kubelet at node startup so that nodes created
+  # by scaling or node cycling come up tainted. Overriding user_data replaces
+  # the OKE default cloud-init, so the script must call oke-init.sh itself.
+  node_pool_taint_args = {
+    for pool_name, pool in var.node_pools :
+    pool_name => join(",", [
+      for taint in pool.taints : "${taint.key}=${taint.value}:${taint.effect}"
+    ])
+  }
+
+  node_pool_metadata = {
+    for pool_name, pool in var.node_pools :
+    pool_name => length(pool.taints) == 0 ? local.node_metadata : merge(local.node_metadata, {
+      user_data = base64encode(<<-CLOUD_INIT
+        #!/usr/bin/env bash
+        bash /var/run/oke-init.sh --kubelet-extra-args "--register-with-taints=${local.node_pool_taint_args[pool_name]}"
+      CLOUD_INIT
+      )
+    })
+  }
+}

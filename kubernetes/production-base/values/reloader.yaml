@@ -1,0 +1,19 @@
+reloader:
+  reloadStrategy: annotations
+  watchGlobally: true
+  ignoreJobs: true
+  ignoreCronJobs: true
+  enableHA: true
+  deployment:
+    replicas: 2
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65534
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL

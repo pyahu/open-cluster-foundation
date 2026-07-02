@@ -1,0 +1,83 @@
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+service:
+  type: ClusterIP
+
+grafana.ini:
+  server:
+    root_url: https://grafana.example.com
+  auth:
+    disable_login_form: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.monitoring.svc.cluster.local
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.monitoring.svc.cluster.local:3100
+
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: ALL
+  datasources:
+    enabled: false
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: kubernetes-views
+        orgId: 1
+        folder: Kubernetes
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/kubernetes-views
+
+# Community Kubernetes dashboards from dotdc/grafana-dashboards-kubernetes,
+# pinned by grafana.com dashboard id and revision.
+dashboards:
+  kubernetes-views:
+    k8s-views-global:
+      gnetId: 15757
+      revision: 43
+      datasource: Prometheus
+    k8s-views-namespaces:
+      gnetId: 15758
+      revision: 46
+      datasource: Prometheus
+    k8s-views-nodes:
+      gnetId: 15759
+      revision: 40
+      datasource: Prometheus
+    k8s-views-pods:
+      gnetId: 15760
+      revision: 39
+      datasource: Prometheus
+    k8s-system-api-server:
+      gnetId: 15761
+      revision: 21
+      datasource: Prometheus
+
+serviceMonitor:
+  enabled: true
+
+persistence:
+  enabled: true
+  size: 10Gi

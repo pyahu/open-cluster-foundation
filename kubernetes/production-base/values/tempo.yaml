@@ -1,0 +1,21 @@
+tempo:
+  retention: 168h
+  receivers:
+    otlp:
+      protocols:
+        grpc: {}
+        http: {}
+
+persistence:
+  enabled: true
+  size: 20Gi
+
+serviceMonitor:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi

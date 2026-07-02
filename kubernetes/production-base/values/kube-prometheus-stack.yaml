@@ -1,0 +1,57 @@
+grafana:
+  enabled: false
+  # Grafana itself is installed by the separate grafana release, but the
+  # kube-prometheus-stack dashboards are still deployed as ConfigMaps so the
+  # Grafana sidecar can pick them up.
+  forceDeployDashboards: true
+
+defaultRules:
+  create: true
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 2
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+
+prometheus:
+  prometheusSpec:
+    replicas: 2
+    retention: 15d
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    walCompression: true
+    enableAdminAPI: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 50Gi
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+prometheusOperator:
+  admissionWebhooks:
+    patch:
+      enabled: true

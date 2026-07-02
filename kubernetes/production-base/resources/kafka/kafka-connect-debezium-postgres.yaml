@@ -1,0 +1,71 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: foundation-connect
+  namespace: messaging
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 4.2.0
+  replicas: 2
+  bootstrapServers: foundation-kafka-kafka-bootstrap.messaging.svc.cluster.local:9093
+  groupId: foundation-connect
+  configStorageTopic: foundation-connect-configs
+  offsetStorageTopic: foundation-connect-offsets
+  statusStorageTopic: foundation-connect-status
+  tls:
+    trustedCertificates:
+      - secretName: foundation-kafka-cluster-ca-cert
+        certificate: ca.crt
+  config:
+    offset.storage.replication.factor: 3
+    config.storage.replication.factor: 3
+    status.storage.replication.factor: 3
+    config.providers: file
+    config.providers.file.class: org.apache.kafka.common.config.provider.FileConfigProvider
+  # Strimzi v1 API: credentials are mounted with template volumes instead of
+  # the removed externalConfiguration block. Additional volume mounts must
+  # live under /mnt.
+  template:
+    pod:
+      volumes:
+        - name: app-postgres
+          secret:
+            secretName: app-postgres-connector
+    connectContainer:
+      volumeMounts:
+        - name: app-postgres
+          mountPath: /mnt/app-postgres
+  build:
+    output:
+      type: docker
+      image: registry.example.com/foundation/kafka-connect-debezium:3.5.2.Final-kafka-4.2.0
+      pushSecret: registry-credentials
+    plugins:
+      - name: debezium-postgres
+        artifacts:
+          - type: tgz
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.5.2.Final/debezium-connector-postgres-3.5.2.Final-plugin.tar.gz
+            sha512sum: 7ee20a5106d11068677dd81d06fad7ee1c2fa09ba31658ecfed5dc9611e8fd73417251b9a5661e5425d8cfac1f868afb83dec56027639f54394e8f4d1f7f4c4e
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: app-postgres-source
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-connect
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: app-postgres-rw.data.svc.cluster.local
+    database.port: 5432
+    database.user: "${file:/mnt/app-postgres/app.properties:username}"
+    database.password: "${file:/mnt/app-postgres/app.properties:password}"
+    database.dbname: app
+    topic.prefix: app
+    plugin.name: pgoutput
+    slot.name: app_debezium
+    publication.autocreate.mode: filtered
+    table.include.list: public.outbox

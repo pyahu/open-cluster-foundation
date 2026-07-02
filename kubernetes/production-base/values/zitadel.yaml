@@ -1,0 +1,47 @@
+zitadel:
+  masterkeySecretName: zitadel-masterkey
+  configmapConfig:
+    ExternalSecure: true
+    ExternalDomain: auth.example.com
+  secretConfig: {}
+
+env:
+  - name: ZITADEL_DATABASE_POSTGRES_DSN
+    valueFrom:
+      secretKeyRef:
+        name: zitadel-postgres-dsn
+        key: dsn
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: false
+  httpRoute:
+    enabled: true
+    parentRefs:
+      - name: public-gateway
+        namespace: platform-system
+        sectionName: https-auth
+    hostnames:
+      - auth.example.com
+
+login:
+  ingress:
+    enabled: false
+    httpRoute:
+      enabled: true
+      parentRefs:
+        - name: public-gateway
+          namespace: platform-system
+          sectionName: https-auth
+      hostnames:
+        - auth.example.com
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+postgresql:
+  enabled: false

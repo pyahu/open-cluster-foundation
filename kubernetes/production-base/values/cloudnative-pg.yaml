@@ -1,0 +1,13 @@
+monitoring:
+  podMonitorEnabled: true
+  grafanaDashboard:
+    create: true
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi

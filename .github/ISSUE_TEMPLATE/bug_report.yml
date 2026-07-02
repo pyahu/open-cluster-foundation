@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in the foundation does not work as documented
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Layer
+      options:
+        - Terraform (OCI bootstrap-state / foundation / module)
+        - Kubernetes production base (Helmfile / values / resources)
+        - Scripts / mise tasks
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you run, what did you expect, what did you get instead.
+      placeholder: Include the exact command and the relevant output or error.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provider/region, Kubernetes version, tool versions (mise ls), helmfile environment.
+      placeholder: |
+        provider: OCI sa-saopaulo-1
+        kubernetes: v1.35.2
+        environment: default
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, rendered manifests, screenshots. Redact OCIDs, domains and credentials.

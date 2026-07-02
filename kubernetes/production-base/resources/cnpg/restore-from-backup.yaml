@@ -1,0 +1,44 @@
+# Restores a new cluster from the object store written by
+# postgres-with-backup.yaml, using the Barman Cloud plugin.
+# serverName must match the name of the cluster that produced the backup.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: app-postgres-backup-store
+  namespace: data
+spec:
+  configuration:
+    destinationPath: s3://replace-me-cnpg-backups/app-postgres
+    endpointURL: https://replace-me-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com
+    s3Credentials:
+      accessKeyId:
+        name: cnpg-object-store
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: cnpg-object-store
+        key: SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: app-postgres-restore
+  namespace: data
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+  storage:
+    size: 100Gi
+  bootstrap:
+    recovery:
+      source: app-postgres-backup
+  externalClusters:
+    - name: app-postgres-backup
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: app-postgres-backup-store
+          serverName: app-postgres

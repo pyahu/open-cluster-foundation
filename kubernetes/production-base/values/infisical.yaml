@@ -1,0 +1,28 @@
+infisical:
+  replicaCount: 2
+  image:
+    repository: infisical/infisical
+    tag: v0.161.8
+    pullPolicy: IfNotPresent
+  kubeSecretRef: infisical-secrets
+  service:
+    type: ClusterIP
+
+ingress:
+  enabled: false
+  nginx:
+    enabled: false
+
+postgresql:
+  enabled: false
+  useExistingPostgresSecret:
+    enabled: true
+    existingConnectionStringSecret:
+      name: infisical-postgres
+      key: connectionString
+
+redis:
+  enabled: false
+
+ingress-nginx:
+  enabled: false

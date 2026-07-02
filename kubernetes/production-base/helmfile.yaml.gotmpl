@@ -1,0 +1,186 @@
+{{- $versions := readFile "versions.yaml" | fromYaml -}}
+environments:
+  default:
+    values:
+      - environments/default.yaml
+  all-components:
+    values:
+      - environments/all-components.yaml
+
+---
+{{- $versions := readFile "versions.yaml" | fromYaml -}}
+helmDefaults:
+  atomic: true
+  cleanupOnFail: true
+  createNamespace: true
+  wait: true
+  timeout: 600
+
+repositories:
+  - name: jetstack
+    url: {{ $versions.components.certManager.repository | quote }}
+  - name: argo
+    url: {{ $versions.components.argoCd.repository | quote }}
+  - name: cnpg
+    url: {{ $versions.components.cloudNativePg.repository | quote }}
+  - name: strimzi
+    url: {{ $versions.components.strimzi.repository | quote }}
+  - name: prometheus-community
+    url: {{ $versions.components.kubePrometheusStack.repository | quote }}
+  - name: grafana
+    url: {{ $versions.components.alloy.repository | quote }}
+  - name: grafana-community
+    url: {{ $versions.components.grafana.repository | quote }}
+  - name: stakater
+    url: {{ $versions.components.reloader.repository | quote }}
+  - name: zitadel
+    url: {{ $versions.components.zitadel.repository | quote }}
+  - name: infisical-helm-charts
+    url: {{ $versions.components.infisical.repository | quote }}
+  - name: valkey-io
+    url: {{ $versions.components.valkey.repository | quote }}
+
+releases:
+  - name: envoy-gateway
+    namespace: envoy-gateway-system
+    labels:
+      profile: edge
+    installed: {{ .Values.profiles.edge }}
+    chart: {{ $versions.components.envoyGateway.chart | quote }}
+    version: {{ $versions.components.envoyGateway.chartVersion | quote }}
+    values:
+      - values/envoy-gateway.yaml
+
+  - name: cert-manager
+    namespace: cert-manager
+    labels:
+      profile: certificates
+    installed: {{ .Values.profiles.certificates }}
+    chart: jetstack/cert-manager
+    version: {{ $versions.components.certManager.chartVersion | quote }}
+    values:
+      - values/cert-manager.yaml
+
+  - name: argocd
+    namespace: argocd
+    labels:
+      profile: gitops
+    installed: {{ .Values.profiles.gitops }}
+    chart: argo/argo-cd
+    version: {{ $versions.components.argoCd.chartVersion | quote }}
+    values:
+      - values/argocd.yaml
+
+  - name: cloudnative-pg
+    namespace: cnpg-system
+    labels:
+      profile: postgres
+    installed: {{ .Values.profiles.postgresOperator }}
+    chart: cnpg/cloudnative-pg
+    version: {{ $versions.components.cloudNativePg.chartVersion | quote }}
+    values:
+      - values/cloudnative-pg.yaml
+
+  - name: strimzi-kafka-operator
+    namespace: strimzi-system
+    labels:
+      profile: messaging
+    installed: {{ .Values.profiles.messagingOperators }}
+    chart: strimzi/strimzi-kafka-operator
+    version: {{ $versions.components.strimzi.chartVersion | quote }}
+    values:
+      - values/strimzi-kafka-operator.yaml
+
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ .Values.profiles.observability }}
+    chart: prometheus-community/kube-prometheus-stack
+    version: {{ $versions.components.kubePrometheusStack.chartVersion | quote }}
+    values:
+      - values/kube-prometheus-stack.yaml
+
+  - name: loki
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ .Values.profiles.observability }}
+    chart: grafana-community/loki
+    version: {{ $versions.components.loki.chartVersion | quote }}
+    values:
+      - values/loki.yaml
+
+  - name: tempo
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ .Values.profiles.observability }}
+    chart: grafana-community/tempo
+    version: {{ $versions.components.tempo.chartVersion | quote }}
+    values:
+      - values/tempo.yaml
+
+  - name: alloy
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ .Values.profiles.observability }}
+    chart: grafana/alloy
+    version: {{ $versions.components.alloy.chartVersion | quote }}
+    values:
+      - values/alloy.yaml
+
+  - name: grafana
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ .Values.profiles.observability }}
+    chart: grafana-community/grafana
+    version: {{ $versions.components.grafana.chartVersion | quote }}
+    needs:
+      - monitoring/kube-prometheus-stack
+      - monitoring/loki
+      - monitoring/tempo
+    values:
+      - values/grafana.yaml
+
+  - name: reloader
+    namespace: reloader
+    labels:
+      profile: reloader
+    installed: true
+    chart: stakater/reloader
+    version: {{ $versions.components.reloader.chartVersion | quote }}
+    values:
+      - values/reloader.yaml
+
+  - name: valkey
+    namespace: cache
+    labels:
+      profile: cache
+    installed: {{ .Values.profiles.cache }}
+    chart: valkey-io/valkey
+    version: {{ $versions.components.valkey.chartVersion | quote }}
+    values:
+      - values/valkey.yaml
+
+  - name: zitadel
+    namespace: identity
+    labels:
+      profile: identity
+    installed: {{ .Values.profiles.identity }}
+    chart: zitadel/zitadel
+    version: {{ $versions.components.zitadel.chartVersion | quote }}
+    values:
+      - values/zitadel.yaml
+
+  - name: infisical
+    namespace: secrets
+    labels:
+      profile: secrets
+    installed: {{ .Values.profiles.secrets }}
+    chart: infisical-helm-charts/infisical-standalone
+    version: {{ $versions.components.infisical.chartVersion | quote }}
+    values:
+      - values/infisical.yaml

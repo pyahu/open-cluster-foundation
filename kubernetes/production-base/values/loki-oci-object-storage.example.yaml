@@ -1,0 +1,46 @@
+# Example override for running Loki against OCI Object Storage through the
+# S3 Compatibility API. Use it as an extra values file for the loki release:
+#
+#   helmfile -e default apply --selector name=loki \
+#     --set-file ...  # or add this file to the release values list
+#
+# Prerequisites:
+# - An Object Storage bucket (for example replace-me-loki-chunks).
+# - A Customer Secret Key for the IAM user (OCI Console -> Identity ->
+#   My profile -> Customer secret keys). The S3 Compatibility API does not
+#   support instance or workload principals.
+# - The endpoint uses your tenancy Object Storage namespace:
+#   https://<object-storage-namespace>.compat.objectstorage.<region>.oraclecloud.com
+#
+# On a fresh install, also switch loki.schemaConfig object_store to "s3" and
+# compactor.delete_request_store to "s3". On an existing cluster, add a NEW
+# schemaConfig period starting tomorrow instead of editing the current one:
+# https://grafana.com/docs/loki/latest/operations/storage/schema/
+
+loki:
+  storage:
+    type: s3
+    bucketNames:
+      chunks: replace-me-loki-chunks
+      ruler: replace-me-loki-ruler
+    s3:
+      endpoint: https://replace-me-namespace.compat.objectstorage.sa-saopaulo-1.oraclecloud.com
+      region: sa-saopaulo-1
+      accessKeyId: replace-me-access-key
+      secretAccessKey: replace-me-secret-key
+      s3ForcePathStyle: true
+      insecure: false
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+  limits_config:
+    retention_period: 30d

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Versions in versions.yaml annotated with a renovate comment",
+      "managerFilePatterns": ["/^kubernetes/production-base/versions\\.yaml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z0-9-]+) depName=(?<depName>[^\\s]+)(?: registryUrl=(?<registryUrl>[^\\s]+))?\\n\\s*(?:chartVersion|version|imageTag): \"?(?<currentValue>[^\\s\"]+)\"?"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "GitHub release manifest URLs in versions.yaml",
+      "managerFilePatterns": ["/^kubernetes/production-base/versions\\.yaml$/"],
+      "matchStrings": [
+        "https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/releases/download/(?<currentValue>v[0-9.]+)/"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "CloudNativePG PostgreSQL images in examples and versions.yaml",
+      "managerFilePatterns": ["/^kubernetes/production-base/.+\\.yaml$/"],
+      "matchStrings": [
+        "(?:imageName|exampleImage): (?<depName>ghcr\\.io/cloudnative-pg/postgresql):(?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Infisical image tag in the Helm values",
+      "managerFilePatterns": ["/^kubernetes/production-base/values/infisical\\.yaml$/"],
+      "matchStrings": [
+        "repository: infisical/infisical\\n\\s+tag: (?<currentValue>v[^\\s]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "infisical/infisical"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Keep the Kubernetes base updates reviewable one component at a time",
+      "matchManagers": ["custom.regex"],
+      "commitMessageTopic": "{{depName}}"
+    }
+  ]
+}

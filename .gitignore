@@ -1,0 +1,24 @@
+.DS_Store
+
+# Terraform local state, plans and working dirs.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+
+# Local input. Keep examples committed, never real values.
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+backend.hcl
+
+# Local credentials.
+*.pem
+*.key
+
+# Private customer/project instantiations generated from the public foundation.
+# Keep real OCIDs, backend files, tfvars, DNS names and customer names out of Git.
+.local/

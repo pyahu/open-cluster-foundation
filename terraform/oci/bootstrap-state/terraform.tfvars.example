@@ -1,0 +1,12 @@
+compartment_ocid = "ocid1.compartment.oc1..replace-me"
+region           = "sa-saopaulo-1"
+
+name_prefix             = "pyahu-oci"
+oci_config_file_profile = "PYAHU_TERRAFORM"
+
+tags = {
+  project     = "pyahu"
+  environment = "foundation"
+  managed_by  = "terraform"
+}
+

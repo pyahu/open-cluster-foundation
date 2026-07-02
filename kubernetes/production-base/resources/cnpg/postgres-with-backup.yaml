@@ -1,0 +1,61 @@
+# Physical backup and WAL archiving through the Barman Cloud plugin
+# (CNPG-I). The in-tree barmanObjectStore backup is deprecated since
+# CloudNativePG 1.26; the plugin is the supported path for new clusters.
+#
+# The endpointURL below uses the OCI Object Storage S3 Compatibility API:
+#   https://<object-storage-namespace>.compat.objectstorage.<region>.oraclecloud.com
+# The cnpg-object-store secret must hold an OCI Customer Secret Key
+# (ACCESS_KEY_ID / SECRET_ACCESS_KEY).
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: app-postgres-store
+  namespace: data
+spec:
+  retentionPolicy: 30d
+  configuration:
+    destinationPath: s3://replace-me-cnpg-backups/app-postgres
+    endpointURL: https://replace-me-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com
+    s3Credentials:
+      accessKeyId:
+        name: cnpg-object-store
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: cnpg-object-store
+        key: SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: app-postgres
+  namespace: data
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+  storage:
+    size: 100Gi
+  monitoring:
+    enablePodMonitor: true
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: app-postgres-store
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: app-postgres-daily
+  namespace: data
+spec:
+  schedule: "0 0 2 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  cluster:
+    name: app-postgres

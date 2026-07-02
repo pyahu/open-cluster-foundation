@@ -1,0 +1,49 @@
+global:
+  domain: argocd.example.com
+
+configs:
+  cm:
+    admin.enabled: true
+  params:
+    server.insecure: true
+  rbac:
+    policy.default: role:readonly
+
+server:
+  service:
+    type: ClusterIP
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+controller:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+repoServer:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+applicationSet:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+notifications:
+  enabled: true
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+dex:
+  enabled: false
+
+redis-ha:
+  enabled: true

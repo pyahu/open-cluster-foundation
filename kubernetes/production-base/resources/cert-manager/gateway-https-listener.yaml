@@ -1,0 +1,72 @@
+# Upgrades the base Gateway to HTTPS with one listener per public hostname.
+#
+# Concrete hostnames are required here because the ClusterIssuers in this
+# repository use ACME HTTP-01, and HTTP-01 cannot issue wildcard certificates.
+# If you need a single "*.example.com" listener, configure a DNS-01 solver for
+# your DNS provider first:
+# https://cert-manager.io/docs/configuration/acme/dns01/
+#
+# The cert-manager gateway shim creates one Certificate per HTTPS listener.
+# Start with letsencrypt-staging; switch the annotation to letsencrypt-prod
+# only after the staging certificates are issued successfully.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: public-gateway
+  namespace: platform-system
+  labels:
+    app.kubernetes.io/name: production-base
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  gatewayClassName: envoy
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https-grafana
+      hostname: grafana.example.com
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: grafana-example-com-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https-auth
+      hostname: auth.example.com
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: auth-example-com-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# Redirects all plain HTTP traffic to HTTPS. ACME HTTP-01 challenges still
+# work because the solver HTTPRoute created by cert-manager matches the
+# challenge path, which is more specific than this catch-all rule.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: http-to-https-redirect
+  namespace: platform-system
+  labels:
+    app.kubernetes.io/name: production-base
+spec:
+  parentRefs:
+    - name: public-gateway
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

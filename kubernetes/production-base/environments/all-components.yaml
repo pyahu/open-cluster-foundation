@@ -1,0 +1,10 @@
+profiles:
+  edge: true
+  certificates: true
+  gitops: true
+  postgresOperator: true
+  messagingOperators: true
+  observability: true
+  cache: true
+  identity: true
+  secrets: true

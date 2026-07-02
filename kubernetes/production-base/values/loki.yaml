@@ -1,0 +1,65 @@
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  # Without compactor retention Loki keeps every chunk forever and fills the
+  # persistent volume. For production log volumes move chunks to object
+  # storage first: see values/loki-oci-object-storage.example.yaml.
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+  limits_config:
+    retention_period: 14d
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 50Gi
+
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+backend:
+  replicas: 0
+
+gateway:
+  enabled: true
+
+# Chart-native observability for Loki itself: scrape config, the upstream
+# loki-alerts PrometheusRule, its recording rules and the operational
+# dashboards picked up by the Grafana sidecar.
+monitoring:
+  serviceMonitor:
+    enabled: true
+  rules:
+    enabled: true
+  alerts:
+    enabled: true
+  dashboards:
+    enabled: true
+
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
+test:
+  enabled: false

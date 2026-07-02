@@ -1,0 +1,10 @@
+deployment:
+  replicas: 2
+
+config:
+  envoyGateway:
+    gateway:
+      controllerName: gateway.envoyproxy.io/gatewayclass-controller
+
+podDisruptionBudget:
+  minAvailable: 1

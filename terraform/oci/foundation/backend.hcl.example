@@ -1,0 +1,5 @@
+bucket    = "pyahu-oci-tfstate-a1b2c3"
+namespace = "mytenancynamespace"
+region    = "sa-saopaulo-1"
+key       = "oci/foundation/terraform.tfstate"
+config_file_profile = "PYAHU_TERRAFORM"

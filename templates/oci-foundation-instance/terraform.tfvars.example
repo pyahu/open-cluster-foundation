@@ -1,0 +1,62 @@
+tenancy_ocid     = "ocid1.tenancy.oc1..replace-me"
+compartment_ocid = "ocid1.compartment.oc1..replace-me"
+region           = "sa-saopaulo-1"
+
+oci_config_file_profile = "REPLACE_ME"
+
+cluster_name       = "replace-me-prod"
+kubernetes_version = "v1.35.2"
+node_image_id      = "ocid1.image.oc1.sa-saopaulo-1.replace-me"
+
+api_endpoint_allowed_cidrs = [
+  "203.0.113.10/32",
+]
+
+ingress_allowed_cidrs = [
+  "0.0.0.0/0",
+]
+
+node_pools = {
+  worker = {
+    shape                     = "VM.Standard.E5.Flex"
+    size                      = 3
+    ocpus                     = 2
+    memory_in_gbs             = 24
+    boot_volume_size_in_gbs   = 100
+    max_pods_per_node         = 31
+    availability_domain_count = 3
+    labels = {
+      "node-pool" = "worker"
+    }
+  }
+
+  database = {
+    shape                     = "VM.Standard.E5.Flex"
+    size                      = 2
+    ocpus                     = 2
+    memory_in_gbs             = 24
+    boot_volume_size_in_gbs   = 100
+    max_pods_per_node         = 31
+    availability_domain_count = 3
+    # node-role.kubernetes.io labels cannot be set here: kubelet self-labeling
+    # is rejected for that prefix. Use k8s:nodes:taint-database to add the
+    # role label through the API after the nodes join.
+    labels = {
+      "node-pool"                           = "database"
+      "open-cluster-foundation.io/workload" = "database"
+    }
+    taints = [
+      {
+        key    = "workload.open-cluster-foundation.io/database"
+        value  = "true"
+        effect = "NoSchedule"
+      },
+    ]
+  }
+}
+
+tags = {
+  project     = "replace-me"
+  environment = "prod"
+  managed_by  = "terraform"
+}

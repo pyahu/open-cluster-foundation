@@ -1,0 +1,65 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: foundation-connect-configs
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  topicName: foundation-connect-configs
+  partitions: 1
+  replicas: 3
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: foundation-connect-offsets
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  topicName: foundation-connect-offsets
+  partitions: 25
+  replicas: 3
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: foundation-connect-status
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  topicName: foundation-connect-status
+  partitions: 5
+  replicas: 3
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: foundation-connect
+  namespace: messaging
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 4.2.0
+  replicas: 2
+  bootstrapServers: foundation-kafka-kafka-bootstrap.messaging.svc.cluster.local:9093
+  groupId: foundation-connect
+  configStorageTopic: foundation-connect-configs
+  offsetStorageTopic: foundation-connect-offsets
+  statusStorageTopic: foundation-connect-status
+  tls:
+    trustedCertificates:
+      - secretName: foundation-kafka-cluster-ca-cert
+        certificate: ca.crt
+  config:
+    offset.storage.replication.factor: 3
+    config.storage.replication.factor: 3
+    status.storage.replication.factor: 3
