@@ -17,5 +17,7 @@ module "foundation" {
   node_pools                  = var.node_pools
 
   metrics_server_addon_enabled = var.metrics_server_addon_enabled
+  bastion_enabled              = var.bastion_enabled
+  bastion_allowed_cidrs        = var.bastion_allowed_cidrs
   tags                         = var.tags
 }

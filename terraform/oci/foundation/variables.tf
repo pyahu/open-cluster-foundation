@@ -178,6 +178,18 @@ variable "metrics_server_addon_enabled" {
   default     = true
 }
 
+variable "bastion_enabled" {
+  description = "Whether to create an OCI Bastion (managed, no cost) targeting the API endpoint subnet. Required when api_endpoint_public_enabled is false."
+  type        = bool
+  default     = false
+}
+
+variable "bastion_allowed_cidrs" {
+  description = "CIDRs allowed to open bastion sessions. Defaults to api_endpoint_allowed_cidrs when empty."
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Freeform tags applied to all OCI resources."
   type        = map(string)

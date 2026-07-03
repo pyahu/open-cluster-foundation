@@ -7,6 +7,10 @@ locals {
   kube_endpoint_mode = var.api_endpoint_public_enabled ? "PUBLIC_ENDPOINT" : "PRIVATE_ENDPOINT"
   kubeconfig_path    = "~/.kube/${var.cluster_name}.yaml"
 
+  # The same operators that reach the API endpoint reach the bastion, unless a
+  # dedicated allowlist is provided.
+  bastion_allowed_cidrs = length(var.bastion_allowed_cidrs) > 0 ? var.bastion_allowed_cidrs : var.api_endpoint_allowed_cidrs
+
   node_metadata = var.ssh_public_key == null ? {} : {
     ssh_authorized_keys = var.ssh_public_key
   }

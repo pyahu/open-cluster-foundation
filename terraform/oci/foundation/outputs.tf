@@ -28,6 +28,11 @@ output "gateway_ids" {
   value       = module.foundation.gateway_ids
 }
 
+output "bastion_id" {
+  description = "OCI Bastion OCID, or null when bastion_enabled is false."
+  value       = module.foundation.bastion_id
+}
+
 output "route_table_ids" {
   description = "Route table OCIDs created for public and private subnets."
   value       = module.foundation.route_table_ids

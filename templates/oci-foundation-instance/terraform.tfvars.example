@@ -12,6 +12,11 @@ api_endpoint_allowed_cidrs = [
   "203.0.113.10/32",
 ]
 
+# Recommended posture for production: private API endpoint reached through the
+# managed (free) OCI Bastion instead of a public endpoint.
+# api_endpoint_public_enabled = false
+# bastion_enabled             = true
+
 ingress_allowed_cidrs = [
   "0.0.0.0/0",
 ]

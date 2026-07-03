@@ -191,6 +191,33 @@ terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
+## 6a. Optional: Private API Endpoint and Bastion
+
+With `api_endpoint_public_enabled = false` the Kubernetes API has no public
+IP, so enable the managed (free) OCI Bastion in the same apply:
+
+```hcl
+api_endpoint_public_enabled = false
+bastion_enabled             = true
+```
+
+Reach the private endpoint through a port-forwarding session (the API
+endpoint's private IP is visible in the OKE console or via
+`oci ce cluster get`):
+
+```sh
+oci bastion session create-port-forwarding \
+  --bastion-id "$(terraform output -raw bastion_id)" \
+  --target-private-ip <api-endpoint-private-ip> \
+  --target-port 6443 \
+  --ssh-public-key-file ~/.ssh/id_ed25519.pub \
+  --display-name oke-api
+```
+
+Then follow the SSH command printed by the session to tunnel
+`localhost:6443`, and point the kubeconfig server at `https://127.0.0.1:6443`.
+The bastion also serves SSH sessions to the private nodes.
+
 ## 7. Generate Kubeconfig
 
 After apply:
@@ -245,7 +272,14 @@ allowlisting for outbound traffic from workloads.
   without receiving public IPs, while operators keep a stable egress IP for
   external firewall allowlists.
 - Private nodes: workloads do not receive public IPs.
-- Public Kubernetes API endpoint for initial simplicity, restricted by CIDR.
+- Public Kubernetes API endpoint for initial simplicity, restricted by CIDR;
+  private endpoint + managed Bastion available via `api_endpoint_public_enabled`
+  and `bastion_enabled`.
+- Layer-4 ingress via OCI Network Load Balancer (free, source-IP preserving):
+  the node NSG admits ingress CIDRs on the NodePort range so source-preserved
+  client traffic is accepted; the Kubernetes base ships the matching
+  EnvoyProxy configuration in
+  `kubernetes/production-base/resources/oci/envoyproxy-nlb.yaml`.
 - VCN-Native Pod Networking: pods receive VCN IPs, which improves OCI integration.
 - Multiple node pools: callers can create workload-specific pools without
   duplicating the network and cluster code.

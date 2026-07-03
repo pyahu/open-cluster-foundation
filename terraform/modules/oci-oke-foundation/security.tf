@@ -127,7 +127,30 @@ resource "oci_core_network_security_group_security_rule" "nodes_ingress_nodeport
   protocol                  = "6"
   source                    = var.subnet_cidrs.load_balancer
   source_type               = "CIDR_BLOCK"
-  description               = "NodePort traffic from public load balancer subnet"
+  description               = "NodePort traffic and health checks from the load balancer subnet"
+
+  tcp_options {
+    destination_port_range {
+      min = 30000
+      max = 32767
+    }
+  }
+}
+
+# A source-preserving Network Load Balancer delivers packets to NodePorts with
+# the ORIGINAL client IP as the source, so the load-balancer subnet rule above
+# is not enough for client traffic. The nodes stay unreachable from the
+# internet directly: they live in a private subnet with no public IPs, so
+# these CIDRs only ever arrive through the NLB.
+resource "oci_core_network_security_group_security_rule" "nodes_ingress_nodeports_client_source" {
+  count = length(var.ingress_allowed_cidrs)
+
+  network_security_group_id = oci_core_network_security_group.nodes.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = var.ingress_allowed_cidrs[count.index]
+  source_type               = "CIDR_BLOCK"
+  description               = "Client traffic to NodePorts via a source-preserving Network Load Balancer"
 
   tcp_options {
     destination_port_range {

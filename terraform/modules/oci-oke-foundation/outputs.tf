@@ -32,6 +32,11 @@ output "gateway_ids" {
   }
 }
 
+output "bastion_id" {
+  description = "OCI Bastion OCID, or null when bastion_enabled is false."
+  value       = var.bastion_enabled ? oci_bastion_bastion.this[0].id : null
+}
+
 output "route_table_ids" {
   description = "Route table OCIDs created for public and private subnets."
   value = {

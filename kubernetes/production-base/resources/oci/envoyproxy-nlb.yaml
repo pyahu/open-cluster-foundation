@@ -1,0 +1,48 @@
+# OCI only: fronts Envoy Gateway with an OCI Network Load Balancer instead of
+# the classic Load Balancer the cloud controller manager creates by default.
+# The NLB is a true layer-4 pass-through, has no hourly cost, and preserves the
+# client source IP (is-preserve-source requires externalTrafficPolicy Local,
+# which is the Envoy Gateway default).
+#
+# Before applying:
+# - Replace the oci-network-security-groups value with the load balancer NSG
+#   from the foundation: terraform output -json network_security_group_ids
+# - Apply BEFORE pointing DNS at the gateway. Switching load-balancer-type on
+#   a live Service replaces the load balancer and changes its public IP.
+#
+# The foundation's node NSG already admits client CIDRs on the NodePort range,
+# which source-preserved traffic requires.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: oci-nlb
+  namespace: envoy-gateway-system
+  labels:
+    app.kubernetes.io/name: production-base
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        externalTrafficPolicy: Local
+        annotations:
+          oci.oraclecloud.com/load-balancer-type: "nlb"
+          oci-network-load-balancer.oraclecloud.com/is-preserve-source: "true"
+          # Security is managed by the foundation's NSGs, not by security lists.
+          oci-network-load-balancer.oraclecloud.com/security-list-management-mode: "None"
+          oci-network-load-balancer.oraclecloud.com/oci-network-security-groups: "ocid1.networksecuritygroup.oc1.replace-me"
+---
+# Rebinds the GatewayClass from manifests/gateway.yaml to the EnvoyProxy above.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy
+  labels:
+    app.kubernetes.io/name: production-base
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: oci-nlb
+    namespace: envoy-gateway-system

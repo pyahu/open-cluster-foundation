@@ -262,6 +262,17 @@ kubectl apply -f resources/kafka/kafka-connect.yaml
 kubectl -n messaging wait --for=condition=Ready kafkaconnect/foundation-connect --timeout=900s
 ```
 
+On OCI, front Envoy Gateway with a Network Load Balancer (layer-4, free,
+source-IP preserving) BEFORE pointing DNS — switching load balancer type later
+replaces the load balancer and its public IP. Fill in the load balancer NSG
+OCID from the foundation outputs, then:
+
+```sh
+cp resources/oci/envoyproxy-nlb.yaml /tmp/envoyproxy-nlb.yaml
+# Edit the oci-network-security-groups annotation with the LB NSG OCID.
+kubectl apply -f /tmp/envoyproxy-nlb.yaml
+```
+
 Point your public DNS records to the load balancer created for Envoy Gateway.
 The base Gateway starts with HTTP so cert-manager can solve ACME HTTP-01.
 Then adapt
