@@ -8,10 +8,13 @@ tags (`vYYYY.M.PATCH`).
 
 ### Added
 
-- OCI foundation: remote state bootstrap, VCN with IGW/NAT/Service Gateway,
-  ENHANCED OKE cluster with VCN-native pod networking, per-layer NSGs, node
-  pools with kubelet-registered labels and taints, managed Metrics Server
-  addon, and a private-instance template workflow.
+- OCI foundation: remote state bootstrap, VCN with IGW/NAT (reserved public
+  IP)/Service Gateway, ENHANCED OKE cluster with VCN-native pod networking,
+  per-layer NSGs, node pools with kubelet-registered labels and taints,
+  managed Metrics Server addon, optional managed Bastion for private API
+  endpoints, and a private-instance template workflow.
+- Layer-4 ingress on OCI through a source-IP-preserving Network Load
+  Balancer, wired to Envoy Gateway via an EnvoyProxy resource.
 - Kubernetes production base via Helmfile: Envoy Gateway (Gateway API),
   cert-manager with Let's Encrypt issuers, Argo CD, CloudNativePG with the
   Barman Cloud plugin, Strimzi Kafka (KRaft node pools, JMX metrics), Kafka
