@@ -18,7 +18,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: jdx/mise-action@v2
         with:
           install_args: shellcheck
@@ -28,7 +28,7 @@ jobs:
     name: terraform
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: jdx/mise-action@v2
         with:
           install_args: terraform tflint
@@ -38,7 +38,7 @@ jobs:
     name: kubernetes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: jdx/mise-action@v2
         with:
           install_args: helm helmfile kubeconform
