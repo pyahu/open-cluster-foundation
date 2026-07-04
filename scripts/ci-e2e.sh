@@ -73,7 +73,7 @@ cleanup() {
 trap cleanup EXIT
 
 log "creating kind cluster ${CLUSTER_NAME}"
-kind create cluster --name "$CLUSTER_NAME" --wait 180s
+kind create cluster --name "$CLUSTER_NAME" --config "${E2E_DIR}/kind-config.yaml" --wait 180s
 
 log "installing the Kubernetes production base (ci environment)"
 export OCF_K8S_ENVIRONMENT=ci

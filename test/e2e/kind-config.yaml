@@ -1,0 +1,10 @@
+# Three nodes so the base's summed CPU requests fit the scheduler's per-node
+# budget on small CI runners (requests are bookkeeping; the operators are
+# mostly idle), and so the cluster resembles the production three-worker
+# topology.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
