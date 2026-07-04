@@ -25,6 +25,10 @@ jq = "1.8.2"
 yq = "4.53.3"
 shellcheck = "0.11.0"
 
+# End-to-end testing.
+kind = "0.32.0"
+"github:kubernetes-sigs/cloud-provider-kind" = "0.11.1"
+
 [tasks.doctor]
 description = "Check local tools required by the Terraform and Kubernetes foundations."
 run = "scripts/doctor.sh"
@@ -96,3 +100,7 @@ run = "scripts/ci-kubernetes.sh"
 [tasks."ci:scripts"]
 description = "Run shellcheck on the repository scripts."
 run = "scripts/ci-scripts.sh"
+
+[tasks."ci:e2e"]
+description = "Install the full Kubernetes base on a disposable kind cluster and assert it works."
+run = "scripts/ci-e2e.sh"

@@ -1,0 +1,13 @@
+# End-to-end test environment: the default profiles, with CI-sized values
+# overlaid by helmfile (values/ci/*). ZITADEL and Infisical stay off because
+# they require externally created secrets.
+profiles:
+  edge: true
+  certificates: true
+  gitops: true
+  postgresOperator: true
+  messagingOperators: true
+  observability: true
+  cache: true
+  identity: false
+  secrets: false

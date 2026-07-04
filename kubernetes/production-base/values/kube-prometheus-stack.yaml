@@ -1,3 +1,9 @@
+# The foundation applies the Prometheus Operator CRDs before any chart
+# installs (see versions.yaml prometheusOperatorCrds), so the chart must not
+# fight over their field ownership.
+crds:
+  enabled: false
+
 grafana:
   enabled: false
   # Grafana itself is installed by the separate grafana release, but the

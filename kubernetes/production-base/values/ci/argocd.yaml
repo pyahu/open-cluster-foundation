@@ -1,0 +1,4 @@
+# CI sizing: redis-ha requires one node per replica (hard anti-affinity),
+# which a single-node kind cluster cannot satisfy. Single redis instead.
+redis-ha:
+  enabled: false

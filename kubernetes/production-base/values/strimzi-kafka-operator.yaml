@@ -9,6 +9,19 @@ resources:
     cpu: 200m
     memory: 384Mi
   limits:
+    # The chart defaults limits.cpu to 1 and helm deep-merges maps, so the
+    # CPU limit must be removed explicitly: CFS throttling on the operator
+    # JVM slows startup and reconciliation for no benefit.
+    cpu: null
     memory: 768Mi
+
+# JVM startup on a node that is still installing the rest of the base can
+# exceed the chart's 10s probe delays.
+livenessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 30
+readinessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 30
 
 generateNetworkPolicy: true

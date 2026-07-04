@@ -1,0 +1,20 @@
+# Proves the cert-manager webhook and controller issue certificates without
+# touching ACME (no Let's Encrypt in CI).
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: e2e-selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: e2e-selfsigned
+  namespace: default
+spec:
+  secretName: e2e-selfsigned-tls
+  commonName: e2e.example.com
+  issuerRef:
+    name: e2e-selfsigned
+    kind: ClusterIssuer

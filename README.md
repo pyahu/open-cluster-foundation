@@ -40,8 +40,10 @@ flowchart LR
 Every component version is pinned in
 [`versions.yaml`](kubernetes/production-base/versions.yaml), updated by
 Renovate and verified by CI: Terraform is validated and linted for every
-stack, and the entire Helmfile render plus every custom resource is
-schema-checked with kubeconform against upstream CRD schemas. The full
+stack, the entire Helmfile render plus every custom resource is
+schema-checked with kubeconform against upstream CRD schemas, and an
+end-to-end suite installs the full base on a disposable kind cluster and
+asserts real traffic flows through the edge. The full
 component matrix lives in the
 [Kubernetes base README](kubernetes/production-base/README.md#component-matrix).
 
@@ -176,7 +178,6 @@ pool tainted at node registration.
 - Magalu Cloud and DigitalOcean foundations (same inputs/outputs contract).
 - NetworkPolicy default-deny profile for the base namespaces.
 - Cluster Autoscaler / Karpenter as foundation options.
-- Weekly end-to-end pipeline installing the base on a disposable cluster.
 - Terraform Registry publication of the OKE foundation module.
 
 Issues and discussions are open — multi-provider support is exactly the kind

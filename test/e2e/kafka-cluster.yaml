@@ -1,0 +1,54 @@
+# CI-sized Kafka: a single dual-role KRaft node with replication factor 1.
+# Same names as the production resources so the apply script's readiness
+# waits work unchanged. Metrics wiring is exercised by the production
+# manifests through schema validation, not here.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  replicas: 1
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 5Gi
+        deleteClaim: true
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: foundation-kafka
+  namespace: messaging
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 4.2.0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      auto.create.topics.enable: "false"
+      default.replication.factor: 1
+      min.insync.replicas: 1
+      offsets.topic.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      transaction.state.log.replication.factor: 1
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}

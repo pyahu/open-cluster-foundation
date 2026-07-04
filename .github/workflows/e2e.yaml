@@ -1,0 +1,41 @@
+name: e2e
+
+on:
+  pull_request:
+    paths:
+      - "kubernetes/**"
+      - "scripts/**"
+      - "test/e2e/**"
+      - "mise.toml"
+      - ".github/workflows/e2e.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - "kubernetes/**"
+      - "scripts/**"
+      - "test/e2e/**"
+      - "mise.toml"
+      - ".github/workflows/e2e.yaml"
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kind:
+    name: kind
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: kind github:kubernetes-sigs/cloud-provider-kind kubectl helm helmfile
+      - run: mise run ci:e2e

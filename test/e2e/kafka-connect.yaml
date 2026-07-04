@@ -1,0 +1,66 @@
+# CI-sized Kafka Connect: single replica against the single-broker CI Kafka.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: foundation-connect-configs
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  topicName: foundation-connect-configs
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: foundation-connect-offsets
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  topicName: foundation-connect-offsets
+  partitions: 5
+  replicas: 1
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: foundation-connect-status
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  topicName: foundation-connect-status
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: foundation-connect
+  namespace: messaging
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 4.2.0
+  replicas: 1
+  bootstrapServers: foundation-kafka-kafka-bootstrap.messaging.svc.cluster.local:9093
+  groupId: foundation-connect
+  configStorageTopic: foundation-connect-configs
+  offsetStorageTopic: foundation-connect-offsets
+  statusStorageTopic: foundation-connect-status
+  tls:
+    trustedCertificates:
+      - secretName: foundation-kafka-cluster-ca-cert
+        certificate: ca.crt
+  config:
+    offset.storage.replication.factor: 1
+    config.storage.replication.factor: 1
+    status.storage.replication.factor: 1

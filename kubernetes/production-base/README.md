@@ -22,7 +22,8 @@ to force a newer binary outside the chart's tested path.
 
 | Component | Install method | Pinned version | Default |
 | --- | --- | --- | --- |
-| Gateway API | Upstream release manifest | `v1.5.1` | Yes |
+| Gateway API | Bundled with the Envoy Gateway chart | `v1.5.1` | Yes |
+| Prometheus Operator CRDs | Upstream release manifest | `v0.92.0` | Yes |
 | Envoy Gateway | OCI Helm chart | chart/app `v1.8.1` | Yes |
 | cert-manager | Helm chart | chart/app `v1.20.3` | Yes |
 | Argo CD | Helm chart | chart `9.7.1`, app `v3.4.4` | Yes |
@@ -88,6 +89,10 @@ Additional stateful resources are available, but are not automatic defaults:
 kubectl version --client
 helm version
 helmfile --version
+
+# helmfile apply diffs releases through the helm-diff plugin
+# (helm 4 verifies plugin signatures by default; git sources need --verify=false):
+helm plugin install https://github.com/databus23/helm-diff --verify=false
 ```
 
 Cluster requirements:
@@ -126,26 +131,30 @@ The `monitoring` namespace is intentionally `privileged` because node exporters
 and collectors commonly need host access. Other namespaces start with
 `restricted` or `baseline` Pod Security Admission labels.
 
-## 3. Install Gateway API CRDs
+## 3. Install Prometheus Operator CRDs
+
+Several charts in this base (cert-manager, Argo CD, ...) ship ServiceMonitors
+and fail to install on a fresh cluster before these CRDs exist:
 
 ```sh
 kubectl apply --server-side \
-  -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
-
-kubectl get crd gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io
+  -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.92.0/stripped-down-crds.yaml
 ```
 
-Use the Gateway API experimental channel only when you need experimental route
-types such as TCPRoute, TLSRoute or UDPRoute.
+The Gateway API CRDs are NOT installed here: they ship with the Envoy Gateway
+chart (experimental channel) and upgrade in lockstep with it.
 
-## 4. Install cert-manager First
+## 4. Install Envoy Gateway, Then cert-manager
 
-cert-manager is installed before the RabbitMQ topology operator because that
-operator uses cert-manager webhook certificates.
+Envoy Gateway comes first because it owns the Gateway API CRDs, which
+cert-manager's Gateway integration requires at startup. cert-manager comes
+before the RabbitMQ topology operator, which uses its webhook certificates.
 
 ```sh
+helmfile -e default apply --selector profile=edge
 helmfile -e default apply --selector profile=certificates
 
+kubectl get crd gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io
 kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
 kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
 ```
@@ -246,7 +255,7 @@ Wait for the main controllers:
 ```sh
 kubectl -n envoy-gateway-system rollout status deploy/envoy-gateway --timeout=180s
 kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
-kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=180s
+kubectl -n cnpg-system rollout status deploy/cloudnative-pg --timeout=180s
 kubectl -n strimzi-system rollout status deploy/strimzi-cluster-operator --timeout=180s
 kubectl -n monitoring get pods
 kubectl -n reloader get pods

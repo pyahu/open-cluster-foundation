@@ -1,0 +1,14 @@
+# CI sizing: single replicas and short retention so the stack fits a
+# single-node kind cluster. Everything else stays identical to production.
+alertmanager:
+  alertmanagerSpec:
+    replicas: 1
+
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    retention: 2h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi

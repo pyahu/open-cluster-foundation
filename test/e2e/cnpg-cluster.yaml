@@ -1,0 +1,11 @@
+# Minimal CNPG cluster: proves the operator reconciles a database to Ready.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-postgres
+  namespace: data
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+  storage:
+    size: 1Gi

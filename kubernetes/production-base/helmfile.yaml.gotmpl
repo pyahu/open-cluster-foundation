@@ -6,9 +6,17 @@ environments:
   all-components:
     values:
       - environments/all-components.yaml
+  ci:
+    values:
+      - environments/ci.yaml
 
 ---
 {{- $versions := readFile "versions.yaml" | fromYaml -}}
+# CRD ownership is singular by design: every chart installs and owns its own
+# CRDs (including the Gateway API CRDs, which ship with the Envoy Gateway
+# chart), except the Prometheus Operator CRDs, which the apply script installs
+# from versions.yaml BEFORE any release because several charts ship
+# ServiceMonitors (kube-prometheus-stack disables its copy via crds.enabled).
 helmDefaults:
   atomic: true
   cleanupOnFail: true
@@ -58,6 +66,10 @@ releases:
     installed: {{ .Values.profiles.certificates }}
     chart: jetstack/cert-manager
     version: {{ $versions.components.certManager.chartVersion | quote }}
+    # cert-manager's Gateway API integration requires the Gateway CRDs at
+    # startup, and those ship with the Envoy Gateway chart.
+    needs:
+      - envoy-gateway-system/envoy-gateway
     values:
       - values/cert-manager.yaml
 
@@ -70,6 +82,9 @@ releases:
     version: {{ $versions.components.argoCd.chartVersion | quote }}
     values:
       - values/argocd.yaml
+{{- if eq .Environment.Name "ci" }}
+      - values/ci/argocd.yaml
+{{- end }}
 
   - name: cloudnative-pg
     namespace: cnpg-system
@@ -100,6 +115,9 @@ releases:
     version: {{ $versions.components.kubePrometheusStack.chartVersion | quote }}
     values:
       - values/kube-prometheus-stack.yaml
+{{- if eq .Environment.Name "ci" }}
+      - values/ci/kube-prometheus-stack.yaml
+{{- end }}
 
   - name: loki
     namespace: monitoring

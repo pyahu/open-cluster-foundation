@@ -6,17 +6,15 @@ notes:
   - When a product release is newer than the latest non-deprecated chart, this blueprint follows the chart-supported appVersion instead of overriding images out of band.
   - Fields annotated with "# renovate:" are updated automatically by Renovate. Unannotated versions (kafkaVersion, debezium, appVersion documentation fields) are updated manually.
 components:
-  gatewayApi:
-    installMethod: upstream-release-manifest
-    # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
-    version: v1.5.1
-    standardManifest: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
   envoyGateway:
     installMethod: oci-helm-chart
     chart: oci://docker.io/envoyproxy/gateway-helm
     # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
     chartVersion: v1.8.1
     appVersion: v1.8.1
+    # The chart ships and owns the Gateway API CRDs (experimental channel),
+    # so they upgrade in lockstep with the Envoy Gateway release.
+    gatewayApiVersion: v1.5.1
   certManager:
     installMethod: helm-chart
     repository: https://charts.jetstack.io
@@ -88,6 +86,15 @@ components:
     chartVersion: 1.9.0
     # renovate: datasource=docker depName=infisical/infisical
     imageTag: v0.161.8
+  # Applied before any chart that ships ServiceMonitors (cert-manager, Argo CD,
+  # ...), so installs work on a fresh cluster regardless of release order. Keep
+  # the version aligned with kubePrometheusStack.appVersion (the operator
+  # version the chart ships).
+  prometheusOperatorCrds:
+    installMethod: upstream-release-manifest
+    # renovate: datasource=github-releases depName=prometheus-operator/prometheus-operator
+    version: v0.92.0
+    manifest: https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.92.0/stripped-down-crds.yaml
   kubePrometheusStack:
     installMethod: helm-chart
     repository: https://prometheus-community.github.io/helm-charts
