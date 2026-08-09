@@ -96,11 +96,3 @@ resource "oci_containerengine_node_pool" "this" {
     maximum_unavailable     = "0"
   }
 }
-
-resource "oci_containerengine_addon" "metrics_server" {
-  count = var.metrics_server_addon_enabled ? 1 : 0
-
-  addon_name                       = "KubernetesMetricsServer"
-  cluster_id                       = oci_containerengine_cluster.this.id
-  remove_addon_resources_on_delete = true
-}

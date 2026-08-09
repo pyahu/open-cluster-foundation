@@ -93,12 +93,6 @@ variable "node_pools" {
   }
 }
 
-variable "metrics_server_addon_enabled" {
-  description = "Whether to install the managed Kubernetes Metrics Server addon. Required for HPA and kubectl top. Available because the cluster is provisioned as ENHANCED_CLUSTER."
-  type        = bool
-  default     = true
-}
-
 variable "bastion_enabled" {
   description = "Whether to create an OCI Bastion (managed, no cost) targeting the API endpoint subnet. Required when api_endpoint_public_enabled is false; useful for SSH sessions to private nodes in any mode."
   type        = bool
