@@ -103,7 +103,7 @@ Kubernetes version and node shape architecture — the tfvars example uses
 oci ce node-pool-options get \
   --node-pool-option-id all \
   --region sa-saopaulo-1 \
-  --query 'data.sources[?contains("source-name", `OKE-1.35`)].{name:"source-name",id:"image-id"}'
+  --query 'data.sources[?contains("source-name", `OKE-1.36`)].{name:"source-name",id:"image-id"}'
 ```
 
 Pick the newest image without `aarch64` in the name for x86 shapes such as

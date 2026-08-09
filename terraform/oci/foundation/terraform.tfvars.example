@@ -5,7 +5,7 @@ region           = "sa-saopaulo-1"
 oci_config_file_profile = "PYAHU_TERRAFORM"
 
 cluster_name       = "pyahu-oci-foundation"
-kubernetes_version = "v1.33.1"
+kubernetes_version = "v1.36.1"
 node_image_id      = "ocid1.image.oc1.sa-saopaulo-1.replace-me"
 
 api_endpoint_allowed_cidrs = [
