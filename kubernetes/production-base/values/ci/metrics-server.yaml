@@ -1,0 +1,4 @@
+# kind kubelets serve self-signed certificates without SANs the aggregator
+# can verify; production kubelets (OKE) present proper serving certs.
+args:
+  - --kubelet-insecure-tls
