@@ -17,7 +17,9 @@ locals {
 
   # Taints must be registered by kubelet at node startup so that nodes created
   # by scaling or node cycling come up tainted. Overriding user_data replaces
-  # the OKE default cloud-init, so the script must call oke-init.sh itself.
+  # the OKE default cloud-init, so the script must first download oke-init.sh
+  # from the instance metadata endpoint — it does not exist on the image — and
+  # then call it, mirroring the default script the override discards.
   node_pool_taint_args = {
     for pool_name, pool in var.node_pools :
     pool_name => join(",", [
@@ -30,6 +32,7 @@ locals {
     pool_name => length(pool.taints) == 0 ? local.node_metadata : merge(local.node_metadata, {
       user_data = base64encode(<<-CLOUD_INIT
         #!/usr/bin/env bash
+        curl --fail -H "Authorization: Bearer Oracle" -L0 http://169.254.169.254/opc/v2/instance/metadata/oke_init_script | base64 --decode >/var/run/oke-init.sh
         bash /var/run/oke-init.sh --kubelet-extra-args "--register-with-taints=${local.node_pool_taint_args[pool_name]}"
       CLOUD_INIT
       )
