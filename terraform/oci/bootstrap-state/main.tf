@@ -1,6 +1,4 @@
-data "oci_objectstorage_namespace" "current" {
-  compartment_id = var.compartment_ocid
-}
+data "oci_objectstorage_namespace" "current" {}
 
 resource "random_id" "bucket_suffix" {
   byte_length = 3
@@ -26,4 +24,3 @@ resource "oci_objectstorage_bucket" "terraform_state" {
   versioning     = "Enabled"
   freeform_tags  = local.tags
 }
-
