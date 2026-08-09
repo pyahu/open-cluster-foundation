@@ -44,6 +44,88 @@ resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress" 
   }
 }
 
+# OKE requires the API endpoint to accept 6443 and 12250 from worker nodes and
+# pods, plus ICMP path discovery from workers; without these, kubelets never
+# register ("node register timeout"). See
+# https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengnetworkconfig.htm
+resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_nodes_api" {
+  network_security_group_id = oci_core_network_security_group.api_endpoint.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = var.subnet_cidrs.nodes
+  source_type               = "CIDR_BLOCK"
+  description               = "Kubernetes API from worker nodes"
+
+  tcp_options {
+    destination_port_range {
+      min = 6443
+      max = 6443
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_nodes_internal" {
+  network_security_group_id = oci_core_network_security_group.api_endpoint.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = var.subnet_cidrs.nodes
+  source_type               = "CIDR_BLOCK"
+  description               = "OKE control plane communication from worker nodes"
+
+  tcp_options {
+    destination_port_range {
+      min = 12250
+      max = 12250
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_pods_api" {
+  network_security_group_id = oci_core_network_security_group.api_endpoint.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = var.subnet_cidrs.pods
+  source_type               = "CIDR_BLOCK"
+  description               = "Kubernetes API from pods"
+
+  tcp_options {
+    destination_port_range {
+      min = 6443
+      max = 6443
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_pods_internal" {
+  network_security_group_id = oci_core_network_security_group.api_endpoint.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = var.subnet_cidrs.pods
+  source_type               = "CIDR_BLOCK"
+  description               = "OKE control plane communication from pods"
+
+  tcp_options {
+    destination_port_range {
+      min = 12250
+      max = 12250
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_nodes_path_discovery" {
+  network_security_group_id = oci_core_network_security_group.api_endpoint.id
+  direction                 = "INGRESS"
+  protocol                  = "1"
+  source                    = var.subnet_cidrs.nodes
+  source_type               = "CIDR_BLOCK"
+  description               = "Path discovery from worker nodes"
+
+  icmp_options {
+    type = 3
+    code = 4
+  }
+}
+
 resource "oci_core_network_security_group_security_rule" "api_endpoint_egress" {
   network_security_group_id = oci_core_network_security_group.api_endpoint.id
   direction                 = "EGRESS"
