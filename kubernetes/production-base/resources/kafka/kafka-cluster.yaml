@@ -235,23 +235,18 @@ spec:
     limits:
       memory: 4Gi
       cpu: "2"
-  # RF=3 so protege de verdade se as replicas estiverem em nos distintos, mas
-  # "required" deixaria um broker Pending enquanto o cluster tiver apenas 3 nos
-  # agendaveis (2 dos 5 sao dedicados ao Postgres por taint). Fica "preferred"
-  # ate haver capacidade; o limite de memoria acima ja evita o OOM que derrubou
-  # dois brokers de uma vez em 2026-08-10.
+  # RF=3 so protege de verdade se as replicas estiverem em nos distintos: em
+  # 2026-08-10 os tres brokers dividiam um unico no e dois morreram juntos.
   template:
     pod:
       affinity:
         podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    strimzi.io/cluster: foundation-kafka
-                    strimzi.io/pool-name: broker
-                topologyKey: kubernetes.io/hostname
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  strimzi.io/cluster: foundation-kafka
+                  strimzi.io/pool-name: broker
+              topologyKey: kubernetes.io/hostname
   storage:
     type: jbod
     volumes:
