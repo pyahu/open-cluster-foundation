@@ -131,8 +131,9 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: metrics-server/metrics-server
     version: {{ $versions.components.metricsServer.chartVersion | quote }}
-{{- if eq .Environment.Name "ci" }}
     values:
+      - values/metrics-server.yaml
+{{- if eq .Environment.Name "ci" }}
       - values/ci/metrics-server.yaml
 {{- end }}
 

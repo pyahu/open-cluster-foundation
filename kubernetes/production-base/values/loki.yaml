@@ -26,6 +26,13 @@ loki:
 
 singleBinary:
   replicas: 1
+  # Uso medido: ~447Mi.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
   persistence:
     enabled: true
     size: 50Gi
@@ -41,6 +48,19 @@ backend:
 
 gateway:
   enabled: true
+  metrics:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
 
 # Chart-native observability for Loki itself: scrape config, the upstream
 # loki-alerts PrometheusRule, its recording rules and the operational
@@ -63,3 +83,19 @@ resultsCache:
 
 test:
   enabled: false
+
+lokiCanary:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+sidecar:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 128Mi

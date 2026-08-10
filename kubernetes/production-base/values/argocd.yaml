@@ -10,6 +10,12 @@ configs:
     policy.default: role:readonly
 
 server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
   service:
     type: ClusterIP
   metrics:
@@ -18,24 +24,48 @@ server:
       enabled: true
 
 controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
   metrics:
     enabled: true
     serviceMonitor:
       enabled: true
 
 repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
   metrics:
     enabled: true
     serviceMonitor:
       enabled: true
 
 applicationSet:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
   metrics:
     enabled: true
     serviceMonitor:
       enabled: true
 
 notifications:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
   enabled: true
   metrics:
     enabled: true
@@ -47,3 +77,40 @@ dex:
 
 redis-ha:
   enabled: true
+  sentinel:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+  splitBrainDetection:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+  redis:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  haproxy:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+
+# O chart sobe um argocd-redis alem do redis-ha.
+redis:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 256Mi

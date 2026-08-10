@@ -19,6 +19,12 @@ alertmanager:
   alertmanagerSpec:
     replicas: 2
     retention: 120h
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
     storage:
       volumeClaimTemplate:
         spec:
@@ -35,6 +41,13 @@ prometheus:
     scrapeInterval: 30s
     evaluationInterval: 30s
     walCompression: true
+    # Uso medido: ~1,15Gi por replica com 15d de retencao.
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1536Mi
+      limits:
+        memory: 3Gi
     enableAdminAPI: false
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
@@ -58,6 +71,35 @@ kubeProxy:
   enabled: false
 
 prometheusOperator:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  prometheusConfigReloader:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
   admissionWebhooks:
     patch:
       enabled: true
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi

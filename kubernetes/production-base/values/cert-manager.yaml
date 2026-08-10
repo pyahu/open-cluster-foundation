@@ -11,18 +11,38 @@ prometheus:
 
 replicaCount: 2
 
+# Uso medido: controller ~79Mi, cainjector ~82Mi, webhook ~28Mi.
+resources:
+  requests:
+    cpu: 25m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
 
 webhook:
   replicaCount: 2
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
   podDisruptionBudget:
     enabled: true
     minAvailable: 1
 
 cainjector:
   replicaCount: 2
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
   podDisruptionBudget:
     enabled: true
     minAvailable: 1
