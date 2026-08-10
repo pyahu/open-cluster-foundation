@@ -1,5 +1,8 @@
-watchNamespaces:
-  - messaging
+# Tenant workloads bring their own KafkaConnect/KafkaConnector CRs in their
+# own namespaces (e.g. CDC stacks); the operator watches the whole cluster
+# like the entity operator pattern expects. KafkaTopics still reconcile only
+# in the Kafka cluster's namespace.
+watchAnyNamespace: true
 
 dashboards:
   enabled: true
