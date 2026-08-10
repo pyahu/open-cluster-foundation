@@ -8,3 +8,4 @@ profiles:
   cache: true
   identity: true
   secrets: true
+  rabbitmqOperators: true

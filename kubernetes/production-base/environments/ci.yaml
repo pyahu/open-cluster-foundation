@@ -11,3 +11,4 @@ profiles:
   cache: true
   identity: false
   secrets: false
+  rabbitmqOperators: true

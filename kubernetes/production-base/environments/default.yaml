@@ -8,3 +8,6 @@ profiles:
   cache: true
   identity: false
   secrets: false
+  # Off by default: the operators cost memory on every node they land on and
+  # are dead weight until a cluster actually declares a RabbitmqCluster.
+  rabbitmqOperators: false

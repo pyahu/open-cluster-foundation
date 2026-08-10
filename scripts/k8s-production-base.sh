@@ -141,6 +141,11 @@ apply_cluster_issuers_if_configured() {
 }
 
 apply_rabbitmq_operators() {
+  if ! profile_enabled rabbitmqOperators "$ENVIRONMENT"; then
+    log "skipping RabbitMQ operators (profile disabled)"
+    return
+  fi
+
   local cluster_operator_manifest topology_operator_manifest
   cluster_operator_manifest="$(component_value rabbitmqClusterOperator manifest)"
   topology_operator_manifest="$(component_value rabbitmqMessagingTopologyOperator manifest)"
@@ -208,7 +213,9 @@ wait_for_controllers() {
   kubectl -n cnpg-system rollout status deploy/cloudnative-pg --timeout=180s
   kubectl -n cnpg-system rollout status deploy/barman-cloud --timeout=180s
   kubectl -n strimzi-system rollout status deploy/strimzi-cluster-operator --timeout=180s
-  kubectl -n rabbitmq-system wait --for=condition=Available deployment --all --timeout=300s
+  if profile_enabled rabbitmqOperators "$ENVIRONMENT"; then
+    kubectl -n rabbitmq-system wait --for=condition=Available deployment --all --timeout=300s
+  fi
   kubectl -n reloader wait --for=condition=Available deployment --all --timeout=180s
 }
 

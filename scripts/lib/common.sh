@@ -58,6 +58,25 @@ confirm_apply() {
   [[ "$answer" == "apply" ]] || die "confirmation failed"
 }
 
+profile_enabled() {
+  local profile="$1"
+  local environment="$2"
+  local environments_file="${OCF_ROOT}/kubernetes/production-base/environments/${environment}.yaml"
+
+  [[ -f "$environments_file" ]] || die "unknown helmfile environment: ${environment}"
+
+  local value
+  value="$(awk -v profile="$profile" '
+    $0 ~ "^  " profile ":" {
+      sub("^[[:space:]]*" profile ":[[:space:]]*", "")
+      print
+      exit
+    }
+  ' "$environments_file")"
+
+  [[ "$value" == "true" ]]
+}
+
 component_value() {
   local component="$1"
   local key="$2"
