@@ -50,6 +50,13 @@ metadata:
 spec:
   version: 4.2.0
   replicas: 2
+  # Uso medido: ~450Mi por worker sem conectores pesados.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 768Mi
+    limits:
+      memory: 1536Mi
   bootstrapServers: foundation-kafka-kafka-bootstrap.messaging.svc.cluster.local:9093
   groupId: foundation-connect
   configStorageTopic: foundation-connect-configs

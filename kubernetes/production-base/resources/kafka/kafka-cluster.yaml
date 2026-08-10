@@ -291,8 +291,26 @@ spec:
           name: kafka-metrics
           key: kafka-metrics-config.yml
   entityOperator:
-    topicOperator: {}
-    userOperator: {}
+    topicOperator:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 256Mi
+        limits:
+          memory: 512Mi
+    userOperator:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 256Mi
+        limits:
+          memory: 512Mi
   kafkaExporter:
     topicRegex: ".*"
     groupRegex: ".*"
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
