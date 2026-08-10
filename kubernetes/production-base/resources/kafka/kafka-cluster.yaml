@@ -183,6 +183,26 @@ spec:
   replicas: 3
   roles:
     - controller
+  # Sem limits a Strimzi deixa o -Xmx indefinido e a JVM cresce ate estourar o
+  # no; com limits ela deriva o heap em 50% do limite. O request tambem faz o
+  # scheduler enxergar o consumo real, evitando empilhar replicas num no so.
+  resources:
+    requests:
+      memory: 1536Mi
+      cpu: 100m
+    limits:
+      memory: 2Gi
+      cpu: "1"
+  template:
+    pod:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  strimzi.io/cluster: foundation-kafka
+                  strimzi.io/pool-name: controller
+              topologyKey: kubernetes.io/hostname
   storage:
     type: jbod
     volumes:
@@ -202,6 +222,26 @@ spec:
   replicas: 3
   roles:
     - broker
+  # Idem controller: o limite tambem serve de teto pro heap (50% dele), e a
+  # metade restante fica pro page cache, do qual o Kafka depende.
+  resources:
+    requests:
+      memory: 3Gi
+      cpu: 300m
+    limits:
+      memory: 4Gi
+      cpu: "2"
+  # RF=3 so protege de verdade se as replicas estiverem em nos distintos.
+  template:
+    pod:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  strimzi.io/cluster: foundation-kafka
+                  strimzi.io/pool-name: broker
+              topologyKey: kubernetes.io/hostname
   storage:
     type: jbod
     volumes:
