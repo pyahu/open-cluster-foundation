@@ -158,6 +158,39 @@ apply_rabbitmq_operators() {
   kubectl apply --server-side --force-conflicts -f "$topology_operator_manifest"
 }
 
+apply_base_gateway() {
+  # manifests/gateway.yaml e um placeholder de bootstrap: GatewayClass sem
+  # parametersRef e um unico listener HTTP. Instancias reais personalizam os
+  # dois — listeners HTTPS por hostname e um EnvoyProxy com as annotations do
+  # load balancer do provedor — e reaplicar o placeholder por cima reverte isso:
+  # o Service do data plane perde as annotations, o cloud controller cria um
+  # load balancer novo (com IP novo!) e todos os hosts HTTPS caem, porque o DNS
+  # ainda aponta para o antigo. Foi o que aconteceu na Unilog em 2026-08-10.
+  #
+  # Por isso o gateway so e criado quando falta. Para reaplicar o placeholder de
+  # proposito, use OCF_FORCE_BASE_GATEWAY=true — e depois reaplique a
+  # customizacao da instancia.
+  if [[ "${OCF_FORCE_BASE_GATEWAY:-false}" == "true" ]]; then
+    log "applying base Gateway (forced; instance customisations will be overwritten)"
+    kubectl apply -f "${BASE_DIR}/manifests/gateway.yaml"
+    return
+  fi
+
+  local existing=()
+  kubectl get gatewayclass envoy >/dev/null 2>&1 && existing+=("GatewayClass/envoy")
+  kubectl -n platform-system get gateway public-gateway >/dev/null 2>&1 &&
+    existing+=("Gateway/public-gateway")
+
+  if [[ "${#existing[@]}" -gt 0 ]]; then
+    log "base Gateway already present (${existing[*]}); keeping instance customisations"
+    log "  re-apply the placeholder with OCF_FORCE_BASE_GATEWAY=true if you really want it"
+    return
+  fi
+
+  log "applying base Gateway"
+  kubectl apply -f "${BASE_DIR}/manifests/gateway.yaml"
+}
+
 apply_prometheus_operator_crds() {
   local crds_manifest
   crds_manifest="$(component_value prometheusOperatorCrds manifest)"
@@ -260,8 +293,7 @@ apply_base() {
   log "applying helmfile environment ${ENVIRONMENT}"
   (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$ENVIRONMENT" apply --concurrency 4)
 
-  log "applying base Gateway"
-  kubectl apply -f "${BASE_DIR}/manifests/gateway.yaml"
+  apply_base_gateway
 
   apply_monitoring_resources
 
