@@ -25,15 +25,18 @@ datasources:
     apiVersion: 1
     datasources:
       - name: Prometheus
+        uid: prometheus
         type: prometheus
         access: proxy
         url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
         isDefault: true
       - name: Loki
+        uid: loki
         type: loki
         access: proxy
         url: http://loki-gateway.monitoring.svc.cluster.local
       - name: Tempo
+        uid: tempo
         type: tempo
         access: proxy
         url: http://tempo.monitoring.svc.cluster.local:3100
