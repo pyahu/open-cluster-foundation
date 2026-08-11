@@ -176,10 +176,16 @@ apply_base_gateway() {
     return
   fi
 
+  # Os testes tem que ficar dentro de "if": sob "set -e" uma lista
+  # "cmd && acao" aborta o script quando cmd falha, e aqui falhar e o caso
+  # normal (cluster novo ainda nao tem Gateway).
   local existing=()
-  kubectl get gatewayclass envoy >/dev/null 2>&1 && existing+=("GatewayClass/envoy")
-  kubectl -n platform-system get gateway public-gateway >/dev/null 2>&1 &&
+  if kubectl get gatewayclass envoy >/dev/null 2>&1; then
+    existing+=("GatewayClass/envoy")
+  fi
+  if kubectl -n platform-system get gateway public-gateway >/dev/null 2>&1; then
     existing+=("Gateway/public-gateway")
+  fi
 
   if [[ "${#existing[@]}" -gt 0 ]]; then
     log "base Gateway already present (${existing[*]}); keeping instance customisations"
