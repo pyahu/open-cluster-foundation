@@ -23,17 +23,16 @@ grafana.ini:
 # Os datasources provisionados sao read-only e o Grafana falha o boot com
 # "data source not found" ao trocar o uid de um que ja existe. deleteDatasources
 # remove a versao antiga (uid aleatorio) antes de recriar com o uid fixo.
-deleteDatasources:
-  - name: Prometheus
-    orgId: 1
-  - name: Loki
-    orgId: 1
-  - name: Tempo
-    orgId: 1
-
 datasources:
   datasources.yaml:
     apiVersion: 1
+    deleteDatasources:
+      - name: Prometheus
+        orgId: 1
+      - name: Loki
+        orgId: 1
+      - name: Tempo
+        orgId: 1
     datasources:
       - name: Prometheus
         uid: prometheus
