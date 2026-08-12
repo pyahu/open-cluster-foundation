@@ -14,11 +14,32 @@ admin:
 service:
   type: ClusterIP
 
+# O chart barra grafana.ini com chave client_secret mesmo quando o valor é
+# expansão de env (${...}); as credenciais reais vêm do secret via envFromSecrets.
+assertNoLeakedSecrets: false
+
+envFromSecrets:
+  - name: grafana-oidc-credentials
+
 grafana.ini:
   server:
-    root_url: https://grafana.example.com
+    root_url: https://grafana.prod.unilog.cloud
   auth:
     disable_login_form: false
+  auth.generic_oauth:
+    enabled: true
+    name: Zitadel
+    allow_sign_up: true
+    # Org unilog-engineering no Zitadel da Pyahu — o scope de org restringe o
+    # login a usuários dela; todo engenheiro é admin (time de 2, sem RBAC).
+    scopes: openid profile email urn:zitadel:iam:org:id:385995099135279505
+    auth_url: https://zitadel.de.pyahu.cloud/oauth/v2/authorize
+    token_url: https://zitadel.de.pyahu.cloud/oauth/v2/token
+    api_url: https://zitadel.de.pyahu.cloud/oidc/v1/userinfo
+    client_id: ${client_id}
+    client_secret: ${client_secret}
+    role_attribute_path: "'GrafanaAdmin'"
+    allow_assign_grafana_admin: true
 
 # Os datasources provisionados sao read-only e o Grafana falha o boot com
 # "data source not found" ao trocar o uid de um que ja existe. deleteDatasources
