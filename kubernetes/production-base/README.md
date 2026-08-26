@@ -197,6 +197,16 @@ kubectl -n monitoring create secret generic grafana-admin \
   --from-literal=admin-password="$(openssl rand -base64 32)"
 ```
 
+Grafana also reads its Zitadel OIDC client from a Secret (`envFromSecrets`);
+the keys are the env vars `grafana.ini` expands. Without it the Grafana pod
+does not start:
+
+```sh
+kubectl -n monitoring create secret generic grafana-oidc-credentials \
+  --from-literal=client_id="<zitadel-application-client-id>" \
+  --from-literal=client_secret="<zitadel-application-client-secret>"
+```
+
 The remaining secrets in this section are only required when applying the
 related add-on resources.
 

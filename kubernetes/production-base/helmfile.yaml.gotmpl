@@ -180,6 +180,9 @@ releases:
       - monitoring/tempo
     values:
       - values/grafana.yaml
+{{- if eq .Environment.Name "ci" }}
+      - values/ci/grafana.yaml
+{{- end }}
 
   - name: reloader
     namespace: reloader

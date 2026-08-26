@@ -1,0 +1,9 @@
+# CI has no Zitadel and no OIDC client: the credentials secret is created out
+# of band on the real clusters, and without it the Grafana pod never starts —
+# helm only notices 10 minutes later, when the release times out. The built-in
+# admin login (grafana-admin secret) is enough for the e2e run.
+envFromSecrets: []
+
+grafana.ini:
+  auth.generic_oauth:
+    enabled: false

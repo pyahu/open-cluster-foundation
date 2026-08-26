@@ -117,6 +117,17 @@ check_optional_profile_inputs() {
   ensure_secret_key_exists secrets infisical-secrets REDIS_URL "Infisical requires a Redis-compatible store; point REDIS_URL at the base Valkey service (redis://valkey.cache.svc.cluster.local:6379)."
 }
 
+# Grafana mounts the OIDC client through envFromSecrets: without the secret the
+# pod never starts and helm only gives up 10 minutes later, on release timeout.
+# The ci environment disables OIDC (values/ci/grafana.yaml), so it is exempt.
+check_grafana_oidc_secret() {
+  if [[ "$ENVIRONMENT" == "ci" ]] || ! profile_enabled observability "$ENVIRONMENT"; then
+    return
+  fi
+
+  ensure_secret_exists monitoring grafana-oidc-credentials "Create it with the Zitadel application credentials: kubectl -n monitoring create secret generic grafana-oidc-credentials --from-literal=client_id=<id> --from-literal=client_secret=<secret>"
+}
+
 create_grafana_admin_secret() {
   if kubectl -n monitoring get secret grafana-admin >/dev/null 2>&1; then
     log "Grafana admin secret already exists"
@@ -277,6 +288,7 @@ apply_base() {
   kubectl apply -f "${BASE_DIR}/manifests/namespace-baseline.yaml"
 
   check_optional_profile_inputs
+  check_grafana_oidc_secret
   apply_prometheus_operator_crds
 
   # Envoy Gateway ships (and owns) the Gateway API CRDs, which cert-manager's

@@ -16,7 +16,7 @@ require_command kubeconform
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-for environment in default all-components; do
+for environment in default all-components ci; do
   log "rendering helmfile environment ${environment}"
   (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$environment" template) \
     >"${WORK_DIR}/rendered-${environment}.yaml"
