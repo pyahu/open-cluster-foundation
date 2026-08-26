@@ -247,12 +247,24 @@ spec:
                   strimzi.io/cluster: foundation-kafka
                   strimzi.io/pool-name: broker
               topologyKey: kubernetes.io/hostname
+  # 100Gi cobria o cluster antes da migracao do CDC da Unilog. Os topicos de CDC
+  # tem retention.ms -1 (o destino pode ser reconstruido sem novo snapshot no
+  # Oracle), entao o disco so cresce: as tres primeiras tabelas do G5 sozinhas
+  # custaram 32Gi, e cada Gi entra nos tres brokers porque todo topico e RF=3
+  # num cluster de 3 nos. Medido: ~0,38Gi por milhao de linhas mais 0,9Mi por
+  # byte de largura da linha — o envelope do Debezium domina em tabela estreita
+  # (557Mi no Oracle viraram 6,5Gi de topico). Pelas 437M linhas que faltam do
+  # G5 e do G6 a projecao e ~296Gi ocupados; 400Gi deixa a folga.
+  #
+  # Com retention -1 isso e adiar, nao resolver: o disco enche de novo quando o
+  # CDC corrente das 39 tabelas acumular. A correcao definitiva e uma politica
+  # de retencao, nao mais disco.
   storage:
     type: jbod
     volumes:
       - id: 0
         type: persistent-claim
-        size: 100Gi
+        size: 400Gi
         deleteClaim: false
 ---
 apiVersion: kafka.strimzi.io/v1
