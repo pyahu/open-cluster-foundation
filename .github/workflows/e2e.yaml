@@ -35,6 +35,16 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
+      # ubuntu-latest leaves ~14 GB free on /, and the three-node kind cluster
+      # keeps one containerd image store per node: pulling the CloudNativePG
+      # Postgres image is where the runner ran out of space. None of these
+      # preinstalled toolchains are used by this job.
+      - name: free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /usr/share/swift /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          df -h /
       - uses: jdx/mise-action@v2
         with:
           install_args: kind github:kubernetes-sigs/cloud-provider-kind kubectl helm helmfile

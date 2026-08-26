@@ -50,6 +50,10 @@ dump_diagnostics() {
   kubectl get pods -A --no-headers 2>/dev/null |
     awk '{ split($3, ready, "/"); if (ready[1] != ready[2] || ($4 != "Running" && $4 != "Completed")) print $1, $2 }' |
     while read -r ns pod; do
+      # The event tail of describe carries the failures that never reach a log:
+      # image pulls, scheduling, missing secrets.
+      warn "events for ${ns}/${pod}"
+      kubectl -n "$ns" describe pod "$pod" 2>/dev/null | tail -20 || true
       warn "logs for ${ns}/${pod}"
       kubectl -n "$ns" logs "$pod" --all-containers --tail=30 --prefix 2>/dev/null || true
       kubectl -n "$ns" logs "$pod" --all-containers --tail=15 --prefix --previous 2>/dev/null || true
