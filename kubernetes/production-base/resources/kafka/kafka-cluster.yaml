@@ -183,11 +183,11 @@ spec:
   replicas: 3
   roles:
     - controller
-  # Sem limits a Strimzi deixa o -Xmx indefinido e a JVM cresce ate estourar o
-  # no; com limits ela deriva o heap em 50% do limite. O request tambem faz o
-  # scheduler enxergar o consumo real, evitando empilhar replicas num no so.
-  # Request dimensionado pelo consumo medido (0,4-1,0 GiB); o limite e que
-  # segura o runaway e define o heap.
+  # Without limits Strimzi leaves -Xmx unset and the JVM grows until it takes
+  # the node down; with limits it derives the heap as 50% of the limit. The
+  # request also lets the scheduler see real consumption instead of stacking
+  # replicas on a single node. Request sized from measured usage (0.4-1.0 GiB);
+  # the limit is what contains a runaway and defines the heap.
   resources:
     requests:
       memory: 1Gi
@@ -224,10 +224,10 @@ spec:
   replicas: 3
   roles:
     - broker
-  # Idem controller: o limite tambem serve de teto pro heap (50% dele), e a
-  # metade restante fica pro page cache, do qual o Kafka depende.
-  # Request dimensionado pelo consumo medido (1,5-2,3 GiB durante snapshot);
-  # o pico fica coberto pelo limite de 4Gi.
+  # Same as the controller: the limit doubles as the heap ceiling (50% of it),
+  # and the other half is left to the page cache Kafka depends on. Request
+  # sized from measured usage (1.5-2.3 GiB during a snapshot); the 4Gi limit
+  # covers the peak.
   resources:
     requests:
       memory: 2Gi
@@ -235,8 +235,8 @@ spec:
     limits:
       memory: 4Gi
       cpu: "2"
-  # RF=3 so protege de verdade se as replicas estiverem em nos distintos: em
-  # 2026-08-10 os tres brokers dividiam um unico no e dois morreram juntos.
+  # RF=3 only protects anything if the replicas sit on distinct nodes: on
+  # 2026-08-10 all three brokers shared one node and two died together.
   template:
     pod:
       affinity:
@@ -247,18 +247,18 @@ spec:
                   strimzi.io/cluster: foundation-kafka
                   strimzi.io/pool-name: broker
               topologyKey: kubernetes.io/hostname
-  # 100Gi cobria o cluster antes da migracao do CDC da Unilog. Os topicos de CDC
-  # tem retention.ms -1 (o destino pode ser reconstruido sem novo snapshot no
-  # Oracle), entao o disco so cresce: as tres primeiras tabelas do G5 sozinhas
-  # custaram 32Gi, e cada Gi entra nos tres brokers porque todo topico e RF=3
-  # num cluster de 3 nos. Medido: ~0,38Gi por milhao de linhas mais 0,9Mi por
-  # byte de largura da linha — o envelope do Debezium domina em tabela estreita
-  # (557Mi no Oracle viraram 6,5Gi de topico). Pelas 437M linhas que faltam do
-  # G5 e do G6 a projecao e ~296Gi ocupados; 400Gi deixa a folga.
+  # 100Gi was enough before a Debezium CDC migration landed on this cluster.
+  # CDC topics run with retention.ms -1 (the sink can be rebuilt without a new
+  # snapshot of the source), so the disk only grows: the first three tables
+  # alone cost 32Gi, and every Gi lands on all three brokers because every
+  # topic is RF=3 on a 3-node cluster. Measured: ~0.38Gi per million rows plus
+  # ~0.9Mi per byte of row width; the Debezium envelope dominates on narrow
+  # tables (557Mi in the source database became 6.5Gi of topic). With ~437M
+  # rows still to stream the projection was ~296Gi; 400Gi leaves headroom.
   #
-  # Com retention -1 isso e adiar, nao resolver: o disco enche de novo quando o
-  # CDC corrente das 39 tabelas acumular. A correcao definitiva e uma politica
-  # de retencao, nao mais disco.
+  # With retention -1 this postpones the problem rather than solving it: the
+  # disk fills again once steady-state CDC accumulates. The real fix is a
+  # retention policy, not more disk.
   storage:
     type: jbod
     volumes:

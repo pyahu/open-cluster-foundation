@@ -170,26 +170,27 @@ apply_rabbitmq_operators() {
 }
 
 apply_base_gateway() {
-  # manifests/gateway.yaml e um placeholder de bootstrap: GatewayClass sem
-  # parametersRef e um unico listener HTTP. Instancias reais personalizam os
-  # dois — listeners HTTPS por hostname e um EnvoyProxy com as annotations do
-  # load balancer do provedor — e reaplicar o placeholder por cima reverte isso:
-  # o Service do data plane perde as annotations, o cloud controller cria um
-  # load balancer novo (com IP novo!) e todos os hosts HTTPS caem, porque o DNS
-  # ainda aponta para o antigo. Foi o que aconteceu na Unilog em 2026-08-10.
+  # manifests/gateway.yaml is a bootstrap placeholder: a GatewayClass without
+  # parametersRef and a single HTTP listener. Real instances customise both
+  # (HTTPS listeners per hostname and an EnvoyProxy carrying the provider's
+  # load balancer annotations), and re-applying the placeholder on top undoes
+  # that: the data plane Service loses its annotations, the cloud controller
+  # creates a new load balancer (with a new IP!) and every HTTPS host goes
+  # down because DNS still points at the old one. That happened on a
+  # production cluster on 2026-08-10.
   #
-  # Por isso o gateway so e criado quando falta. Para reaplicar o placeholder de
-  # proposito, use OCF_FORCE_BASE_GATEWAY=true — e depois reaplique a
-  # customizacao da instancia.
+  # So the gateway is only created when missing. To re-apply the placeholder
+  # on purpose, set OCF_FORCE_BASE_GATEWAY=true, then re-apply the instance
+  # customisation.
   if [[ "${OCF_FORCE_BASE_GATEWAY:-false}" == "true" ]]; then
     log "applying base Gateway (forced; instance customisations will be overwritten)"
     kubectl apply -f "${BASE_DIR}/manifests/gateway.yaml"
     return
   fi
 
-  # Os testes tem que ficar dentro de "if": sob "set -e" uma lista
-  # "cmd && acao" aborta o script quando cmd falha, e aqui falhar e o caso
-  # normal (cluster novo ainda nao tem Gateway).
+  # The checks must live inside an "if": under "set -e" a "cmd && action"
+  # list aborts the script when cmd fails, and failing is the normal case
+  # here (a fresh cluster has no Gateway yet).
   local existing=()
   if kubectl get gatewayclass envoy >/dev/null 2>&1; then
     existing+=("GatewayClass/envoy")

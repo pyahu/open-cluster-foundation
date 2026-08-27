@@ -22,3 +22,7 @@ backend.hcl
 # Private customer/project instantiations generated from the public foundation.
 # Keep real OCIDs, backend files, tfvars, DNS names and customer names out of Git.
 .local/
+
+# Instance-specific Helm values layered on top of the public base by helmfile
+# (see kubernetes/production-base/README.md). Same rule as .local/: never in Git.
+kubernetes/production-base/values/local/

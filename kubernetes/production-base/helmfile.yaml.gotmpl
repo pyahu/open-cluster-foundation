@@ -178,8 +178,12 @@ releases:
       - monitoring/kube-prometheus-stack
       - monitoring/loki
       - monitoring/tempo
+    # values/local/*.yaml carries instance-specific settings (public URL, OIDC
+    # issuer) and is gitignored; helmfile skips it when absent.
+    missingFileHandler: Info
     values:
       - values/grafana.yaml
+      - values/local/grafana.yaml
 {{- if eq .Environment.Name "ci" }}
       - values/ci/grafana.yaml
 {{- end }}

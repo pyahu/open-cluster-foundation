@@ -1,5 +1,6 @@
-# O chart nao declara resources por padrao, o que deixa o scheduler cego e, num
-# no sob pressao, o processo perde CPU e para de responder as probes.
+# The chart declares no resources by default, which leaves the scheduler blind;
+# on a node under pressure the process is starved of CPU and stops answering
+# its probes.
 resources:
   requests:
     cpu: 50m
@@ -7,10 +8,11 @@ resources:
   limits:
     memory: 400Mi
 
-# O default do chart usa timeoutSeconds: 1, agressivo demais: sob contencao o
-# liveness mata o pod no meio do boot e ele entra em CrashLoopBackOff (visto no
-# cluster da Unilog em 2026-08-10). O startupProbe cobre a inicializacao e os
-# timeouts maiores toleram um no ocupado.
+# The chart default is timeoutSeconds: 1, which is too aggressive: under
+# contention the liveness probe kills the pod mid-boot and it lands in
+# CrashLoopBackOff (seen on a production cluster on 2026-08-10). The
+# startupProbe covers initialisation and the longer timeouts tolerate a busy
+# node.
 startupProbe:
   failureThreshold: 30
   periodSeconds: 5

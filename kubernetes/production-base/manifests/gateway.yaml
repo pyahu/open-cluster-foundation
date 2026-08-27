@@ -1,14 +1,14 @@
-# Placeholder de bootstrap, aplicado apenas quando o cluster ainda nao tem
-# GatewayClass/Gateway (ver apply_base_gateway em scripts/k8s-production-base.sh).
+# Bootstrap placeholder, applied only when the cluster does not yet have a
+# GatewayClass/Gateway (see apply_base_gateway in scripts/k8s-production-base.sh).
 #
-# Instancias de producao personalizam os dois recursos e essa customizacao NAO
-# deve ser sobrescrita:
-#   - GatewayClass ganha um parametersRef apontando para um EnvoyProxy com as
-#     annotations do load balancer do provedor;
-#   - Gateway ganha um listener HTTPS por hostname, com os certificados.
-# Reaplicar este arquivo por cima faz o Service do data plane perder as
-# annotations, o cloud controller provisionar um load balancer novo com IP novo
-# e todo o trafego HTTPS cair, ja que o DNS continua no IP antigo.
+# Production instances customize both resources, and that customization MUST
+# NOT be overwritten:
+#   - the GatewayClass gets a parametersRef pointing to an EnvoyProxy carrying
+#     the provider's load balancer annotations;
+#   - the Gateway gets one HTTPS listener per hostname, with the certificates.
+# Reapplying this file on top makes the data plane Service lose its
+# annotations, the cloud controller provision a new load balancer with a new
+# IP, and all HTTPS traffic drop, since DNS still points at the old IP.
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:

@@ -1,4 +1,4 @@
-# Uso medido: ~348Mi.
+# Measured usage: ~348Mi.
 resources:
   requests:
     cpu: 50m
@@ -14,36 +14,45 @@ admin:
 service:
   type: ClusterIP
 
-# O chart barra grafana.ini com chave client_secret mesmo quando o valor é
-# expansão de env (${...}); as credenciais reais vêm do secret via envFromSecrets.
+# The chart rejects grafana.ini with a client_secret key even when the value
+# is an env expansion (${...}); the real credentials come from the secret via
+# envFromSecrets.
 assertNoLeakedSecrets: false
 
 envFromSecrets:
   - name: grafana-oidc-credentials
 
+# Instance-specific settings (public URL, OIDC issuer, org scope) belong in
+# values/local/grafana.yaml, which is gitignored and layered on top of this
+# file by helmfile when present. The values below are placeholders that keep
+# the release installable; override them there, not here.
 grafana.ini:
   server:
-    root_url: https://grafana.prod.unilog.cloud
+    root_url: https://grafana.example.com
   auth:
     disable_login_form: false
   auth.generic_oauth:
     enabled: true
-    name: Zitadel
+    name: OIDC
     allow_sign_up: true
-    # Org unilog-engineering no Zitadel da Pyahu — o scope de org restringe o
-    # login a usuários dela; todo engenheiro é admin (time de 2, sem RBAC).
-    scopes: openid profile email urn:zitadel:iam:org:id:385995099135279505
-    auth_url: https://zitadel.de.pyahu.cloud/oauth/v2/authorize
-    token_url: https://zitadel.de.pyahu.cloud/oauth/v2/token
-    api_url: https://zitadel.de.pyahu.cloud/oidc/v1/userinfo
+    # Append a tenant scope when the issuer supports it, for example
+    # "urn:zitadel:iam:org:id:<org-id>" on ZITADEL, to restrict sign-in to one
+    # organization.
+    scopes: openid profile email
+    auth_url: https://idp.example.com/oauth/v2/authorize
+    token_url: https://idp.example.com/oauth/v2/token
+    api_url: https://idp.example.com/oidc/v1/userinfo
     client_id: ${client_id}
     client_secret: ${client_secret}
+    # Every signed-in user becomes a Grafana admin. Tighten role_attribute_path
+    # once the cluster has more than a handful of operators.
     role_attribute_path: "'GrafanaAdmin'"
     allow_assign_grafana_admin: true
 
-# Os datasources provisionados sao read-only e o Grafana falha o boot com
-# "data source not found" ao trocar o uid de um que ja existe. deleteDatasources
-# remove a versao antiga (uid aleatorio) antes de recriar com o uid fixo.
+# Provisioned datasources are read-only, and Grafana fails to boot with
+# "data source not found" when the uid of an existing one changes.
+# deleteDatasources removes the old (random-uid) copy before recreating it
+# with the fixed uid.
 datasources:
   datasources.yaml:
     apiVersion: 1

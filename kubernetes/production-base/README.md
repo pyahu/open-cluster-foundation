@@ -197,14 +197,32 @@ kubectl -n monitoring create secret generic grafana-admin \
   --from-literal=admin-password="$(openssl rand -base64 32)"
 ```
 
-Grafana also reads its Zitadel OIDC client from a Secret (`envFromSecrets`);
-the keys are the env vars `grafana.ini` expands. Without it the Grafana pod
-does not start:
+Grafana also reads its OIDC client from a Secret (`envFromSecrets`); the
+keys are the env vars `grafana.ini` expands. Without it the Grafana pod does
+not start:
 
 ```sh
 kubectl -n monitoring create secret generic grafana-oidc-credentials \
-  --from-literal=client_id="<zitadel-application-client-id>" \
-  --from-literal=client_secret="<zitadel-application-client-secret>"
+  --from-literal=client_id="<oidc-application-client-id>" \
+  --from-literal=client_secret="<oidc-application-client-secret>"
+```
+
+The public URL and the issuer endpoints in `values/grafana.yaml` are
+placeholders. Put the real ones in `values/local/grafana.yaml`, a gitignored
+file that helmfile layers on top of the committed values when it exists (same
+rule as `.local/`: instance-specific names never reach Git):
+
+```yaml
+# kubernetes/production-base/values/local/grafana.yaml
+grafana.ini:
+  server:
+    root_url: https://grafana.example.com
+  auth.generic_oauth:
+    name: ZITADEL
+    scopes: openid profile email urn:zitadel:iam:org:id:<org-id>
+    auth_url: https://<issuer>/oauth/v2/authorize
+    token_url: https://<issuer>/oauth/v2/token
+    api_url: https://<issuer>/oidc/v1/userinfo
 ```
 
 The remaining secrets in this section are only required when applying the

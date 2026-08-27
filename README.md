@@ -70,8 +70,10 @@ run at each step, from an empty OCI tenancy to a running production base:
 | 9 | Optional ZITADEL and Infisical | [production-base §9–10](kubernetes/production-base/README.md#9-optional-zitadel) | `values/zitadel.yaml`, `values/infisical.yaml` (your domains) | `mise run k8s:base:apply -- --environment all-components --yes` |
 
 The only files you ever edit are `~/.oci/config`, the two `terraform.tfvars`
-(copied from the committed `.example` files) and the domain placeholders in the
-Kubernetes values/resources. Everything else is read-only.
+(copied from the committed `.example` files), the domain placeholders in the
+Kubernetes resources and the gitignored `values/local/*.yaml` overrides for
+instance-specific settings such as the Grafana public URL and OIDC issuer.
+Everything else is read-only.
 
 Install the pinned toolchain and check prerequisites:
 

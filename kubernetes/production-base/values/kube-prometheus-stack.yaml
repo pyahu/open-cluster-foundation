@@ -41,7 +41,7 @@ prometheus:
     scrapeInterval: 30s
     evaluationInterval: 30s
     walCompression: true
-    # Uso medido: ~1,15Gi por replica com 15d de retencao.
+    # Measured usage: ~1.15Gi per replica with 15d retention.
     resources:
       requests:
         cpu: 200m
