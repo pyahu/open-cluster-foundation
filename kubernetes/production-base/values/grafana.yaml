@@ -14,6 +14,13 @@ admin:
 service:
   type: ClusterIP
 
+# The data volume is ReadWriteOnce. With the default RollingUpdate the new pod
+# waits for a volume the old pod still holds, never becomes ready, and an atomic
+# helm upgrade times out and rolls back. Recreate trades a few seconds of
+# Grafana for an upgrade that completes.
+deploymentStrategy:
+  type: Recreate
+
 # The chart rejects grafana.ini with a client_secret key even when the value
 # is an env expansion (${...}); the real credentials come from the secret via
 # envFromSecrets.
