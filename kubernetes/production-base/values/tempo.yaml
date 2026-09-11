@@ -1,5 +1,21 @@
 tempo:
   retention: 168h
+  # Span metrics (request rate, errors and duration per service and operation)
+  # and the service graph, written to Prometheus. They are what make traces
+  # searchable by symptom and what draw the service map in Grafana.
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+    storage:
+      path: /var/tempo/generator/wal
+    traces_storage:
+      path: /var/tempo/generator/traces
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
   resources:
     requests:
       cpu: 50m

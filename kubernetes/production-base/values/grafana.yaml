@@ -70,16 +70,57 @@ datasources:
         access: proxy
         url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
         isDefault: true
+        jsonData:
+          timeInterval: 30s
+          # A histogram sample carrying a trace_id exemplar links to that trace.
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
       - name: Loki
         uid: loki
         type: loki
         access: proxy
         url: http://loki-gateway.monitoring.svc.cluster.local
+        jsonData:
+          maxLines: 1000
+          derivedFields:
+            # The trace_id Alloy stores as structured metadata (JSON logs).
+            - name: TraceID
+              matcherType: label
+              matcherRegex: trace_id
+              url: $${__value.raw}
+              datasourceUid: tempo
+              urlDisplayLabel: View trace
+            # An ECS line whose trace id was not lifted into metadata.
+            - name: TraceIDInLine
+              matcherRegex: '"trace\.id":"([a-f0-9]+)"'
+              url: $${__value.raw}
+              datasourceUid: tempo
+              urlDisplayLabel: View trace
       - name: Tempo
         uid: tempo
         type: tempo
         access: proxy
         url: http://tempo.monitoring.svc.cluster.local:3100
+        jsonData:
+          # `$$` keeps provisioning from reading the template tokens as
+          # environment variables.
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: -5m
+            spanEndTimeShift: 5m
+            customQuery: true
+            query: '{app="$${__span.tags["service.name"]}"} | trace_id=`$${__trace.traceId}`'
+          tracesToMetrics:
+            datasourceUid: prometheus
+            spanStartTimeShift: -5m
+            spanEndTimeShift: 5m
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+          lokiSearch:
+            datasourceUid: loki
 
 sidecar:
   resources:

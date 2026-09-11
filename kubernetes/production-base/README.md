@@ -69,6 +69,30 @@ The default environment enables:
   exporter for Probe resources (availability, latency and certificate expiry
   of your public endpoints). Start from
   [`resources/monitoring/probes.yaml.example`](resources/monitoring/probes.yaml.example).
+- Correlated signals: Tempo's metrics generator writes span metrics and the
+  service graph to Prometheus, Prometheus keeps exemplars, and the Grafana
+  datasources link logs to traces, traces to logs and metrics, and metric
+  exemplars to traces.
+
+### Log parsing is opt-in per pod
+
+Alloy stores every container's output as printed. Annotate a pod to have it
+parsed:
+
+| Annotation `logging.open-cluster-foundation.io/format` | What Alloy does |
+| --- | --- |
+| `java` | Keeps a stack trace in one entry with the line that raised it, and turns the level of the Spring Boot / Logback default layout into a `level` label. |
+| `json` | Reads `log.level` into a `level` label and `trace.id` / `span.id` into structured metadata, which the Loki datasource links to Tempo. |
+
+Parsing is not applied by default because a multiline rule glues the lines of
+any other log format onto the previous entry.
+
+### Instance settings
+
+Retention, alert receivers and anything else specific to one cluster go in
+`values/local/<release>.yaml` (gitignored), which helmfile layers on top of
+the base values for `kube-prometheus-stack`, `loki`, `tempo`, `alloy` and
+`grafana` when the file exists.
 - Valkey, for cluster-internal caching and Redis-compatible dependencies such
   as Infisical.
 

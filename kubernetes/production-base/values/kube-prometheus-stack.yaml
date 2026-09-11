@@ -49,6 +49,16 @@ prometheus:
       limits:
         memory: 3Gi
     enableAdminAPI: false
+    # Tempo's metrics generator writes span metrics and the service graph here.
+    # The receiver accepts writes from any pod that reaches port 9090, so keep
+    # the monitoring namespace off the tenant network paths.
+    enableRemoteWriteReceiver: true
+    # Exemplars carry a trace_id next to a histogram sample, which is what lets
+    # Grafana jump from a latency spike to the trace behind it.
+    enableFeatures:
+      - exemplar-storage
+    exemplars:
+      maxSize: 100000
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false

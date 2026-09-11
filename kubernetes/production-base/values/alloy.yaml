@@ -10,7 +10,7 @@ alloy:
     create: true
     content: |
       logging {
-        level  = "info"
+        level  = "warn"
         format = "logfmt"
       }
 
@@ -40,10 +40,75 @@ alloy:
           source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
           target_label  = "app"
         }
+
+        // Opt-in parsing. A pod annotated
+        // logging.open-cluster-foundation.io/format=java|json gets the matching
+        // pipeline below; every other pod is stored as it prints. Parsing is not
+        // applied by default because a multiline rule glues the lines of any
+        // other log format onto the previous entry.
+        rule {
+          source_labels = ["__meta_kubernetes_pod_annotation_logging_open_cluster_foundation_io_format"]
+          target_label  = "log_format"
+        }
       }
 
       loki.source.kubernetes "pods" {
         targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.pods.receiver]
+      }
+
+      loki.process "pods" {
+        // Java text logs (the Spring Boot and Logback default layout): a stack
+        // trace stays one entry with the line that raised it, and the level
+        // becomes a label so `{app="x", level="ERROR"}` works.
+        stage.match {
+          selector = "{log_format=\"java\"}"
+
+          stage.multiline {
+            firstline     = "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}"
+            max_wait_time = "3s"
+            max_lines     = 500
+          }
+
+          stage.regex {
+            expression = "^\\S+\\s+(?P<level>TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\\s"
+          }
+
+          stage.labels {
+            values = { level = "" }
+          }
+        }
+
+        // JSON logs (ECS and the common logfmt-in-JSON shapes): level as a
+        // label, and the trace and span ids as structured metadata, which is
+        // what the Loki datasource links to Tempo.
+        stage.match {
+          selector = "{log_format=\"json\"}"
+
+          stage.json {
+            expressions = {
+              level    = "\"log.level\"",
+              trace_id = "\"trace.id\"",
+              span_id  = "\"span.id\"",
+            }
+          }
+
+          stage.labels {
+            values = { level = "" }
+          }
+
+          stage.structured_metadata {
+            values = {
+              trace_id = "",
+              span_id  = "",
+            }
+          }
+        }
+
+        stage.label_drop {
+          values = ["log_format"]
+        }
+
         forward_to = [loki.write.local.receiver]
       }
 

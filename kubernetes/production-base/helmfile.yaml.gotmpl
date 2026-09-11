@@ -115,8 +115,12 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: prometheus-community/kube-prometheus-stack
     version: {{ $versions.components.kubePrometheusStack.chartVersion | quote }}
+    # values/local/kube-prometheus-stack.yaml (gitignored) carries instance settings such as
+    # retention and alert receivers; helmfile skips it when absent.
+    missingFileHandler: Info
     values:
       - values/kube-prometheus-stack.yaml
+      - values/local/kube-prometheus-stack.yaml
 {{- if eq .Environment.Name "ci" }}
       - values/ci/kube-prometheus-stack.yaml
 {{- end }}
@@ -156,8 +160,12 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: grafana-community/loki
     version: {{ $versions.components.loki.chartVersion | quote }}
+    # values/local/loki.yaml (gitignored) carries instance settings such as
+    # retention and alert receivers; helmfile skips it when absent.
+    missingFileHandler: Info
     values:
       - values/loki.yaml
+      - values/local/loki.yaml
 
   - name: tempo
     namespace: monitoring
@@ -166,8 +174,12 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: grafana-community/tempo
     version: {{ $versions.components.tempo.chartVersion | quote }}
+    # values/local/tempo.yaml (gitignored) carries instance settings such as
+    # retention and alert receivers; helmfile skips it when absent.
+    missingFileHandler: Info
     values:
       - values/tempo.yaml
+      - values/local/tempo.yaml
 
   - name: alloy
     namespace: monitoring
@@ -176,8 +188,12 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: grafana/alloy
     version: {{ $versions.components.alloy.chartVersion | quote }}
+    # values/local/alloy.yaml (gitignored) carries instance settings such as
+    # retention and alert receivers; helmfile skips it when absent.
+    missingFileHandler: Info
     values:
       - values/alloy.yaml
+      - values/local/alloy.yaml
 
   - name: grafana
     namespace: monitoring

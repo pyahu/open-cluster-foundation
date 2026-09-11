@@ -2,6 +2,11 @@ deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
+  # At `info` Loki logs a line per query and per flushed stream, and in a quiet
+  # cluster that is most of what it stores. `warn` keeps errors and slow-query
+  # warnings.
+  server:
+    log_level: warn
   commonConfig:
     replication_factor: 1
   storage:

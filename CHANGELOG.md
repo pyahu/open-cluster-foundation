@@ -18,6 +18,20 @@ tags (`vYYYY.M.PATCH`).
   failing, slow and certificate-expiring endpoints, and the blackbox HTTP
   dashboard. Prometheus now selects Probe and ScrapeConfig resources from
   any namespace, like the other monitoring resources.
+- Correlated observability: Tempo metrics generator (span metrics and service
+  graph) writing to Prometheus through the remote-write receiver, exemplar
+  storage, and Grafana datasource links between logs, traces and metrics.
+- Opt-in log parsing in Alloy through the
+  `logging.open-cluster-foundation.io/format` pod annotation (`java`: multiline
+  stack traces and a `level` label; `json`: `level` label and trace/span ids as
+  structured metadata).
+- `values/local/<release>.yaml` instance layer for kube-prometheus-stack,
+  Loki, Tempo and Alloy, as Grafana already had.
+
+### Changed
+
+- Loki and Alloy log at `warn`. At `info` they logged a line per query and per
+  flushed stream, which in a quiet cluster was most of what Loki stored.
 
 - OCI foundation: remote state bootstrap, VCN with IGW/NAT (reserved public
   IP)/Service Gateway, ENHANCED OKE cluster with VCN-native pod networking,
