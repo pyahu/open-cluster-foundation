@@ -137,6 +137,18 @@ releases:
       - values/ci/metrics-server.yaml
 {{- end }}
 
+  # Synthetic probes: Probe resources point Prometheus at this exporter to check
+  # public endpoints from inside the cluster (availability, latency, TLS expiry).
+  - name: blackbox-exporter
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ .Values.profiles.observability }}
+    chart: prometheus-community/prometheus-blackbox-exporter
+    version: {{ $versions.components.blackboxExporter.chartVersion | quote }}
+    values:
+      - values/blackbox-exporter.yaml
+
   - name: loki
     namespace: monitoring
     labels:

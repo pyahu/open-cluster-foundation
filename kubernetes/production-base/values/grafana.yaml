@@ -106,6 +106,14 @@ dashboardProviders:
         editable: true
         options:
           path: /var/lib/grafana/dashboards/kubernetes-views
+      - name: platform
+        orgId: 1
+        folder: Platform
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/platform
 
 # Community Kubernetes dashboards from dotdc/grafana-dashboards-kubernetes,
 # pinned by grafana.com dashboard id and revision.
@@ -130,6 +138,17 @@ dashboards:
     k8s-system-api-server:
       gnetId: 15761
       revision: 21
+      datasource: Prometheus
+  # Edge and synthetic checks. Envoy Gateway's own overview dashboard, and the
+  # HTTP view of the blackbox exporter (fed by Probe resources).
+  platform:
+    envoy-gateway-overview:
+      gnetId: 24460
+      revision: 1
+      datasource: Prometheus
+    blackbox-http:
+      gnetId: 13659
+      revision: 1
       datasource: Prometheus
 
 serviceMonitor:

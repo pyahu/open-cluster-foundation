@@ -1,0 +1,119 @@
+# Edge rules: request rate, errors and latency per HTTPRoute, read from the
+# Envoy proxies, and the synthetic checks from the blackbox exporter.
+#
+# Envoy names the upstream cluster of a route `httproute/<namespace>/<route>/rule/<n>`.
+# The recording rules turn that into `namespace` and `route` labels, so a route
+# is addressed the way Kubernetes names it. Thresholds are starting points:
+# calibrate every `for:` against a week of your own series before paging on it.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ingress-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: production-base
+spec:
+  groups:
+    - name: ingress.recording
+      rules:
+        - record: ingress:route_requests:rate5m
+          expr: |
+            label_replace(
+              label_replace(
+                sum by (envoy_cluster_name, envoy_response_code) (
+                  rate(envoy_cluster_external_upstream_rq{envoy_cluster_name=~"httproute/.+"}[5m])
+                ),
+                "namespace", "$1", "envoy_cluster_name", "httproute/([^/]+)/.*"
+              ),
+              "route", "$1", "envoy_cluster_name", "httproute/[^/]+/([^/]+)/.*"
+            )
+        - record: ingress:route_latency_seconds:p95_5m
+          expr: |
+            label_replace(
+              label_replace(
+                histogram_quantile(0.95,
+                  sum by (envoy_cluster_name, le) (
+                    rate(envoy_cluster_external_upstream_rq_time_bucket{envoy_cluster_name=~"httproute/.+"}[5m])
+                  )
+                ) / 1000,
+                "namespace", "$1", "envoy_cluster_name", "httproute/([^/]+)/.*"
+              ),
+              "route", "$1", "envoy_cluster_name", "httproute/[^/]+/([^/]+)/.*"
+            )
+
+    - name: ingress.alerts
+      rules:
+        - alert: IngressRouteHighErrorRate
+          annotations:
+            summary: More than 5% of requests to {{ $labels.namespace }}/{{ $labels.route }} fail with 5xx.
+            description: '{{ $value | humanizePercentage }} of the requests to route {{ $labels.namespace }}/{{ $labels.route }} returned 5xx over the last 10 minutes.'
+          expr: |
+            (
+              sum by (namespace, route) (ingress:route_requests:rate5m{envoy_response_code=~"5.."})
+              / sum by (namespace, route) (ingress:route_requests:rate5m)
+            ) > 0.05
+            and sum by (namespace, route) (ingress:route_requests:rate5m) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+        - alert: IngressRouteHighLatency
+          annotations:
+            summary: Route {{ $labels.namespace }}/{{ $labels.route }} p95 latency above 2s.
+            description: 'The 95th percentile of upstream response time for {{ $labels.namespace }}/{{ $labels.route }} is {{ $value | humanizeDuration }}.'
+          expr: |
+            ingress:route_latency_seconds:p95_5m > 2
+            and on (namespace, route) sum by (namespace, route) (ingress:route_requests:rate5m) > 0.1
+          for: 15m
+          labels:
+            severity: warning
+        - alert: EnvoyProxyDown
+          annotations:
+            summary: An Envoy proxy of gateway {{ $labels.gateway_namespace }}/{{ $labels.gateway }} is not being scraped.
+            description: 'Prometheus cannot reach {{ $labels.pod }}. With every proxy down the gateway serves nothing.'
+          expr: up{job="envoy-proxy"} == 0
+          for: 5m
+          labels:
+            severity: critical
+        - alert: EnvoyGatewayControllerDown
+          annotations:
+            summary: The Envoy Gateway controller is down.
+            description: 'Proxies keep serving their last configuration, but route changes and certificate renewals stop reaching them.'
+          expr: absent(up{job="envoy-gateway"} == 1)
+          for: 10m
+          labels:
+            severity: critical
+
+    - name: probes.alerts
+      rules:
+        - alert: ProbeEndpointDown
+          annotations:
+            summary: '{{ $labels.instance }} is failing its synthetic probe.'
+            description: 'The blackbox exporter could not get a valid answer from {{ $labels.instance }} for 3 minutes.'
+          expr: probe_success == 0
+          for: 3m
+          labels:
+            severity: critical
+        - alert: ProbeSlowResponse
+          annotations:
+            summary: '{{ $labels.instance }} takes more than 5s to answer its probe.'
+            description: 'Probe duration is {{ $value | humanizeDuration }}.'
+          expr: probe_duration_seconds > 5
+          for: 15m
+          labels:
+            severity: warning
+        - alert: ProbeCertificateExpiringSoon
+          annotations:
+            summary: 'The certificate of {{ $labels.instance }} expires in less than 14 days.'
+            description: 'cert-manager renews 30 days before expiry by default, so a certificate this close to expiring means renewal is failing.'
+          expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+          for: 1h
+          labels:
+            severity: warning
+        - alert: ProbeCertificateExpiringCritical
+          annotations:
+            summary: 'The certificate of {{ $labels.instance }} expires in less than 3 days.'
+            description: 'Renewal has been failing for weeks; clients will start refusing the endpoint.'
+          expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 3
+          for: 10m
+          labels:
+            severity: critical

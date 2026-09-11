@@ -1,0 +1,55 @@
+# Metrics for the edge: every Envoy proxy Envoy Gateway runs, and the Envoy
+# Gateway controller itself. Proxies expose /stats/prometheus on the `metrics`
+# port (19001) by default; nothing scraped it until these existed, so no route
+# had a request rate, an error rate or a latency.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: envoy-proxy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: production-base
+spec:
+  namespaceSelector:
+    matchNames:
+      - envoy-gateway-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: proxy
+      app.kubernetes.io/managed-by: envoy-gateway
+  podMetricsEndpoints:
+    - port: metrics
+      path: /stats/prometheus
+      interval: 30s
+      relabelings:
+        # A stable job name for the rules below; Prometheus would otherwise use
+        # <namespace>/<podmonitor>.
+        - targetLabel: job
+          replacement: envoy-proxy
+        - sourceLabels: [__meta_kubernetes_pod_label_gateway_envoyproxy_io_owning_gateway_name]
+          targetLabel: gateway
+        - sourceLabels: [__meta_kubernetes_pod_label_gateway_envoyproxy_io_owning_gateway_namespace]
+          targetLabel: gateway_namespace
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: envoy-gateway
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: production-base
+spec:
+  namespaceSelector:
+    matchNames:
+      - envoy-gateway-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-helm
+      control-plane: envoy-gateway
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      relabelings:
+        - targetLabel: job
+          replacement: envoy-gateway

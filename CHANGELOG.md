@@ -8,6 +8,17 @@ tags (`vYYYY.M.PATCH`).
 
 ### Added
 
+- Edge monitoring: PodMonitor for every Envoy proxy and ServiceMonitor for the
+  Envoy Gateway controller, recording rules for request rate and p95 latency
+  per HTTPRoute (`namespace`/`route` labels), and alerts for route error rate,
+  route latency and proxy or controller down. Envoy Gateway overview
+  dashboard in a new "Platform" Grafana folder.
+- Synthetic probes: blackbox exporter release with `http_2xx`,
+  `http_reachable` and `tls_connect` modules, an example Probe, alerts for
+  failing, slow and certificate-expiring endpoints, and the blackbox HTTP
+  dashboard. Prometheus now selects Probe and ScrapeConfig resources from
+  any namespace, like the other monitoring resources.
+
 - OCI foundation: remote state bootstrap, VCN with IGW/NAT (reserved public
   IP)/Service Gateway, ENHANCED OKE cluster with VCN-native pod networking,
   per-layer NSGs, node pools with kubelet-registered labels and taints,

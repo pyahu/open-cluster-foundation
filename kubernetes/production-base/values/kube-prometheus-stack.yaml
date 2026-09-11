@@ -52,6 +52,10 @@ prometheus:
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
+    # Without these, Probe and ScrapeConfig resources need the chart's release
+    # label to be picked up, unlike every other monitoring resource here.
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
     storageSpec:
       volumeClaimTemplate:
         spec:

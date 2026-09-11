@@ -41,6 +41,7 @@ to force a newer binary outside the chart's tested path.
 | Tempo | Helm chart | chart `2.2.3`, app `2.10.7` | Yes |
 | Grafana | Helm chart | chart `12.7.1`, app `13.1.0` | Yes |
 | Grafana Alloy | Helm chart | chart `1.10.0`, app `v1.17.0` | Yes |
+| Blackbox exporter | Helm chart | chart `11.18.0`, app `v0.28.0` | Yes |
 | Stakater Reloader | Helm chart | chart `2.2.12`, app `v1.4.17` | Yes |
 | Valkey | Helm chart | chart `0.10.0`, app `9.1.0` | Yes |
 | CNPG Barman Cloud plugin | Upstream release manifest | `v0.13.0` | Yes |
@@ -63,6 +64,11 @@ The default environment enables:
 - kube-prometheus-stack, Loki, Tempo, Grafana, Alloy and Reloader, plus
   curated Grafana dashboards and PrometheusRules for Kafka, CloudNativePG,
   Loki and cert-manager.
+- Edge and synthetic monitoring: Envoy proxy and Envoy Gateway scrape
+  targets, per-route request, error and latency rules, and the blackbox
+  exporter for Probe resources (availability, latency and certificate expiry
+  of your public endpoints). Start from
+  [`resources/monitoring/probes.yaml.example`](resources/monitoring/probes.yaml.example).
 - Valkey, for cluster-internal caching and Redis-compatible dependencies such
   as Infisical.
 

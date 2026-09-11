@@ -1,0 +1,24 @@
+# Example Probe: copy to a file of your own (outside resources/monitoring/, or
+# with a .yaml extension if you want the base apply to pick it up) and replace
+# the targets with your public hosts. The blackbox exporter release in this
+# base answers on blackbox-exporter.monitoring:9115.
+#
+# Use `http_2xx` for pages that must answer 2xx and `http_reachable` for
+# endpoints behind a login that answer 302/401 to an anonymous request. Every
+# probe also reports the certificate expiry, which the ProbeCertificate* alerts
+# read.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: platform-endpoints
+  namespace: monitoring
+spec:
+  interval: 60s
+  module: http_reachable
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - https://grafana.example.com/api/health
+        - https://argocd.example.com/healthz
