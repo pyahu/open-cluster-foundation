@@ -38,7 +38,10 @@ tags (`vYYYY.M.PATCH`).
 
 - Grafana deploys with the `Recreate` strategy: its data volume is
   ReadWriteOnce, and a rolling update left the new pod waiting for the volume
-  until an atomic upgrade timed out and rolled back.
+  until an atomic upgrade timed out and rolled back. On an existing release,
+  run the first upgrade after this change with `--server-side=false`: Helm 4's
+  server-side apply keeps the live `rollingUpdate` block and the API refuses
+  it next to `Recreate`.
 - Loki and Alloy log at `warn`. At `info` they logged a line per query and per
   flushed stream, which in a quiet cluster was most of what Loki stored.
 

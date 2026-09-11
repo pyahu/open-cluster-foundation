@@ -18,6 +18,12 @@ service:
 # waits for a volume the old pod still holds, never becomes ready, and an atomic
 # helm upgrade times out and rolls back. Recreate trades a few seconds of
 # Grafana for an upgrade that completes.
+#
+# Switching a release that already runs RollingUpdate: Helm 4 upgrades with
+# server-side apply, which keeps the live `rollingUpdate` block and is refused
+# with "may not be specified when strategy type is 'Recreate'". Run that one
+# upgrade with `helmfile ... sync --args "--server-side=false"` (client-side
+# patch, which drops the block); later upgrades work either way.
 deploymentStrategy:
   type: Recreate
 
