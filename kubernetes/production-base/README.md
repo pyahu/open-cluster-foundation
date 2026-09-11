@@ -87,6 +87,20 @@ parsed:
 Parsing is not applied by default because a multiline rule glues the lines of
 any other log format onto the previous entry.
 
+### Alert routing
+
+The base routes every alert to the `null` receiver: nothing pages until you
+say where. Receivers, retention and routes go in the instance layer; start
+from [`values/local-examples/kube-prometheus-stack.yaml`](values/local-examples/kube-prometheus-stack.yaml),
+which routes application namespaces to one receiver and the rest of what
+pages (`warning` and `critical`) to another, reading credentials from a
+mounted Secret. `info` alerts never page.
+
+The Platform folder in Grafana has a Capacity dashboard (node memory and CPU
+in use and requested, namespaces, volumes, OOM kills, restarts) and an Alerts
+dashboard (what fires now and over time). Grafana's Alerting page also reads
+Alertmanager, so silences can be set from there.
+
 ### Instance settings
 
 Retention, alert receivers and anything else specific to one cluster go in

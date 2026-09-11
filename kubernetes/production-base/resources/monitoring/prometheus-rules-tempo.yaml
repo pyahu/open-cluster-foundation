@@ -1,0 +1,30 @@
+# Tempo has no upstream rules shipped with its chart. These cover the two
+# failures that lose traces without anyone noticing: Tempo down, and Tempo
+# refusing spans (rate or size limits, a tenant without ingestion).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: tempo-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: production-base
+spec:
+  groups:
+    - name: tempo.alerts
+      rules:
+        - alert: TempoDown
+          annotations:
+            summary: Tempo is down; traces sent now are lost.
+            description: 'Prometheus cannot scrape Tempo. Applications keep exporting and their spans are dropped at the SDK.'
+          expr: absent(up{job=~".*tempo.*"} == 1)
+          for: 5m
+          labels:
+            severity: critical
+        - alert: TempoDiscardingSpans
+          annotations:
+            summary: Tempo is discarding spans ({{ $labels.reason }}).
+            description: '{{ $value | humanize }} spans per second are refused. Check the ingestion limits in the Tempo overrides.'
+          expr: sum by (reason) (rate(tempo_discarded_spans_total[5m])) > 0
+          for: 15m
+          labels:
+            severity: warning

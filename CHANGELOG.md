@@ -25,6 +25,12 @@ tags (`vYYYY.M.PATCH`).
   `logging.open-cluster-foundation.io/format` pod annotation (`java`: multiline
   stack traces and a `level` label; `json`: `level` label and trace/span ids as
   structured metadata).
+- Tempo alerts (down, discarding spans), an Alertmanager datasource in
+  Grafana, and Capacity and Alerts dashboards in the Platform folder (dashboard
+  ConfigMaps choose their folder with the `grafana_folder` annotation).
+- `values/local-examples/kube-prometheus-stack.yaml`: routing application
+  namespaces and platform alerts to separate receivers, with credentials read
+  from a mounted Secret.
 - `values/local/<release>.yaml` instance layer for kube-prometheus-stack,
   Loki, Tempo and Alloy, as Grafana already had.
 

@@ -121,6 +121,15 @@ datasources:
             enabled: true
           lokiSearch:
             datasourceUid: loki
+      # Lets Grafana's Alerting page show and silence what Alertmanager holds.
+      - name: Alertmanager
+        uid: alertmanager
+        type: alertmanager
+        access: proxy
+        url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+        jsonData:
+          implementation: prometheus
+          handleGrafanaManagedAlerts: false
 
 sidecar:
   resources:
@@ -132,6 +141,11 @@ sidecar:
   dashboards:
     enabled: true
     searchNamespace: ALL
+    # A dashboard ConfigMap chooses its folder with this annotation
+    # (resources/monitoring/dashboards-platform.yaml uses "Platform").
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: true
   datasources:
     enabled: false
 
