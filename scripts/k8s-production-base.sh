@@ -13,7 +13,7 @@ source "${SCRIPT_DIR}/lib/k8s-installation.sh"
 ACTION="${1:-check}"
 shift || true
 
-ENVIRONMENT="${OCF_K8S_ENVIRONMENT:-default}"
+ENVIRONMENT="${OCF_K8S_ENVIRONMENT:-auto}"
 AUTO_APPROVE="${OCF_AUTO_APPROVE:-false}"
 INSTALL_MODE="${OCF_INSTALL_MODE:-auto}"
 ALLOW_ENVIRONMENT_CHANGE="${OCF_ALLOW_ENVIRONMENT_CHANGE:-false}"
@@ -22,13 +22,13 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade]
-  scripts/k8s-production-base.sh render [--environment default|all-components]
-  scripts/k8s-production-base.sh apply [--environment default|all-components] [--mode auto|fresh|upgrade] [--allow-environment-change] [--yes]
+  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components]
+  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--allow-environment-change] [--yes]
 
 Environment:
   ACME_EMAIL              Optional. If set, Let's Encrypt issuers are created with this email.
   OCF_AUTO_APPROVE=true   Skip interactive confirmation for apply.
-  OCF_K8S_ENVIRONMENT     Helmfile environment. Defaults to "default".
+  OCF_K8S_ENVIRONMENT     Helmfile environment. Defaults to automatic selection.
   OCF_INSTALL_MODE        Installation mode. Defaults to "auto".
   OCF_ALLOW_ENVIRONMENT_CHANGE=true
                           Allow a managed installation to change environment.
@@ -108,8 +108,9 @@ check_configuration() {
   require_command kubectl
   require_command yq
   preflight
-  validate_instance_values
   prepare_installation
+  validate_profile_contract
+  validate_instance_values
 }
 
 ensure_secret_exists() {
@@ -155,6 +156,10 @@ check_grafana_oidc_secret() {
 }
 
 create_grafana_admin_secret() {
+  if ! profile_enabled observability "$ENVIRONMENT"; then
+    return
+  fi
+
   if kubectl -n monitoring get secret grafana-admin >/dev/null 2>&1; then
     log "Grafana admin secret already exists"
     return
@@ -167,6 +172,10 @@ create_grafana_admin_secret() {
 }
 
 apply_cluster_issuers_if_configured() {
+  if ! profile_enabled certificates "$ENVIRONMENT"; then
+    return
+  fi
+
   if [[ -z "${ACME_EMAIL:-}" ]]; then
     warn "ACME_EMAIL is not set; skipping Let's Encrypt ClusterIssuers"
     return
@@ -196,6 +205,10 @@ apply_rabbitmq_operators() {
 }
 
 apply_base_gateway() {
+  if ! profile_enabled edge "$ENVIRONMENT"; then
+    return
+  fi
+
   # manifests/gateway.yaml is a bootstrap placeholder: a GatewayClass without
   # parametersRef and a single HTTP listener. Real instances customise both
   # (HTTPS listeners per hostname and an EnvoyProxy carrying the provider's
@@ -236,6 +249,10 @@ apply_base_gateway() {
 }
 
 apply_prometheus_operator_crds() {
+  if ! profile_enabled observability "$ENVIRONMENT"; then
+    return
+  fi
+
   local crds_manifest
   crds_manifest="$(component_value prometheusOperatorCrds manifest)"
 
@@ -246,6 +263,10 @@ apply_prometheus_operator_crds() {
 }
 
 apply_plugin_barman_cloud() {
+  if ! profile_enabled postgresOperator "$ENVIRONMENT"; then
+    return
+  fi
+
   local plugin_manifest
   plugin_manifest="$(component_value pluginBarmanCloud manifest)"
 
@@ -256,12 +277,23 @@ apply_plugin_barman_cloud() {
 }
 
 apply_monitoring_resources() {
+  if ! profile_enabled observability "$ENVIRONMENT"; then
+    return
+  fi
+
   log "applying Prometheus rules and pod monitors"
   kubectl apply -f "${BASE_DIR}/resources/monitoring/"
 }
 
 render() {
   require_k8s_tools
+
+  if [[ "$ENVIRONMENT" == "auto" ]]; then
+    ENVIRONMENT="starter"
+  fi
+
+  validate_profile_contract
+
   local render_file="/tmp/open-cluster-foundation-${ENVIRONMENT}.yaml"
 
   log "rendering helmfile environment ${ENVIRONMENT}"
@@ -270,26 +302,44 @@ render() {
     cat "${BASE_DIR}/manifests/namespace-baseline.yaml"
     printf '%s\n' "---"
     (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$ENVIRONMENT" template)
-    printf '%s\n' "---"
-    cat "${BASE_DIR}/manifests/gateway.yaml"
-    printf '%s\n' "---"
-    cat "${BASE_DIR}"/resources/monitoring/*.yaml
-    printf '%s\n' "---"
-    cat "${BASE_DIR}/resources/kafka/kafka-cluster.yaml"
-    printf '%s\n' "---"
-    cat "${BASE_DIR}/resources/kafka/kafka-connect.yaml"
+    if profile_enabled edge "$ENVIRONMENT"; then
+      printf '%s\n' "---"
+      cat "${BASE_DIR}/manifests/gateway.yaml"
+    fi
+    if profile_enabled observability "$ENVIRONMENT"; then
+      printf '%s\n' "---"
+      cat "${BASE_DIR}"/resources/monitoring/*.yaml
+    fi
+    if profile_enabled kafka "$ENVIRONMENT"; then
+      printf '%s\n' "---"
+      cat "${BASE_DIR}/resources/kafka/kafka-cluster.yaml"
+    fi
+    if profile_enabled kafkaConnect "$ENVIRONMENT"; then
+      printf '%s\n' "---"
+      cat "${BASE_DIR}/resources/kafka/kafka-connect.yaml"
+    fi
   } >"$render_file"
   log "rendered manifest written to ${render_file}"
 }
 
 wait_for_controllers() {
-  kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
-  kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
-  kubectl -n envoy-gateway-system rollout status deploy/envoy-gateway --timeout=180s
-  kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
-  kubectl -n cnpg-system rollout status deploy/cloudnative-pg --timeout=180s
-  kubectl -n cnpg-system rollout status deploy/barman-cloud --timeout=180s
-  kubectl -n strimzi-system rollout status deploy/strimzi-cluster-operator --timeout=180s
+  if profile_enabled certificates "$ENVIRONMENT"; then
+    kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
+    kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
+  fi
+  if profile_enabled edge "$ENVIRONMENT"; then
+    kubectl -n envoy-gateway-system rollout status deploy/envoy-gateway --timeout=180s
+  fi
+  if profile_enabled gitops "$ENVIRONMENT"; then
+    kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
+  fi
+  if profile_enabled postgresOperator "$ENVIRONMENT"; then
+    kubectl -n cnpg-system rollout status deploy/cloudnative-pg --timeout=180s
+    kubectl -n cnpg-system rollout status deploy/barman-cloud --timeout=180s
+  fi
+  if profile_enabled messagingOperators "$ENVIRONMENT"; then
+    kubectl -n strimzi-system rollout status deploy/strimzi-cluster-operator --timeout=180s
+  fi
   if profile_enabled rabbitmqOperators "$ENVIRONMENT"; then
     kubectl -n rabbitmq-system wait --for=condition=Available deployment --all --timeout=300s
   fi
@@ -297,9 +347,19 @@ wait_for_controllers() {
 }
 
 apply_kafka_base() {
+  if ! profile_enabled kafka "$ENVIRONMENT"; then
+    log "skipping Kafka cluster (profile disabled)"
+    return
+  fi
+
   log "applying base Kafka cluster"
   kubectl apply -f "$KAFKA_CLUSTER_FILE"
   kubectl -n messaging wait --for=condition=Ready kafka/foundation-kafka --timeout=1200s
+
+  if ! profile_enabled kafkaConnect "$ENVIRONMENT"; then
+    log "skipping Kafka Connect (profile disabled)"
+    return
+  fi
 
   log "applying base Kafka Connect cluster"
   kubectl apply -f "$KAFKA_CONNECT_FILE"

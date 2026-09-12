@@ -69,7 +69,7 @@ run at each step, from an empty OCI tenancy to a running production base:
 | 4 | Provision the OKE foundation | [foundation §5](terraform/oci/foundation/README.md#5-configure-variables) | `terraform/oci/foundation/terraform.tfvars` | `mise run oci:cluster:plan`, then `oci:cluster:apply -- --yes` |
 | 5 | Kubeconfig | [foundation §7](terraform/oci/foundation/README.md#7-generate-kubeconfig) | — | `mise run oci:kubeconfig` |
 | 6 | Kubernetes production base | [production-base README](kubernetes/production-base/README.md) | `values/local/argocd.yaml`, `values/local/grafana.yaml` | `mise run k8s:base:check`, then `k8s:base:apply -- --yes` |
-| 7 | Network Load Balancer, DNS, HTTPS listeners and redirect | [production-base §7](kubernetes/production-base/README.md#7-install-the-default-foundation) | `resources/oci/envoyproxy-nlb.yaml` (LB NSG OCID), `resources/cert-manager/gateway-https-listener.yaml` (your domains) | `kubectl apply -f ...` |
+| 7 | Network Load Balancer, DNS, HTTPS listeners and redirect | [production-base §7](kubernetes/production-base/README.md#7-install-the-selected-foundation) | `resources/oci/envoyproxy-nlb.yaml` (LB NSG OCID), `resources/cert-manager/gateway-https-listener.yaml` (your domains) | `kubectl apply -f ...` |
 | 8 | Backups, Debezium and other stateful add-ons | [production-base §8](kubernetes/production-base/README.md#8-apply-stateful-resources) | copies of `kubernetes/production-base/resources/*` | `kubectl apply -f ...` |
 | 9 | Optional ZITADEL and Infisical | [production-base §9–10](kubernetes/production-base/README.md#9-optional-zitadel) | `values/zitadel.yaml`, `values/infisical.yaml` (your domains) | `mise run k8s:base:apply -- --environment all-components --yes` |
 
@@ -133,10 +133,16 @@ export ACME_EMAIL="platform@example.com"   # optional; enables Let's Encrypt iss
 mise run k8s:base:apply -- --yes
 ```
 
+Automatic fresh installs use the lightweight `starter` preset. Use
+`--environment production` to add the CloudNativePG and Strimzi operators, or
+`--environment production-data` to opt in to the repository's Kafka, Kafka
+Connect and Valkey operands. Existing installations retain the former default
+profile automatically.
+
 After the base is installed, point DNS at the Envoy Gateway load balancer,
 replace the example domains and follow the
 [Kubernetes base README](kubernetes/production-base/README.md) for HTTPS
-listeners, backups, ZITADEL and Infisical. The optional profiles are enabled
+listeners, backups, ZITADEL and Infisical. The full optional profile is enabled
 with:
 
 ```sh

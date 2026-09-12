@@ -5,9 +5,9 @@ profiles:
   postgresOperator: true
   messagingOperators: true
   observability: true
-  cache: true
-  identity: true
-  secrets: true
-  rabbitmqOperators: true
-  kafka: true
-  kafkaConnect: true
+  cache: false
+  identity: false
+  secrets: false
+  rabbitmqOperators: false
+  kafka: false
+  kafkaConnect: false

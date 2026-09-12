@@ -15,6 +15,12 @@ Use `--mode fresh` or `--mode upgrade` in automation when a mismatch must stop
 the deployment. A fresh operation refuses a cluster with known OCF workloads,
 and an upgrade refuses an empty cluster.
 
+When no environment is specified, a fresh cluster selects `starter`, a legacy
+cluster selects the compatibility-only `default`, and a managed cluster reuses
+the environment recorded by its last successful apply. This keeps stateful
+application services out of new installations while preserving existing Kafka,
+Kafka Connect and Valkey installations during upgrades.
+
 After every successful apply, OCF writes
 `platform-system/open-cluster-foundation-installation`. The ConfigMap records
 the state schema, environment, resolved operation, installation origin, source

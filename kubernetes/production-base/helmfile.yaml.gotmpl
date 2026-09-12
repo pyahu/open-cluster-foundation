@@ -1,5 +1,14 @@
 {{- $versions := readFile "versions.yaml" | fromYaml -}}
 environments:
+  starter:
+    values:
+      - environments/starter.yaml
+  production:
+    values:
+      - environments/production.yaml
+  production-data:
+    values:
+      - environments/production-data.yaml
   default:
     values:
       - environments/default.yaml

@@ -29,7 +29,7 @@ body:
       placeholder: |
         provider: OCI sa-saopaulo-1
         kubernetes: v1.35.2
-        environment: default
+        environment: starter
     validations:
       required: true
   - type: textarea

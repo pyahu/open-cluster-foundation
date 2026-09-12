@@ -33,6 +33,28 @@ assert_fails resolve_install_mode fresh legacy
 assert_fails resolve_install_mode fresh managed
 assert_fails resolve_install_mode upgrade fresh
 assert_fails resolve_install_mode invalid fresh
+assert_output starter resolve_default_environment fresh
+assert_output default resolve_default_environment legacy
+assert_output production resolve_default_environment managed production
+assert_fails resolve_default_environment managed
+assert_fails resolve_default_environment invalid
+
+detect_installation_state() {
+  printf '%s\n' "$DETECTED_INSTALLATION_STATE"
+}
+
+INSTALL_MODE=auto
+ALLOW_ENVIRONMENT_CHANGE=false
+DETECTED_INSTALLATION_STATE=fresh
+ENVIRONMENT=auto
+prepare_installation >/dev/null
+assert_output starter printf '%s\n' "$ENVIRONMENT"
+assert_output fresh printf '%s\n' "$OCF_RESOLVED_INSTALL_MODE"
+DETECTED_INSTALLATION_STATE=legacy
+ENVIRONMENT=auto
+prepare_installation >/dev/null
+assert_output default printf '%s\n' "$ENVIRONMENT"
+assert_output upgrade printf '%s\n' "$OCF_RESOLVED_INSTALL_MODE"
 
 OCF_OBSERVED_INSTALLATION_STATE=fresh
 assert_output fresh installation_origin

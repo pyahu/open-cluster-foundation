@@ -1,7 +1,7 @@
 # Example override for running Loki against OCI Object Storage through the
 # S3 Compatibility API. Use it as an extra values file for the loki release:
 #
-#   helmfile -e default apply --selector name=loki \
+#   helmfile -e production apply --selector name=loki \
 #     --set-file ...  # or add this file to the release values list
 #
 # Prerequisites:

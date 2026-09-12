@@ -13,10 +13,26 @@ require_command helm
 require_command helmfile
 require_command kubeconform
 
+profile_enabled kafka starter && die "starter must not enable Kafka"
+profile_enabled kafkaConnect starter && die "starter must not enable Kafka Connect"
+profile_enabled cache starter && die "starter must not enable Valkey"
+profile_enabled postgresOperator starter && die "starter must not enable the PostgreSQL operator"
+profile_enabled messagingOperators starter && die "starter must not enable the messaging operator"
+profile_enabled postgresOperator production || die "production must enable the PostgreSQL operator"
+profile_enabled messagingOperators production || die "production must enable the messaging operator"
+profile_enabled kafka production && die "production must not enable Kafka"
+profile_enabled cache production && die "production must not enable Valkey"
+profile_enabled kafka production-data || die "production-data must enable Kafka"
+profile_enabled kafkaConnect production-data || die "production-data must enable Kafka Connect"
+profile_enabled cache production-data || die "production-data must enable Valkey"
+profile_enabled kafka default || die "default must preserve Kafka for existing installations"
+profile_enabled kafkaConnect default || die "default must preserve Kafka Connect for existing installations"
+profile_enabled cache default || die "default must preserve Valkey for existing installations"
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-for environment in default all-components ci; do
+for environment in starter production production-data default all-components ci; do
   log "rendering helmfile environment ${environment}"
   (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$environment" template) \
     >"${WORK_DIR}/rendered-${environment}.yaml"

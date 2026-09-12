@@ -39,6 +39,27 @@ detect_installation_state() {
   printf '%s\n' fresh
 }
 
+resolve_default_environment() {
+  local observed_state="$1"
+  local managed_environment="${2:-}"
+
+  case "$observed_state" in
+    fresh)
+      printf '%s\n' starter
+      ;;
+    legacy)
+      printf '%s\n' default
+      ;;
+    managed)
+      [[ -n "$managed_environment" ]] || die "managed installation state does not contain an environment"
+      printf '%s\n' "$managed_environment"
+      ;;
+    *)
+      die "unknown installation state: ${observed_state}"
+      ;;
+  esac
+}
+
 resolve_install_mode() {
   local requested_mode="$1"
   local observed_state="$2"
@@ -87,6 +108,15 @@ validate_managed_installation() {
 
 prepare_installation() {
   OCF_OBSERVED_INSTALLATION_STATE="$(detect_installation_state)"
+
+  if [[ "$ENVIRONMENT" == "auto" ]]; then
+    local managed_environment=""
+    if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
+      managed_environment="$(read_installation_state_value environment)"
+    fi
+    ENVIRONMENT="$(resolve_default_environment "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_environment")"
+  fi
+
   OCF_RESOLVED_INSTALL_MODE="$(resolve_install_mode "$INSTALL_MODE" "$OCF_OBSERVED_INSTALLATION_STATE")"
 
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then

@@ -67,3 +67,17 @@ validate_instance_values() {
     [[ "$role_attribute_path" != "'GrafanaAdmin'" ]] || die "grafana.ini.auth.generic_oauth.role_attribute_path must derive privileges from trusted claims instead of granting GrafanaAdmin to every user"
   fi
 }
+
+validate_profile_contract() {
+  if profile_enabled kafkaConnect "$ENVIRONMENT" && ! profile_enabled kafka "$ENVIRONMENT"; then
+    die "profile kafkaConnect requires profile kafka"
+  fi
+
+  if profile_enabled kafka "$ENVIRONMENT" && ! profile_enabled messagingOperators "$ENVIRONMENT"; then
+    die "profile kafka requires profile messagingOperators"
+  fi
+
+  if profile_enabled secrets "$ENVIRONMENT" && ! profile_enabled cache "$ENVIRONMENT"; then
+    die "profile secrets requires profile cache"
+  fi
+}

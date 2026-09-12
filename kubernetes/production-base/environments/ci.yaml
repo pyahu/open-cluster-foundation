@@ -12,3 +12,5 @@ profiles:
   identity: false
   secrets: false
   rabbitmqOperators: true
+  kafka: true
+  kafkaConnect: true

@@ -27,6 +27,12 @@ assert_succeeds() {
 
 require_command yq
 
+for environment in starter production production-data default all-components ci; do
+  ENVIRONMENT="$environment"
+  assert_succeeds validate_profile_contract
+done
+ENVIRONMENT=default
+
 assert_fails reject_placeholder "" field
 assert_fails reject_placeholder "https://grafana.example.com" field
 assert_fails reject_placeholder "https://grafana.cluster.example" field

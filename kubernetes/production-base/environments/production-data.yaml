@@ -6,8 +6,8 @@ profiles:
   messagingOperators: true
   observability: true
   cache: true
-  identity: true
-  secrets: true
-  rabbitmqOperators: true
+  identity: false
+  secrets: false
+  rabbitmqOperators: false
   kafka: true
   kafkaConnect: true

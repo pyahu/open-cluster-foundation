@@ -1,0 +1,13 @@
+profiles:
+  edge: true
+  certificates: true
+  gitops: true
+  postgresOperator: false
+  messagingOperators: false
+  observability: true
+  cache: false
+  identity: false
+  secrets: false
+  rabbitmqOperators: false
+  kafka: false
+  kafkaConnect: false

@@ -20,19 +20,19 @@ For Helm-based components, the pinned app version is the version supported by
 the latest non-deprecated chart. This blueprint does not override chart images
 to force a newer binary outside the chart's tested path.
 
-| Component | Install method | Pinned version | Default |
+| Component | Install method | Pinned version | Fresh starter |
 | --- | --- | --- | --- |
 | Gateway API | Bundled with the Envoy Gateway chart | `v1.5.1` | Yes |
 | Prometheus Operator CRDs | Upstream release manifest | `v0.92.0` | Yes |
 | Envoy Gateway | OCI Helm chart | chart/app `v1.8.1` | Yes |
 | cert-manager | Helm chart | chart/app `v1.20.3` | Yes |
 | Argo CD | Helm chart | chart `9.7.1`, app `v3.4.4` | Yes |
-| CloudNativePG | Helm chart | chart `0.28.3`, app `1.29.1` | Yes |
-| RabbitMQ Cluster Operator | Upstream release manifest | `v2.21.1` | Yes |
-| RabbitMQ Messaging Topology Operator | Upstream release manifest | `v1.19.3` | Yes |
-| Strimzi Kafka Operator | Helm chart | chart/app `1.0.1` | Yes |
-| Kafka | Strimzi custom resource | `4.2.0` | Yes |
-| Kafka Connect | Strimzi custom resource | `4.2.0` | Yes |
+| CloudNativePG | Helm chart | chart `0.28.3`, app `1.29.1` | Production preset |
+| RabbitMQ Cluster Operator | Upstream release manifest | `v2.21.1` | Optional |
+| RabbitMQ Messaging Topology Operator | Upstream release manifest | `v1.19.3` | Optional |
+| Strimzi Kafka Operator | Helm chart | chart/app `1.0.1` | Production preset |
+| Kafka | Strimzi custom resource | `4.2.0` | Opt-in |
+| Kafka Connect | Strimzi custom resource | `4.2.0` | Opt-in |
 | Debezium Postgres connector | Strimzi plugin artifact | `3.5.2.Final` | Add-on resource |
 | ZITADEL | Helm chart | chart `10.0.4`, app `v4.15.3` | Optional |
 | Infisical | Helm chart | chart `1.9.0`, image `v0.161.8` | Optional |
@@ -43,8 +43,8 @@ to force a newer binary outside the chart's tested path.
 | Grafana Alloy | Helm chart | chart `1.10.0`, app `v1.17.0` | Yes |
 | Blackbox exporter | Helm chart | chart `11.18.0`, app `v0.28.0` | Yes |
 | Stakater Reloader | Helm chart | chart `2.2.12`, app `v1.4.17` | Yes |
-| Valkey | Helm chart | chart `0.10.0`, app `9.1.0` | Yes |
-| CNPG Barman Cloud plugin | Upstream release manifest | `v0.13.0` | Yes |
+| Valkey | Helm chart | chart `0.10.0`, app `9.1.0` | Opt-in |
+| CNPG Barman Cloud plugin | Upstream release manifest | `v0.13.0` | Production preset |
 
 Prometheus is installed by kube-prometheus-stack. Do not install a second
 Prometheus instance unless you intentionally want a separate monitoring plane.
@@ -55,17 +55,26 @@ The main automation entrypoint is [`helmfile.yaml.gotmpl`](helmfile.yaml.gotmpl)
 It reads [`versions.yaml`](versions.yaml), installs pinned Helm releases and
 uses environment profiles from [`environments/`](environments).
 
-The default environment enables:
+An automatic fresh installation selects `starter`. Existing installations
+that predate installation state select the compatibility-only `default`
+environment, so an upgrade does not remove or disable services that are
+already running.
+
+| Environment | Intended use | Operators and platform services | Application data services |
+| --- | --- | --- | --- |
+| `starter` | Small first installation | Edge, certificates, GitOps and observability | None |
+| `production` | Production control plane | Starter plus CloudNativePG and Strimzi operators | None |
+| `production-data` | Explicit data-services installation | Production platform | Kafka, Kafka Connect and Valkey |
+| `default` | Compatibility for existing OCF installs | Previous default set | Kafka, Kafka Connect and Valkey |
+| `all-components` | Explicit full installation | All operators, ZITADEL and Infisical | Kafka, Kafka Connect and Valkey |
+| `ci` | Disposable integration tests | Full tested base | CI-sized Kafka, Kafka Connect and Valkey |
+
+The starter environment enables:
 
 - Envoy Gateway, cert-manager and Argo CD.
-- CloudNativePG operator and the Barman Cloud backup plugin.
-- Strimzi operator and RabbitMQ operators.
-- Kafka and Kafka Connect.
 - kube-prometheus-stack, Loki, Tempo, Grafana, Alloy and Reloader, plus
   curated Grafana dashboards and PrometheusRules for Kafka, CloudNativePG,
   Loki and cert-manager.
-- Valkey, for cluster-internal caching and Redis-compatible dependencies such
-  as Infisical.
 - Edge and synthetic monitoring: Envoy proxy and Envoy Gateway scrape
   targets, per-route request, error and latency rules, and the blackbox
   exporter for Probe resources (availability, latency and certificate expiry
@@ -130,16 +139,19 @@ applies anything. The full contract, explicit `--mode` controls and environment
 change gate are documented in
 [`docs/compatibility.md`](../../docs/compatibility.md).
 
-The optional `all-components` environment also enables ZITADEL and Infisical.
-Do not run that environment until their database, master key and application
-secrets are created.
+Select `production` to add database and messaging operators without creating
+application data. Select `production-data` only after reviewing Kafka and
+Valkey capacity, storage and recovery requirements. The `all-components`
+environment also enables ZITADEL, Infisical and the RabbitMQ operators; do not
+run it until their database, master key and application secrets are created.
 
-The base installation also applies:
+The `production-data`, `default`, `all-components` and `ci` environments also
+apply:
 
 - [`resources/kafka/kafka-cluster.yaml`](resources/kafka/kafka-cluster.yaml)
 - [`resources/kafka/kafka-connect.yaml`](resources/kafka/kafka-connect.yaml)
 
-Additional stateful resources are available, but are not automatic defaults:
+Other stateful resources are available, but are not automatic defaults:
 
 - [`resources/cnpg/postgres-with-backup.yaml`](resources/cnpg/postgres-with-backup.yaml)
 - [`resources/rabbitmq/rabbitmq-cluster.yaml`](resources/rabbitmq/rabbitmq-cluster.yaml)
@@ -215,8 +227,8 @@ cert-manager's Gateway integration requires at startup. cert-manager comes
 before the RabbitMQ topology operator, which uses its webhook certificates.
 
 ```sh
-helmfile -e default apply --selector profile=edge
-helmfile -e default apply --selector profile=certificates
+helmfile -e production apply --selector profile=edge
+helmfile -e production apply --selector profile=certificates
 
 kubectl get crd gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io
 kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
@@ -326,7 +338,7 @@ kubectl -n messaging create secret generic app-postgres-connector \
 rm -f /tmp/app-postgres-connector.properties
 ```
 
-## 7. Install The Default Foundation
+## 7. Install The Selected Foundation
 
 When using the repository automation, this step is handled by:
 
@@ -337,7 +349,7 @@ mise run k8s:base:apply -- --yes
 For a manual installation from this directory:
 
 ```sh
-helmfile -e default apply
+helmfile -e production apply
 
 kubectl apply -f manifests/gateway.yaml
 ```
@@ -353,7 +365,9 @@ kubectl -n monitoring get pods
 kubectl -n reloader get pods
 ```
 
-Install the base Kafka and Kafka Connect services:
+To opt in to Kafka and Kafka Connect after reviewing their production sizing,
+use the `production-data` environment through the repository automation, or
+apply the resources manually:
 
 ```sh
 kubectl apply -f resources/kafka/kafka-cluster.yaml
