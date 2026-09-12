@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-      - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           install_args: shellcheck
       - run: mise run ci:scripts
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-      - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           install_args: terraform tflint
       - run: mise run ci:terraform
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-      - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           install_args: helm helmfile kubeconform
       - run: mise run ci:kubernetes
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-      - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          install_args: trivy yq
+          install_args: trivy yq ripgrep
       - run: mise run ci:supply-chain
