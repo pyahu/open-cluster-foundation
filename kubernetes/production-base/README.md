@@ -394,6 +394,12 @@ Then adapt
 [`resources/cert-manager/gateway-https-listener.yaml`](resources/cert-manager/gateway-https-listener.yaml)
 with your domains and apply it. It upgrades the Gateway with one HTTPS
 listener per concrete hostname and adds a permanent HTTP-to-HTTPS redirect.
+The listeners accept routes only from namespaces labeled
+`open-cluster-foundation.io/gateway-access=public`. Label each application
+namespace deliberately; do not grant the label cluster-wide. Existing
+Gateways remain unchanged during automated upgrades. Follow the staged
+[Gateway migration](../../docs/compatibility.md#gateway-route-attachment-migration)
+before changing an existing private Gateway manifest from `All` to `Selector`.
 
 ACME HTTP-01 cannot issue wildcard certificates. Keep one listener per
 hostname, or configure a

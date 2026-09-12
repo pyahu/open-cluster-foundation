@@ -33,4 +33,7 @@ spec:
       port: 80
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              open-cluster-foundation.io/gateway-access: public

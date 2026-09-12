@@ -26,7 +26,10 @@ spec:
       port: 80
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              open-cluster-foundation.io/gateway-access: public
     - name: https-grafana
       hostname: grafana.example.com
       protocol: HTTPS
@@ -37,7 +40,10 @@ spec:
           - name: grafana-example-com-tls
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              open-cluster-foundation.io/gateway-access: public
     - name: https-auth
       hostname: auth.example.com
       protocol: HTTPS
@@ -48,7 +54,10 @@ spec:
           - name: auth-example-com-tls
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              open-cluster-foundation.io/gateway-access: public
 ---
 # Redirects all plain HTTP traffic to HTTPS. ACME HTTP-01 challenges still
 # work because the solver HTTPRoute created by cert-manager matches the

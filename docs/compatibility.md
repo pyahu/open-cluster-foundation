@@ -46,3 +46,46 @@ The compatibility rules are:
   migration is selected.
 - Installation state describes the last completed apply. It is not a backup or
   rollback mechanism.
+
+## Gateway route attachment migration
+
+Fresh installations allow HTTPRoutes to attach to the public Gateway only from
+namespaces labeled `open-cluster-foundation.io/gateway-access=public`. OCF
+labels the platform, Argo CD, monitoring and identity namespaces because those
+profiles can expose public routes.
+
+Upgrades do not rewrite an existing Gateway. A legacy Gateway that uses
+`allowedRoutes.namespaces.from: All` remains unchanged until its operator
+migrates the private instance manifest. This prevents an upgrade from detaching
+working application routes.
+
+Audit the current routes with an explicit context:
+
+```sh
+mise run k8s:gateway:check-access -- --context <context>
+```
+
+The check is read-only and fails with every attached route namespace that lacks
+the access label. Label only namespaces whose users are trusted to publish a
+route through the shared public Gateway:
+
+```sh
+kubectl --context <context> label namespace <namespace> \
+  open-cluster-foundation.io/gateway-access=public
+```
+
+Run the check again. Only after it passes, change every listener in the private
+Gateway manifest to:
+
+```yaml
+allowedRoutes:
+  namespaces:
+    from: Selector
+    selector:
+      matchLabels:
+        open-cluster-foundation.io/gateway-access: public
+```
+
+Apply the private Gateway manifest, verify that all expected HTTPRoutes still
+have `Accepted=True`, and test each public hostname. To roll back, restore
+`from: All` in the same private manifest and apply it again.

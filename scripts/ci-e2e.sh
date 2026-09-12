@@ -31,6 +31,7 @@ require_command kubectl
 require_command helm
 require_command helmfile
 require_command curl
+require_command jq
 
 # helmfile apply needs the helm-diff plugin; install it when missing.
 # helm 4 verifies plugin signatures by default, which git sources do not support.
@@ -119,6 +120,7 @@ done
 log "gateway address: ${GATEWAY_ADDRESS}"
 
 log "asserting HTTP traffic flows through the edge"
+kubectl label namespace default open-cluster-foundation.io/gateway-access=public
 kubectl apply -f "${E2E_DIR}/echo.yaml"
 kubectl -n default rollout status deploy/e2e-echo --timeout=180s
 
@@ -130,6 +132,17 @@ for _ in $(seq 1 30); do
   sleep 5
 done
 [[ "$HTTP_CODE" == "200" ]] || die "expected HTTP 200 through the gateway, got '${HTTP_CODE}'"
+
+log "asserting an unlabeled namespace cannot attach a public route"
+kubectl apply -f "${E2E_DIR}/untrusted-route.yaml"
+UNTRUSTED_REASON=""
+for _ in $(seq 1 30); do
+  UNTRUSTED_REASON="$(kubectl -n e2e-untrusted get httproute e2e-untrusted -o json |
+    jq -r '.status.parents[]?.conditions[]? | select(.type == "Accepted") | .reason' | head -1)"
+  [[ "$UNTRUSTED_REASON" == "NotAllowedByListeners" ]] && break
+  sleep 2
+done
+[[ "$UNTRUSTED_REASON" == "NotAllowedByListeners" ]] || die "untrusted HTTPRoute was not rejected: ${UNTRUSTED_REASON:-no status}"
 
 log "asserting cert-manager issues a certificate"
 kubectl apply -f "${E2E_DIR}/selfsigned-certificate.yaml"

@@ -81,6 +81,10 @@ run = "scripts/k8s-production-base.sh check"
 description = "Apply standard labels and taints to database nodes in the current Kubernetes context."
 run = "scripts/k8s-node-pools.sh taint-database"
 
+[tasks."k8s:gateway:check-access"]
+description = "Check route namespaces before restricting Gateway attachment."
+run = "scripts/k8s-gateway-access.sh check"
+
 [tasks."k8s:base:render"]
 description = "Render the Kubernetes production base with helmfile."
 run = "scripts/k8s-production-base.sh render"

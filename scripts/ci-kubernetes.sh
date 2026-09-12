@@ -82,4 +82,26 @@ cnpg_scheduling_violations="$(yq ea '[
 [[ "$cnpg_cluster_count" -gt 0 ]] || die "no CloudNativePG cluster examples found"
 [[ "$cnpg_scheduling_violations" -eq 0 ]] || die "CloudNativePG examples must follow the database scheduling contract"
 
+gateway_manifests=(
+  "${BASE_DIR}/manifests/gateway.yaml"
+  "${BASE_DIR}/resources/cert-manager/gateway-https-listener.yaml"
+)
+gateway_listener_count="$(yq ea '[select(.apiVersion == "gateway.networking.k8s.io/v1" and .kind == "Gateway") | .spec.listeners[]] | length' "${gateway_manifests[@]}")"
+gateway_access_violations="$(yq ea '[
+  select(.apiVersion == "gateway.networking.k8s.io/v1" and .kind == "Gateway") |
+  .spec.listeners[] |
+  select(
+    .allowedRoutes.namespaces.from != "Selector" or
+    .allowedRoutes.namespaces.selector.matchLabels."open-cluster-foundation.io/gateway-access" != "public"
+  )
+] | length' "${gateway_manifests[@]}")"
+
+[[ "$gateway_listener_count" -gt 0 ]] || die "no Gateway listeners found"
+[[ "$gateway_access_violations" -eq 0 ]] || die "Gateway listeners must restrict routes to labeled namespaces"
+
+for namespace in platform-system argocd monitoring identity; do
+  access="$(yq ea "select(.kind == \"Namespace\" and .metadata.name == \"${namespace}\") | .metadata.labels.\"open-cluster-foundation.io/gateway-access\"" "${BASE_DIR}/manifests/namespace-baseline.yaml")"
+  [[ "$access" == "public" ]] || die "base route namespace ${namespace} must be allowed to attach public routes"
+done
+
 log "kubernetes checks passed"
