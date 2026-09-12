@@ -218,6 +218,22 @@ dashboards:
       gnetId: 13659
       revision: 1
       datasource: Prometheus
+    rabbitmq-overview:
+      gnetId: 10991
+      revision: 15
+      datasource: Prometheus
+    redis-exporter:
+      gnetId: 763
+      revision: 6
+      datasource: Prometheus
+    cert-manager:
+      gnetId: 20340
+      revision: 1
+      datasource: Prometheus
+    argocd:
+      gnetId: 14584
+      revision: 1
+      datasource: Prometheus
 
 serviceMonitor:
   enabled: true

@@ -31,6 +31,11 @@ tags (`vYYYY.M.PATCH`).
 - `values/local-examples/kube-prometheus-stack.yaml`: routing application
   namespaces and platform alerts to separate receivers, with credentials read
   from a mounted Secret.
+- Platform dashboards: a home Platform overview (alerts, targets, probes, node
+  memory, routes, CDC and consumer lag, queues, databases, caches, error logs),
+  CDC / Debezium by namespace, a Logs explorer, and Traces with the Tempo
+  service map. Community dashboards pinned by revision for RabbitMQ, the Redis
+  exporter (Valkey), cert-manager and Argo CD.
 - `values/local/<release>.yaml` instance layer for kube-prometheus-stack,
   Loki, Tempo and Alloy, as Grafana already had.
 
