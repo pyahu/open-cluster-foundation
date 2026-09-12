@@ -78,6 +78,9 @@ releases:
 {{- if .Values.profiles.highAvailability }}
       - values/production-ha/envoy-gateway.yaml
 {{- end }}
+{{- if eq .Environment.Name "ci" }}
+      - values/ci/envoy-gateway.yaml
+{{- end }}
 
   - name: cert-manager
     namespace: cert-manager
@@ -94,6 +97,9 @@ releases:
       - values/cert-manager.yaml
 {{- if .Values.profiles.highAvailability }}
       - values/production-ha/cert-manager.yaml
+{{- end }}
+{{- if eq .Environment.Name "ci" }}
+      - values/ci/cert-manager.yaml
 {{- end }}
 
   - name: argocd
@@ -128,6 +134,9 @@ releases:
       - values/cloudnative-pg.yaml
 {{- if .Values.profiles.highAvailability }}
       - values/production-ha/cloudnative-pg.yaml
+{{- end }}
+{{- if eq .Environment.Name "ci" }}
+      - values/ci/cloudnative-pg.yaml
 {{- end }}
 
   - name: strimzi-kafka-operator
@@ -303,6 +312,9 @@ releases:
       - values/reloader.yaml
 {{- if .Values.profiles.highAvailability }}
       - values/production-ha/reloader.yaml
+{{- end }}
+{{- if eq .Environment.Name "ci" }}
+      - values/ci/reloader.yaml
 {{- end }}
 
   - name: thanos

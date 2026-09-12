@@ -46,7 +46,8 @@ dump_diagnostics() {
   kubectl get events -A --sort-by=.lastTimestamp | tail -40 || true
   kubectl get gateway,httproute -A || true
   kubectl -n messaging get kafka,kafkaconnect,kafkanodepools || true
-  kubectl -n data get clusters.postgresql.cnpg.io || true
+  kubectl -n data get clusters.postgresql.cnpg.io,backups.postgresql.cnpg.io,objectstores.barmancloud.cnpg.io || true
+  kubectl -n data get jobs || true
 
   # Logs of every pod that is not fully ready, so crash causes survive the
   # cluster teardown.
@@ -125,8 +126,8 @@ kubectl delete pod e2e-network-smoke --wait=true
 log "installing the Kubernetes production base (ci environment)"
 export OCF_K8S_ENVIRONMENT=ci
 export OCF_AUTO_APPROVE=true
-export OCF_KAFKA_CLUSTER_FILE="${E2E_DIR}/kafka-cluster.yaml"
-export OCF_KAFKA_CONNECT_FILE="${E2E_DIR}/kafka-connect.yaml"
+export OCF_KAFKA_CLUSTER_FILE="${E2E_DIR}/kafka-smoke-cluster.yaml"
+export OCF_KAFKA_CONNECT_FILE="${E2E_DIR}/kafka-smoke-connect.yaml"
 "${SCRIPT_DIR}/k8s-production-base.sh" apply --yes
 
 log "asserting fresh-install state was recorded"
@@ -211,30 +212,35 @@ log "asserting cert-manager issues a certificate"
 kubectl apply -f "${E2E_DIR}/selfsigned-certificate.yaml"
 kubectl -n default wait --for=condition=Ready certificate/e2e-selfsigned --timeout=180s
 
-log "asserting CloudNativePG reconciles a cluster to Ready"
-kubectl apply -f "${E2E_DIR}/cnpg-cluster.yaml"
-kubectl -n data wait --for=condition=Ready cluster/e2e-postgres --timeout=600s
-
 log "asserting Kafka preserves an exact produced message"
 kubectl -n messaging wait --for=condition=Ready kafkatopic/e2e-events --timeout=300s
-KAFKA_POD="$(kubectl -n messaging get pods -l strimzi.io/cluster=foundation-kafka -o json |
-  jq -r '.items[] | select(any(.spec.containers[]; .name == "kafka")) | .metadata.name' |
-  head -1)"
-[[ -n "$KAFKA_POD" ]] || die "Kafka broker pod not found"
-KAFKA_MESSAGE="ocf-e2e-kafka-$(date +%s)"
-printf '%s\n' "$KAFKA_MESSAGE" |
-  kubectl -n messaging exec -i "$KAFKA_POD" -c kafka -- \
-    /opt/kafka/bin/kafka-console-producer.sh \
+assert_kafka_message() {
+  local pool="$1"
+  local pod
+  local message
+  local consumed
+  pod="$(kubectl -n messaging get pods \
+    -l "strimzi.io/cluster=foundation-kafka,strimzi.io/pool-name=${pool}" \
+    -o json |
+    jq -r '.items[] | select(any(.spec.containers[]; .name == "kafka")) | .metadata.name' |
+    head -1)"
+  [[ -n "$pod" ]] || die "Kafka ${pool} pod not found"
+  message="ocf-e2e-kafka-${pool}-$(date +%s)"
+  printf '%s\n' "$message" |
+    kubectl -n messaging exec -i "$pod" -c kafka -- \
+      /opt/kafka/bin/kafka-console-producer.sh \
+      --bootstrap-server localhost:9092 \
+      --topic e2e-events
+  consumed="$(kubectl -n messaging exec "$pod" -c kafka -- \
+    /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
-    --topic e2e-events
-KAFKA_CONSUMED="$(kubectl -n messaging exec "$KAFKA_POD" -c kafka -- \
-  /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic e2e-events \
-  --from-beginning \
-  --max-messages 1 \
-  --timeout-ms 60000)"
-[[ "$KAFKA_CONSUMED" == "$KAFKA_MESSAGE" ]] || die "Kafka consumed an unexpected message: ${KAFKA_CONSUMED}"
+    --topic e2e-events \
+    --from-beginning \
+    --max-messages 1 \
+    --timeout-ms 60000)"
+  [[ "$consumed" == "$message" ]] || die "Kafka consumed an unexpected message: ${consumed}"
+}
+assert_kafka_message dual
 
 log "asserting Valkey answers PING"
 VALKEY_POD="$(kubectl -n cache get pod -l app.kubernetes.io/name=valkey -o name | head -1)"
@@ -364,5 +370,67 @@ fi
 
 [[ "$(kubectl -n monitoring get configmap strimzi-kafka -o jsonpath='{.metadata.namespace}')" == "monitoring" ]] || die "Strimzi dashboards are not colocated with Grafana"
 kubectl -n monitoring get configmap alloy -o go-template='{{ index .data "config.alloy" }}' | grep -q 'open-cluster-foundation.io/telemetry-client=trusted' || die "Alloy is not filtering untrusted pod logs"
+
+log "releasing validated full-stack workloads"
+kubectl delete -f "${E2E_DIR}/kafka-smoke-connect.yaml" --ignore-not-found --wait=true --timeout=300s
+kubectl -n messaging delete kafkatopic e2e-events --ignore-not-found --wait=true --timeout=300s
+kubectl -n messaging delete kafka foundation-kafka --ignore-not-found --wait=true --timeout=300s
+kubectl -n messaging delete kafkanodepool dual --ignore-not-found --wait=true --timeout=300s
+for namespace in argocd cache cert-manager envoy-gateway-system monitoring rabbitmq-system reloader; do
+  kubectl -n "$namespace" scale deployment,statefulset --all --replicas=0
+  kubectl -n "$namespace" delete daemonset --all --ignore-not-found --wait=false
+done
+kubectl -n default delete deployment e2e-echo --wait=true
+kubectl -n monitoring delete pod --all --wait=true --timeout=300s
+
+log "asserting Kafka production topology on CI-sized storage"
+kubectl apply -f "${E2E_DIR}/kafka-cluster.yaml"
+kubectl -n messaging wait --for=condition=Ready kafka/foundation-kafka --timeout=600s
+kubectl apply -f "${E2E_DIR}/kafka-connect.yaml"
+kubectl -n messaging wait --for=condition=Ready kafkaconnect/foundation-connect --timeout=600s
+kubectl -n messaging wait --for=condition=Ready kafkatopic/e2e-events --timeout=300s
+for pool in controller broker; do
+  EXPECTED_POOL_REPLICAS=3
+  [[ "$pool" == "controller" ]] && EXPECTED_POOL_REPLICAS=1
+  POOL_REPLICAS="$(kubectl -n messaging get kafkanodepool "$pool" -o jsonpath='{.spec.replicas}')"
+  [[ "$POOL_REPLICAS" == "$EXPECTED_POOL_REPLICAS" ]] ||
+    die "Kafka ${pool} pool has ${POOL_REPLICAS} replicas; expected ${EXPECTED_POOL_REPLICAS}"
+  POOL_ROLE="$(kubectl -n messaging get kafkanodepool "$pool" -o jsonpath='{.spec.roles[0]}')"
+  [[ "$POOL_ROLE" == "$pool" ]] || die "Kafka ${pool} pool has unexpected role ${POOL_ROLE}"
+  POOL_NODES="$(kubectl -n messaging get pods \
+    -l "strimzi.io/cluster=foundation-kafka,strimzi.io/pool-name=${pool}" \
+    -o json | jq '[.items[].spec.nodeName] | unique | length')"
+  [[ "$POOL_NODES" == "$EXPECTED_POOL_REPLICAS" ]] ||
+    die "Kafka ${pool} replicas span ${POOL_NODES} nodes; expected ${EXPECTED_POOL_REPLICAS}"
+done
+assert_kafka_message broker
+
+kubectl delete -f "${E2E_DIR}/kafka-connect.yaml" --ignore-not-found --wait=true --timeout=300s
+kubectl -n messaging delete kafkatopic e2e-events --ignore-not-found --wait=true --timeout=300s
+kubectl -n messaging delete kafka foundation-kafka --ignore-not-found --wait=true --timeout=300s
+kubectl -n messaging delete kafkanodepool controller broker --ignore-not-found --wait=true --timeout=300s
+kubectl -n messaging scale deployment,statefulset --all --replicas=0
+kubectl -n strimzi-system scale deployment,statefulset --all --replicas=0
+
+log "preparing S3-compatible storage for CloudNativePG recovery"
+kubectl apply -f "${E2E_DIR}/cnpg-object-store.yaml"
+kubectl -n data rollout status deployment/e2e-minio --timeout=300s
+kubectl -n data wait --for=condition=Complete job/e2e-minio-bucket --timeout=300s
+
+log "asserting CloudNativePG backup and physical restore preserve data"
+kubectl apply -f "${E2E_DIR}/cnpg-cluster.yaml"
+kubectl -n data wait --for=condition=Ready cluster/e2e-postgres --timeout=600s
+POSTGRES_MARKER="ocf-e2e-postgres-$(date +%s)"
+kubectl -n data exec e2e-postgres-1 -c postgres -- \
+  psql --dbname postgres --set ON_ERROR_STOP=1 \
+  --command "CREATE TABLE ocf_restore_probe (id integer PRIMARY KEY, payload text NOT NULL); INSERT INTO ocf_restore_probe VALUES (1, '${POSTGRES_MARKER}');"
+kubectl apply -f "${E2E_DIR}/cnpg-backup.yaml"
+kubectl -n data wait --for=jsonpath='{.status.phase}'=completed backup/e2e-postgres-backup --timeout=900s
+kubectl apply -f "${E2E_DIR}/cnpg-restore.yaml"
+kubectl -n data wait --for=condition=Ready cluster/e2e-postgres-restore --timeout=900s
+RESTORED_MARKER="$(kubectl -n data exec e2e-postgres-restore-1 -c postgres -- \
+  psql --dbname postgres --tuples-only --no-align --set ON_ERROR_STOP=1 \
+  --command 'SELECT payload FROM ocf_restore_probe WHERE id = 1')"
+[[ "$RESTORED_MARKER" == "$POSTGRES_MARKER" ]] || die "CloudNativePG restore returned unexpected data: ${RESTORED_MARKER}"
 
 log "e2e passed: edge authorization, NetworkPolicy isolation, TLS, Postgres, Kafka, cache, logs and traces are functional"

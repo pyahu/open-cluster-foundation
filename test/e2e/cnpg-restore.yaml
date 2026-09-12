@@ -1,0 +1,20 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-postgres-restore
+  namespace: data
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+  bootstrap:
+    recovery:
+      source: e2e-source
+  externalClusters:
+    - name: e2e-source
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: e2e-postgres-store
+          serverName: e2e-postgres
+  storage:
+    size: 1Gi

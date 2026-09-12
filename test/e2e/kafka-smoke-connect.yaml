@@ -8,7 +8,7 @@ metadata:
 spec:
   topicName: foundation-connect-configs
   partitions: 1
-  replicas: 3
+  replicas: 1
   config:
     cleanup.policy: compact
 ---
@@ -22,7 +22,7 @@ metadata:
 spec:
   topicName: foundation-connect-offsets
   partitions: 5
-  replicas: 3
+  replicas: 1
   config:
     cleanup.policy: compact
 ---
@@ -36,7 +36,7 @@ metadata:
 spec:
   topicName: foundation-connect-status
   partitions: 1
-  replicas: 3
+  replicas: 1
   config:
     cleanup.policy: compact
 ---
@@ -75,6 +75,6 @@ spec:
       - secretName: foundation-kafka-cluster-ca-cert
         certificate: ca.crt
   config:
-    offset.storage.replication.factor: 3
-    config.storage.replication.factor: 3
-    status.storage.replication.factor: 3
+    offset.storage.replication.factor: 1
+    config.storage.replication.factor: 1
+    status.storage.replication.factor: 1

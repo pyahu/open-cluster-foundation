@@ -1,0 +1,11 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: e2e-postgres-backup
+  namespace: data
+spec:
+  cluster:
+    name: e2e-postgres
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
