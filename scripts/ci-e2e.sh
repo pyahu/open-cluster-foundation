@@ -168,6 +168,7 @@ kubectl delete pod e2e-network-smoke --wait=true
 log "installing the Kubernetes production base (ci environment)"
 export OCF_K8S_ENVIRONMENT=ci
 export OCF_AUTO_APPROVE=true
+export OCF_HELMFILE_SUPPRESS_DIFF=true
 export OCF_KAFKA_CLUSTER_FILE="${E2E_DIR}/kafka-smoke-cluster.yaml"
 export OCF_KAFKA_CONNECT_FILE="${E2E_DIR}/kafka-smoke-connect.yaml"
 "${SCRIPT_DIR}/k8s-production-base.sh" apply --yes
@@ -419,7 +420,7 @@ kubectl -n messaging delete kafkatopic e2e-events --ignore-not-found --wait=true
 kubectl -n messaging delete kafka foundation-kafka --ignore-not-found --wait=true --timeout=300s
 kubectl -n messaging delete kafkanodepool dual --ignore-not-found --wait=true --timeout=300s
 for namespace in argocd cache cert-manager envoy-gateway-system monitoring rabbitmq-system reloader; do
-  kubectl -n "$namespace" scale deployment,statefulset --all --replicas=0
+  scale_namespaced_workloads_to_zero "$namespace"
   kubectl -n "$namespace" delete daemonset --all --ignore-not-found --wait=false
 done
 kubectl -n default delete deployment e2e-echo --wait=true
@@ -451,8 +452,8 @@ kubectl delete -f "${E2E_DIR}/kafka-connect.yaml" --ignore-not-found --wait=true
 kubectl -n messaging delete kafkatopic e2e-events --ignore-not-found --wait=true --timeout=300s
 kubectl -n messaging delete kafka foundation-kafka --ignore-not-found --wait=true --timeout=300s
 kubectl -n messaging delete kafkanodepool controller broker --ignore-not-found --wait=true --timeout=300s
-kubectl -n messaging scale deployment,statefulset --all --replicas=0
-kubectl -n strimzi-system scale deployment,statefulset --all --replicas=0
+scale_namespaced_workloads_to_zero messaging
+scale_namespaced_workloads_to_zero strimzi-system
 
 log "preparing S3-compatible storage for CloudNativePG recovery"
 kubectl apply -f "${E2E_DIR}/cnpg-object-store.yaml"

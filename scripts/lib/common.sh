@@ -80,6 +80,18 @@ download_verified() {
   mv "$download_path" "$destination"
 }
 
+scale_namespaced_workloads_to_zero() {
+  local namespace="$1"
+  local resource
+  local resources=()
+
+  while IFS= read -r resource; do
+    [[ -n "$resource" ]] && resources+=("$resource")
+  done < <(kubectl -n "$namespace" get deployment,statefulset -o name)
+
+  [[ "${#resources[@]}" -eq 0 ]] || kubectl -n "$namespace" scale "${resources[@]}" --replicas=0
+}
+
 confirm_apply() {
   local message="$1"
   local auto_approve="$2"

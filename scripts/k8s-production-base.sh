@@ -98,6 +98,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 BASE_DIR="${OCF_ROOT}/kubernetes/production-base"
+HELMFILE_APPLY_ARGS=()
+if [[ "${OCF_HELMFILE_SUPPRESS_DIFF:-false}" == "true" ]]; then
+  HELMFILE_APPLY_ARGS+=(--suppress-diff)
+fi
 
 # The e2e suite swaps the production Kafka resources for CI-sized ones.
 KAFKA_CLUSTER_FILE="${OCF_KAFKA_CLUSTER_FILE:-${BASE_DIR}/resources/kafka/kafka-cluster.yaml}"
@@ -444,6 +448,10 @@ apply_network_policies() {
     --timeout 5m
 }
 
+helmfile_apply() {
+  (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$ENVIRONMENT" apply "${HELMFILE_APPLY_ARGS[@]}" "$@")
+}
+
 apply_base() {
   require_k8s_tools
   check_configuration
@@ -459,10 +467,10 @@ apply_base() {
   # Gateway integration requires at startup; cert-manager must exist before
   # the RabbitMQ topology operator, which uses its webhook certificates.
   log "installing Envoy Gateway first"
-  (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$ENVIRONMENT" apply --selector profile=edge)
+  helmfile_apply --selector profile=edge
 
   log "installing cert-manager"
-  (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$ENVIRONMENT" apply --selector profile=certificates)
+  helmfile_apply --selector profile=certificates
 
   apply_cluster_issuers_if_configured
   apply_rabbitmq_operators
@@ -473,7 +481,7 @@ apply_base() {
   # simultaneous installs: unbounded concurrency starves operator liveness
   # probes on small nodes and helm rolls healthy releases back.
   log "applying helmfile environment ${ENVIRONMENT}"
-  (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$ENVIRONMENT" apply --concurrency 4)
+  helmfile_apply --concurrency 4
 
   apply_base_gateway
 

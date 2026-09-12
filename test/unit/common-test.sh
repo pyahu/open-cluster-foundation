@@ -27,6 +27,17 @@ curl() {
   cp "$MOCK_SOURCE" "$destination"
 }
 
+KUBECTL_OUTPUT=""
+KUBECTL_CALLS="${TEST_ROOT}/kubectl-calls"
+kubectl() {
+  if [[ "$*" == *" get deployment,statefulset -o name" ]]; then
+    printf '%s' "$KUBECTL_OUTPUT"
+    return
+  fi
+
+  printf '%s\n' "$*" >>"$KUBECTL_CALLS"
+}
+
 expected_sha256="$(sha256_file "$MOCK_SOURCE")"
 destination="${TEST_ROOT}/artifact"
 download_verified "https://artifacts.example.test/release.yaml" "$expected_sha256" "$destination"
@@ -44,5 +55,13 @@ if (download_verified "http://artifacts.example.test/release.yaml" "$expected_sh
   printf 'insecure download URL was accepted\n' >&2
   exit 1
 fi
+
+KUBECTL_OUTPUT=""
+scale_namespaced_workloads_to_zero empty
+[[ ! -e "$KUBECTL_CALLS" ]]
+
+KUBECTL_OUTPUT=$'deployment.apps/api\nstatefulset.apps/database\n'
+scale_namespaced_workloads_to_zero populated
+[[ "$(<"$KUBECTL_CALLS")" == "-n populated scale deployment.apps/api statefulset.apps/database --replicas=0" ]]
 
 printf 'common library unit tests passed\n'
