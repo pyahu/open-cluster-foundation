@@ -17,19 +17,21 @@ ENVIRONMENT="${OCF_K8S_ENVIRONMENT:-auto}"
 AUTO_APPROVE="${OCF_AUTO_APPROVE:-false}"
 INSTALL_MODE="${OCF_INSTALL_MODE:-auto}"
 ALLOW_ENVIRONMENT_CHANGE="${OCF_ALLOW_ENVIRONMENT_CHANGE:-false}"
+NETWORK_POLICY_MODE="${OCF_NETWORK_POLICY_MODE:-auto}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade]
-  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components]
-  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--allow-environment-change] [--yes]
+  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve]
+  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve]
+  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--allow-environment-change] [--yes]
 
 Environment:
   ACME_EMAIL              Optional. If set, Let's Encrypt issuers are created with this email.
   OCF_AUTO_APPROVE=true   Skip interactive confirmation for apply.
   OCF_K8S_ENVIRONMENT     Helmfile environment. Defaults to automatic selection.
   OCF_INSTALL_MODE        Installation mode. Defaults to "auto".
+  OCF_NETWORK_POLICY_MODE Network policy mode. Defaults to "auto".
   OCF_ALLOW_ENVIRONMENT_CHANGE=true
                           Allow a managed installation to change environment.
 EOF
@@ -48,6 +50,11 @@ while [[ $# -gt 0 ]]; do
     --mode)
       INSTALL_MODE="${2:-}"
       [[ -n "$INSTALL_MODE" ]] || die "--mode requires a value"
+      shift
+      ;;
+    --network-policies)
+      NETWORK_POLICY_MODE="${2:-}"
+      [[ -n "$NETWORK_POLICY_MODE" ]] || die "--network-policies requires a value"
       shift
       ;;
     --allow-environment-change)
@@ -295,6 +302,8 @@ render() {
   validate_profile_contract
 
   local render_file="/tmp/open-cluster-foundation-${ENVIRONMENT}.yaml"
+  local render_network_policy_mode
+  render_network_policy_mode="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" fresh)"
 
   log "rendering helmfile environment ${ENVIRONMENT}"
   {
@@ -317,6 +326,11 @@ render() {
     if profile_enabled kafkaConnect "$ENVIRONMENT"; then
       printf '%s\n' "---"
       cat "${BASE_DIR}/resources/kafka/kafka-connect.yaml"
+    fi
+    if [[ "$render_network_policy_mode" == "enforce" ]]; then
+      printf '%s\n' "---"
+      helm template ocf-network-policies "${BASE_DIR}/charts/network-policies" \
+        --namespace platform-system
     fi
   } >"$render_file"
   log "rendered manifest written to ${render_file}"
@@ -366,6 +380,20 @@ apply_kafka_base() {
   kubectl -n messaging wait --for=condition=Ready kafkaconnect/foundation-connect --timeout=900s
 }
 
+apply_network_policies() {
+  if [[ "$OCF_RESOLVED_NETWORK_POLICY_MODE" != "enforce" ]]; then
+    log "preserving current NetworkPolicy state"
+    return
+  fi
+
+  log "enforcing the base namespace NetworkPolicies"
+  helm upgrade --install ocf-network-policies "${BASE_DIR}/charts/network-policies" \
+    --namespace platform-system \
+    --atomic \
+    --wait \
+    --timeout 5m
+}
+
 apply_base() {
   require_k8s_tools
   check_configuration
@@ -404,6 +432,7 @@ apply_base() {
 
   wait_for_controllers
   apply_kafka_base
+  apply_network_policies
   record_installation_state
 }
 

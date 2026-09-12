@@ -200,7 +200,6 @@ the two-node default pool.
 ## Roadmap
 
 - Magalu Cloud and DigitalOcean foundations (same inputs/outputs contract).
-- NetworkPolicy default-deny profile for the base namespaces.
 - Cluster Autoscaler / Karpenter as foundation options.
 - Terraform Registry publication of the OKE foundation module.
 

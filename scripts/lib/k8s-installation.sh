@@ -86,6 +86,30 @@ resolve_install_mode() {
   esac
 }
 
+resolve_network_policy_mode() {
+  local requested_mode="$1"
+  local observed_state="$2"
+  local managed_state="${3:-}"
+
+  case "$requested_mode" in
+    auto)
+      if [[ "$observed_state" == "fresh" ]]; then
+        printf '%s\n' enforce
+      elif [[ "$observed_state" == "managed" && "$managed_state" == "enforced" ]]; then
+        printf '%s\n' enforce
+      else
+        printf '%s\n' preserve
+      fi
+      ;;
+    enforce|preserve)
+      printf '%s\n' "$requested_mode"
+      ;;
+    *)
+      die "unknown network policy mode: ${requested_mode}; expected auto, enforce or preserve"
+      ;;
+  esac
+}
+
 read_installation_state_value() {
   local key="$1"
 
@@ -109,6 +133,12 @@ validate_managed_installation() {
 prepare_installation() {
   OCF_OBSERVED_INSTALLATION_STATE="$(detect_installation_state)"
 
+  local managed_network_policy_state=""
+  if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
+    managed_network_policy_state="$(read_installation_state_value network-policies)"
+    [[ "$managed_network_policy_state" != "<no value>" ]] || managed_network_policy_state=""
+  fi
+
   if [[ "$ENVIRONMENT" == "auto" ]]; then
     local managed_environment=""
     if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
@@ -118,15 +148,35 @@ prepare_installation() {
   fi
 
   OCF_RESOLVED_INSTALL_MODE="$(resolve_install_mode "$INSTALL_MODE" "$OCF_OBSERVED_INSTALLATION_STATE")"
+  OCF_RESOLVED_NETWORK_POLICY_MODE="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_network_policy_state")"
 
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
     validate_managed_installation
   fi
 
   log "installation mode: ${OCF_RESOLVED_INSTALL_MODE} (detected state: ${OCF_OBSERVED_INSTALLATION_STATE})"
+  log "network policy mode: ${OCF_RESOLVED_NETWORK_POLICY_MODE}"
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "legacy" ]]; then
     log "existing installation will retain the current compatibility path and receive state metadata only after a successful apply"
   fi
+}
+
+installation_network_policy_state() {
+  if [[ "$OCF_RESOLVED_NETWORK_POLICY_MODE" == "enforce" ]]; then
+    printf '%s\n' enforced
+    return
+  fi
+
+  if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
+    local existing_state
+    existing_state="$(read_installation_state_value network-policies)"
+    if [[ "$existing_state" == "enforced" ]]; then
+      printf '%s\n' enforced
+      return
+    fi
+  fi
+
+  printf '%s\n' unmanaged
 }
 
 installation_origin() {
@@ -175,6 +225,7 @@ record_installation_state() {
     --from-literal="source-revision=$(source_revision)" \
     --from-literal="versions-sha256=${versions_digest}" \
     --from-literal="profiles=${profiles}" \
+    --from-literal="network-policies=$(installation_network_policy_state)" \
     --from-literal="applied-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --dry-run=client -o yaml |
     yq '.metadata.labels."app.kubernetes.io/name" = "open-cluster-foundation" | .metadata.labels."app.kubernetes.io/managed-by" = "open-cluster-foundation"' |

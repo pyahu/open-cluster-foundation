@@ -33,6 +33,13 @@ assert_fails resolve_install_mode fresh legacy
 assert_fails resolve_install_mode fresh managed
 assert_fails resolve_install_mode upgrade fresh
 assert_fails resolve_install_mode invalid fresh
+assert_output enforce resolve_network_policy_mode auto fresh
+assert_output preserve resolve_network_policy_mode auto legacy
+assert_output preserve resolve_network_policy_mode auto managed
+assert_output enforce resolve_network_policy_mode auto managed enforced
+assert_output enforce resolve_network_policy_mode enforce legacy
+assert_output preserve resolve_network_policy_mode preserve fresh
+assert_fails resolve_network_policy_mode invalid fresh
 assert_output starter resolve_default_environment fresh
 assert_output default resolve_default_environment legacy
 assert_output production resolve_default_environment managed production
@@ -45,6 +52,7 @@ detect_installation_state() {
 
 INSTALL_MODE=auto
 ALLOW_ENVIRONMENT_CHANGE=false
+NETWORK_POLICY_MODE=auto
 DETECTED_INSTALLATION_STATE=fresh
 ENVIRONMENT=auto
 prepare_installation >/dev/null
@@ -72,6 +80,9 @@ read_installation_state_value() {
     origin)
       printf '%s\n' adopted
       ;;
+    network-policies)
+      printf '%s\n' "${MOCK_NETWORK_POLICY_STATE:-unmanaged}"
+      ;;
   esac
 }
 
@@ -83,6 +94,13 @@ assert_fails validate_managed_installation
 ALLOW_ENVIRONMENT_CHANGE=true
 validate_managed_installation
 
+OCF_OBSERVED_INSTALLATION_STATE=managed
+OCF_RESOLVED_NETWORK_POLICY_MODE=preserve
+MOCK_NETWORK_POLICY_STATE=enforced
+assert_output enforced installation_network_policy_state
+MOCK_NETWORK_POLICY_STATE=unmanaged
+assert_output unmanaged installation_network_policy_state
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 STATE_MANIFEST="${WORK_DIR}/state.yaml"
@@ -90,6 +108,7 @@ BASE_DIR="${OCF_ROOT}/kubernetes/production-base"
 ENVIRONMENT=ci
 OCF_OBSERVED_INSTALLATION_STATE=fresh
 OCF_RESOLVED_INSTALL_MODE=fresh
+OCF_RESOLVED_NETWORK_POLICY_MODE=enforce
 OCF_SOURCE_REVISION=test-revision
 
 kubectl() {
@@ -109,5 +128,6 @@ assert_output fresh yq -r '.data.mode' "$STATE_MANIFEST"
 assert_output fresh yq -r '.data.origin' "$STATE_MANIFEST"
 assert_output test-revision yq -r '.data."source-revision"' "$STATE_MANIFEST"
 assert_output true yq -r '.data.profiles | from_json | .edge' "$STATE_MANIFEST"
+assert_output enforced yq -r '.data."network-policies"' "$STATE_MANIFEST"
 
 printf '%s\n' "k8s installation state unit tests passed"

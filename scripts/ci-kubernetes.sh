@@ -104,4 +104,18 @@ for namespace in platform-system argocd monitoring identity; do
   [[ "$access" == "public" ]] || die "base route namespace ${namespace} must be allowed to attach public routes"
 done
 
+NETWORK_POLICY_CHART="${BASE_DIR}/charts/network-policies"
+NETWORK_POLICY_RENDER="${WORK_DIR}/network-policies.yaml"
+helm lint "$NETWORK_POLICY_CHART"
+helm template ocf-network-policies "$NETWORK_POLICY_CHART" \
+  --namespace platform-system >"$NETWORK_POLICY_RENDER"
+kubeconform -strict -summary "$NETWORK_POLICY_RENDER"
+
+declared_managed_namespaces="$(yq -o=json -I=0 '.managedNamespaces | sort' "${NETWORK_POLICY_CHART}/values.yaml")"
+labeled_managed_namespaces="$(yq ea -o=json -I=0 '[select(.kind == "Namespace" and .metadata.labels."open-cluster-foundation.io/network-policy" == "managed") | .metadata.name] | sort' "${BASE_DIR}/manifests/namespace-baseline.yaml")"
+[[ "$declared_managed_namespaces" == "$labeled_managed_namespaces" ]] || die "NetworkPolicy chart namespaces must match managed namespace labels"
+
+network_policy_count="$(yq ea '[select(.apiVersion == "networking.k8s.io/v1" and .kind == "NetworkPolicy")] | length' "$NETWORK_POLICY_RENDER")"
+[[ "$network_policy_count" -ge 20 ]] || die "expected at least 20 rendered NetworkPolicies"
+
 log "kubernetes checks passed"

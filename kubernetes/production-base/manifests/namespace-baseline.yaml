@@ -4,6 +4,7 @@ metadata:
   name: platform-system
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
@@ -15,6 +16,7 @@ metadata:
   name: envoy-gateway-system
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -25,6 +27,7 @@ metadata:
   name: cert-manager
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -35,6 +38,7 @@ metadata:
   name: argocd
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
@@ -46,6 +50,7 @@ metadata:
   name: cnpg-system
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -56,6 +61,7 @@ metadata:
   name: data
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -66,6 +72,7 @@ metadata:
   name: strimzi-system
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -76,6 +83,7 @@ metadata:
   name: messaging
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -86,6 +94,7 @@ metadata:
   name: rabbitmq-system
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -96,6 +105,7 @@ metadata:
   name: monitoring
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: restricted
@@ -107,6 +117,7 @@ metadata:
   name: identity
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
@@ -118,6 +129,7 @@ metadata:
   name: secrets
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -128,6 +140,7 @@ metadata:
   name: cache
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -138,6 +151,7 @@ metadata:
   name: reloader
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -148,6 +162,7 @@ metadata:
   name: default
   labels:
     app.kubernetes.io/name: production-base
+    open-cluster-foundation.io/network-policy: managed
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted

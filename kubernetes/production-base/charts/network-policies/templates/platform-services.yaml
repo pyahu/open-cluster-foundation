@@ -1,0 +1,25 @@
+{{- range $namespace, $ports := .Values.platformServices }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ocf-platform-service-access
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: ocf-network-policies
+    app.kubernetes.io/part-of: open-cluster-foundation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              open-cluster-foundation.io/platform-access: "true"
+      ports:
+{{- range $ports }}
+        - protocol: TCP
+          port: {{ . }}
+{{- end }}
+{{- end }}

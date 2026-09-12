@@ -1,0 +1,36 @@
+{{- range .Values.managedNamespaces }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ocf-baseline
+  namespace: {{ . }}
+  labels:
+    app.kubernetes.io/name: ocf-network-policies
+    app.kubernetes.io/part-of: open-cluster-foundation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              open-cluster-foundation.io/network-policy: managed
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              open-cluster-foundation.io/network-policy: managed
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+{{- end }}

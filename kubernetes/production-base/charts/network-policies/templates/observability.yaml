@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ocf-observability-ingestion
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: ocf-network-policies
+    app.kubernetes.io/part-of: open-cluster-foundation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              open-cluster-foundation.io/observability-access: "true"
+      ports:
+{{- range .Values.observabilityPorts }}
+        - protocol: TCP
+          port: {{ . }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ocf-observability-scrape
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: ocf-network-policies
+    app.kubernetes.io/part-of: open-cluster-foundation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              open-cluster-foundation.io/observability-access: "true"
+    - ports:
+{{- range .Values.nodeScrapePorts }}
+        - protocol: TCP
+          port: {{ . }}
+{{- end }}

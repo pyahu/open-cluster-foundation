@@ -1,0 +1,57 @@
+managedNamespaces:
+  - platform-system
+  - envoy-gateway-system
+  - cert-manager
+  - argocd
+  - cnpg-system
+  - data
+  - strimzi-system
+  - messaging
+  - rabbitmq-system
+  - monitoring
+  - identity
+  - secrets
+  - cache
+  - reloader
+  - default
+
+controlPlaneWebhooks:
+  cert-manager:
+    - 10250
+  cnpg-system:
+    - 9443
+  envoy-gateway-system:
+    - 9443
+  monitoring:
+    - 10250
+  rabbitmq-system:
+    - 443
+    - 9443
+  strimzi-system:
+    - 9443
+
+platformServices:
+  cache:
+    - 6379
+  data:
+    - 5432
+  identity:
+    - 8080
+  messaging:
+    - 5672
+    - 15672
+    - 8083
+    - 9092
+  secrets:
+    - 8080
+
+observabilityPorts:
+  - 3100
+  - 4317
+  - 4318
+  - 9090
+
+nodeScrapePorts:
+  - 9100
+  - 9153
+  - 10250

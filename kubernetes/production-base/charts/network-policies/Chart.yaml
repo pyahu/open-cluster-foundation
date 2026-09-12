@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ocf-network-policies
+description: Network isolation contract for Open Cluster Foundation namespaces
+type: application
+version: 0.1.0
+appVersion: "1"

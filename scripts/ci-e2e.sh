@@ -93,6 +93,7 @@ STATE_CONFIGMAP="open-cluster-foundation-installation"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "environment" }}')" == "ci" ]] || die "unexpected installation state environment"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "mode" }}')" == "fresh" ]] || die "unexpected installation state mode"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "origin" }}')" == "fresh" ]] || die "unexpected installation state origin"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "network-policies" }}')" == "enforced" ]] || die "unexpected installation NetworkPolicy state"
 "${SCRIPT_DIR}/k8s-production-base.sh" check --mode upgrade
 if "${SCRIPT_DIR}/k8s-production-base.sh" check --mode fresh >/dev/null 2>&1; then
   die "fresh mode accepted an existing managed installation"
@@ -143,6 +144,10 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 [[ "$UNTRUSTED_REASON" == "NotAllowedByListeners" ]] || die "untrusted HTTPRoute was not rejected: ${UNTRUSTED_REASON:-no status}"
+
+log "asserting base namespace NetworkPolicies are installed"
+NETWORK_POLICY_COUNT="$(kubectl get networkpolicy --all-namespaces -l app.kubernetes.io/part-of=open-cluster-foundation --no-headers | wc -l | tr -d ' ')"
+[[ "$NETWORK_POLICY_COUNT" -ge 20 ]] || die "expected at least 20 base NetworkPolicies, found ${NETWORK_POLICY_COUNT}"
 
 log "asserting cert-manager issues a certificate"
 kubectl apply -f "${E2E_DIR}/selfsigned-certificate.yaml"

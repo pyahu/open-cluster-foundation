@@ -1,0 +1,21 @@
+{{- range $namespace, $ports := .Values.controlPlaneWebhooks }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ocf-control-plane-webhooks
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: ocf-network-policies
+    app.kubernetes.io/part-of: open-cluster-foundation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+{{- range $ports }}
+        - protocol: TCP
+          port: {{ . }}
+{{- end }}
+{{- end }}

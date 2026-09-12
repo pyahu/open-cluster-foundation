@@ -89,3 +89,58 @@ allowedRoutes:
 Apply the private Gateway manifest, verify that all expected HTTPRoutes still
 have `Accepted=True`, and test each public hostname. To roll back, restore
 `from: All` in the same private manifest and apply it again.
+
+## NetworkPolicy migration
+
+Fresh installations enforce the OCF NetworkPolicy chart after every selected
+component is ready. The installation state records
+`network-policies=enforced`, so later automatic upgrades continue reconciling
+the same policies.
+
+Legacy installations and managed installations without that state remain in
+`preserve` mode. They receive namespace labels but no NetworkPolicy resources,
+so adoption cannot interrupt existing traffic. Confirm the selected behavior
+with the read-only preflight:
+
+```sh
+mise run k8s:base:check -- --network-policies auto
+```
+
+Before opting in, inventory every client of PostgreSQL, Kafka, RabbitMQ,
+Valkey, ZITADEL, Infisical and the observability ingestion endpoints. Label
+application namespaces according to the access they require:
+
+```sh
+kubectl --context <context> label namespace <namespace> \
+  open-cluster-foundation.io/platform-access=true
+kubectl --context <context> label namespace <namespace> \
+  open-cluster-foundation.io/observability-access=true
+```
+
+`platform-access` permits only the documented service ports. It does not grant
+route attachment. `observability-access` permits telemetry ingestion and
+Prometheus scraping. Public HTTPRoute namespaces independently require
+`open-cluster-foundation.io/gateway-access=public`.
+
+Test DNS, HTTPS egress, public routes, database connections, messaging and
+telemetry from a labeled canary namespace. Then enforce the policies with the
+explicit migration option:
+
+```sh
+mise run k8s:base:apply -- --mode upgrade --network-policies enforce --yes
+```
+
+The policy contract allows communication among OCF-managed namespaces, DNS on
+TCP/UDP 53, outbound HTTP/HTTPS, Kubernetes admission webhooks, public Envoy
+listeners and labeled access to platform services. Other ingress and egress is
+denied in OCF-managed namespaces.
+
+If a missed dependency causes an outage, remove only the policy release and
+restore service before changing the allowlist:
+
+```sh
+helm --kube-context <context> -n platform-system uninstall ocf-network-policies
+```
+
+An uninstall is a rollback of isolation, not of workloads or data. Re-run the
+apply with `--network-policies enforce` after correcting and testing the chart.

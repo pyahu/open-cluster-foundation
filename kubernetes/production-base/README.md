@@ -139,6 +139,13 @@ applies anything. The full contract, explicit `--mode` controls and environment
 change gate are documented in
 [`docs/compatibility.md`](../../docs/compatibility.md).
 
+Fresh installations also enforce default-deny ingress and egress across every
+OCF-managed namespace after the components become ready. Existing clusters
+preserve their current network behavior until an operator follows the staged
+[NetworkPolicy migration](../../docs/compatibility.md#networkpolicy-migration)
+and passes `--network-policies enforce`. Application namespaces opt into the
+minimum platform, observability and Gateway paths with separate labels.
+
 Select `production` to add database and messaging operators without creating
 application data. Select `production-data` only after reviewing Kafka and
 Valkey capacity, storage and recovery requirements. The `all-components`
