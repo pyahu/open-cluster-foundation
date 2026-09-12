@@ -41,6 +41,10 @@ tags (`vYYYY.M.PATCH`).
 
 ### Changed
 
+- The blackbox `http_reachable` module accepts 404 and 405: an API with
+  nothing mapped at `/` answers that way and is up. The module now matches its
+  own description, anything but a server error.
+
 - Grafana deploys with the `Recreate` strategy: its data volume is
   ReadWriteOnce, and a rolling update left the new pod waiting for the volume
   until an atomic upgrade timed out and rolled back. On an existing release,

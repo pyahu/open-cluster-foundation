@@ -27,15 +27,17 @@ config:
         preferred_ip_protocol: ip4
         follow_redirects: true
         valid_status_codes: []
-    # Reachable at all: any status below 500 counts. For endpoints behind a login
-    # that answer 401/302 to an anonymous probe.
+    # Reachable at all: the service answered with anything but a server error.
+    # For endpoints behind a login (401/302 to an anonymous probe) and for APIs
+    # with nothing mapped at the probed path (404/405), which are up even though
+    # the path has no page.
     http_reachable:
       prober: http
       timeout: 10s
       http:
         preferred_ip_protocol: ip4
         follow_redirects: false
-        valid_status_codes: [200, 201, 202, 204, 301, 302, 303, 307, 308, 401, 403]
+        valid_status_codes: [200, 201, 202, 204, 301, 302, 303, 307, 308, 401, 403, 404, 405]
     # TLS handshake only, for certificate expiry on non-HTTP listeners.
     tls_connect:
       prober: tcp
