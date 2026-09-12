@@ -11,3 +11,5 @@ profiles:
   rabbitmqOperators: false
   kafka: false
   kafkaConnect: false
+  highAvailability: false
+  durableObservability: false

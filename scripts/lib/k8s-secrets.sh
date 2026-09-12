@@ -17,7 +17,7 @@ ensure_secret_key_exists() {
   local help_text="$4"
   local value
 
-  value="$(kubectl -n "$namespace" get secret "$name" -o jsonpath="{.data.${key}}" 2>/dev/null || true)"
+  value="$(kubectl -n "$namespace" get secret "$name" -o json 2>/dev/null | SECRET_KEY="$key" yq -r '.data[strenv(SECRET_KEY)] // ""' || true)"
   [[ -n "$value" ]] || die "secret ${namespace}/${name} is missing key ${key}. ${help_text}"
 }
 
@@ -39,7 +39,7 @@ read_secret_value() {
   local key="$3"
   local encoded
 
-  encoded="$(kubectl -n "$namespace" get secret "$name" -o jsonpath="{.data.${key}}")"
+  encoded="$(kubectl -n "$namespace" get secret "$name" -o json | SECRET_KEY="$key" yq -r '.data[strenv(SECRET_KEY)] // ""')"
   printf '%s' "$encoded" | openssl base64 -d -A
 }
 
@@ -114,6 +114,60 @@ validate_infisical_inputs() {
   [[ "$redis_password" == "$valkey_password" ]] || die "Infisical REDIS_PASSWORD must match cache/valkey-acl key default"
 }
 
+validate_thanos_object_storage() {
+  local config type bucket endpoint insecure aws_sdk_auth access_key secret_key
+
+  ensure_secret_exists monitoring thanos-object-storage "Create it with an objstore.yml key before enabling durable observability."
+  ensure_secret_key_exists monitoring thanos-object-storage objstore.yml "Thanos requires its object-store configuration."
+  config="$(read_secret_value monitoring thanos-object-storage objstore.yml)"
+  type="$(yq -r '.type // ""' <<<"$config")"
+  bucket="$(yq -r '.config.bucket // ""' <<<"$config")"
+  endpoint="$(yq -r '.config.endpoint // ""' <<<"$config")"
+  insecure="$(yq -r '.config.insecure // false' <<<"$config")"
+  aws_sdk_auth="$(yq -r '.config.aws_sdk_auth // false' <<<"$config")"
+  access_key="$(yq -r '.config.access_key // ""' <<<"$config")"
+  secret_key="$(yq -r '.config.secret_key // ""' <<<"$config")"
+
+  [[ "$type" == "S3" ]] || die "secret monitoring/thanos-object-storage objstore.yml must use type S3"
+  reject_placeholder "$bucket" "bucket in monitoring/thanos-object-storage objstore.yml"
+  reject_placeholder "$endpoint" "endpoint in monitoring/thanos-object-storage objstore.yml"
+  [[ "$insecure" == "false" ]] || die "monitoring/thanos-object-storage objstore.yml must set config.insecure to false"
+  if [[ "$aws_sdk_auth" != "true" ]]; then
+    reject_placeholder "$access_key" "access_key in monitoring/thanos-object-storage objstore.yml"
+    reject_placeholder "$secret_key" "secret_key in monitoring/thanos-object-storage objstore.yml"
+  fi
+}
+
+validate_durable_observability_inputs() {
+  local key value loki_s3_endpoint tempo_s3_endpoint security_key ca_cert
+
+  ensure_secret_exists monitoring observability-object-storage "Create it with the S3 endpoint, region and credentials before enabling durable observability."
+  for key in LOKI_S3_ENDPOINT TEMPO_S3_ENDPOINT S3_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY TEMPO_S3_BUCKET; do
+    ensure_secret_key_exists monitoring observability-object-storage "$key" "Loki and Tempo require this S3 setting."
+    value="$(read_secret_value monitoring observability-object-storage "$key")"
+    reject_placeholder "$value" "$key in monitoring/observability-object-storage"
+  done
+  loki_s3_endpoint="$(read_secret_value monitoring observability-object-storage LOKI_S3_ENDPOINT)"
+  tempo_s3_endpoint="$(read_secret_value monitoring observability-object-storage TEMPO_S3_ENDPOINT)"
+  require_https_url "$loki_s3_endpoint" "LOKI_S3_ENDPOINT in monitoring/observability-object-storage"
+  [[ "$tempo_s3_endpoint" != *://* ]] || die "TEMPO_S3_ENDPOINT in monitoring/observability-object-storage must be a hostname without a URL scheme"
+
+  ensure_secret_exists monitoring grafana-database "Create it with the external PostgreSQL connection and shared Grafana secret key."
+  for key in GF_DATABASE_HOST GF_DATABASE_NAME GF_DATABASE_USER GF_DATABASE_PASSWORD GF_SECURITY_SECRET_KEY; do
+    ensure_secret_key_exists monitoring grafana-database "$key" "Highly available Grafana requires this setting."
+    value="$(read_secret_value monitoring grafana-database "$key")"
+    reject_placeholder "$value" "$key in monitoring/grafana-database"
+  done
+  security_key="$(read_secret_value monitoring grafana-database GF_SECURITY_SECRET_KEY)"
+  [[ "${#security_key}" -ge 32 ]] || die "GF_SECURITY_SECRET_KEY in monitoring/grafana-database must contain at least 32 characters"
+  ensure_secret_exists monitoring grafana-database-ca "Create it with the CA that issued the external PostgreSQL server certificate."
+  ensure_secret_key_exists monitoring grafana-database-ca ca.crt "Grafana requires this CA to verify the PostgreSQL server identity."
+  ca_cert="$(read_secret_value monitoring grafana-database-ca ca.crt)"
+  [[ "$ca_cert" == *"-----BEGIN CERTIFICATE-----"* && "$ca_cert" == *"-----END CERTIFICATE-----"* ]] || die "ca.crt in monitoring/grafana-database-ca must contain a PEM certificate"
+
+  validate_thanos_object_storage
+}
+
 check_optional_profile_inputs() {
   if profile_enabled identity "$ENVIRONMENT"; then
     validate_zitadel_inputs
@@ -121,6 +175,10 @@ check_optional_profile_inputs() {
 
   if profile_enabled secrets "$ENVIRONMENT"; then
     validate_infisical_inputs
+  fi
+
+  if profile_enabled durableObservability "$ENVIRONMENT"; then
+    validate_durable_observability_inputs
   fi
 }
 

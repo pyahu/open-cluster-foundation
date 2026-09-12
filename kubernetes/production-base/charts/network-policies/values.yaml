@@ -58,3 +58,5 @@ nodeScrapePorts:
 
 observability:
   requireWorkloadIdentity: true
+
+grafanaDatabaseCidrs: []

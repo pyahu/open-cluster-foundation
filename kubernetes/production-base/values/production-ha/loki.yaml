@@ -1,0 +1,79 @@
+deploymentMode: Monolithic
+
+loki:
+  commonConfig:
+    replication_factor: 3
+  storage:
+    type: s3
+    bucketNames:
+      chunks: replace-me-loki-chunks
+      ruler: replace-me-loki-ruler
+      admin: replace-me-loki-admin
+    s3:
+      endpoint: ${LOKI_S3_ENDPOINT}
+      region: replace-me
+      accessKeyId: ${AWS_ACCESS_KEY_ID}
+      secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+      signatureVersion: v4
+      s3ForcePathStyle: true
+      insecure: false
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+  limits_config:
+    retention_period: 30d
+
+defaults:
+  extraArgs:
+    - -config.expand-env=true
+  extraEnvFrom:
+    - secretRef:
+        name: observability-object-storage
+  automountServiceAccountToken: false
+
+singleBinary:
+  replicas: 3
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+  persistence:
+    enabled: true
+    size: 20Gi
+    whenDeleted: Retain
+    whenScaled: Retain
+    enableStatefulSetAutoDeletePVC: false
+
+gateway:
+  replicas: 3
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi

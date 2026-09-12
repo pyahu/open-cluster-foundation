@@ -1,0 +1,44 @@
+alertmanager:
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  alertmanagerSpec:
+    replicas: 3
+    podAntiAffinity: hard
+    podAntiAffinityTopologyKey: kubernetes.io/hostname
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+
+prometheus:
+  thanosService:
+    enabled: true
+  thanosServiceMonitor:
+    enabled: true
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  prometheusSpec:
+    replicas: 2
+    retention: 15d
+    podAntiAffinity: hard
+    podAntiAffinityTopologyKey: kubernetes.io/hostname
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 100Gi
+    thanos:
+      image: quay.io/thanos/thanos:v0.42.4
+      objectStorageConfig:
+        existingSecret:
+          name: thanos-object-storage
+          key: objstore.yml

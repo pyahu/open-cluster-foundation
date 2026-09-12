@@ -23,13 +23,14 @@ NETWORK_POLICY_MODE="${OCF_NETWORK_POLICY_MODE:-auto}"
 OBSERVABILITY_SCOPE="${OCF_OBSERVABILITY_SCOPE:-auto}"
 IDENTITY_ACCESS_MODE="${OCF_IDENTITY_ACCESS_MODE:-auto}"
 CACHE_ACCESS_MODE="${OCF_CACHE_ACCESS_MODE:-auto}"
+GRAFANA_DATABASE_CIDRS="${OCF_GRAFANA_DATABASE_CIDRS:-}"
 
 usage() {
   cat <<'EOF'
 Usage:
   scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy]
-  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy]
-  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy] [--allow-environment-change] [--yes]
+  scripts/k8s-production-base.sh render [--environment starter|production|production-ha|production-data|default|all-components] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy]
+  scripts/k8s-production-base.sh apply [--environment starter|production|production-ha|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy] [--allow-environment-change] [--yes]
 
 Environment:
   ACME_EMAIL              Optional. If set, Let's Encrypt issuers are created with this email.
@@ -40,6 +41,8 @@ Environment:
   OCF_OBSERVABILITY_SCOPE Observability discovery scope. Defaults to "auto".
   OCF_IDENTITY_ACCESS_MODE Identity access mode. Defaults to "auto".
   OCF_CACHE_ACCESS_MODE   Cache access mode. Defaults to "auto".
+  OCF_GRAFANA_DATABASE_CIDRS
+                          Comma-separated PostgreSQL CIDRs required by production-ha.
   OCF_ALLOW_ENVIRONMENT_CHANGE=true
                           Allow a managed installation to change environment.
 EOF
@@ -135,13 +138,27 @@ preflight() {
   kubectl auth can-i '*' '*' --all-namespaces >/dev/null || die "current identity does not have cluster-admin-like permissions"
 }
 
+check_high_availability_topology() {
+  if ! profile_enabled highAvailability "$ENVIRONMENT"; then
+    return
+  fi
+
+  validate_high_availability_topology_json "$(kubectl get nodes -o json)"
+}
+
 check_configuration() {
   require_command kubectl
   require_command yq
   preflight
   prepare_installation
   validate_profile_contract
+  if profile_enabled highAvailability "$ENVIRONMENT"; then
+    validate_grafana_database_cidrs
+  fi
+  check_high_availability_topology
   validate_instance_values
+  check_optional_profile_inputs
+  check_identity_inputs
 }
 
 create_grafana_admin_secret() {
@@ -282,12 +299,17 @@ render() {
   fi
 
   validate_profile_contract
+  if profile_enabled highAvailability "$ENVIRONMENT"; then
+    validate_grafana_database_cidrs
+  fi
 
   local render_file="/tmp/open-cluster-foundation-${ENVIRONMENT}.yaml"
   local render_network_policy_mode
   local render_observability_scope
   local render_identity_access_mode
   local render_cache_access_mode
+  local require_observability_identity="true"
+  local network_policy_values=()
   render_network_policy_mode="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" fresh)"
   render_observability_scope="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" fresh)"
   render_identity_access_mode="$(resolve_identity_access_mode "$IDENTITY_ACCESS_MODE" fresh)"
@@ -300,6 +322,13 @@ render() {
   export OCF_CACHE_ACCESS_MODE="$render_cache_access_mode"
   if [[ "$render_observability_scope" == "trusted" ]]; then
     export OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX="${OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX:-a^}"
+  fi
+  if [[ "$render_observability_scope" == "legacy" ]]; then
+    require_observability_identity="false"
+  fi
+  network_policy_values+=(--set "observability.requireWorkloadIdentity=${require_observability_identity}")
+  if profile_enabled highAvailability "$ENVIRONMENT"; then
+    network_policy_values+=(--set "grafanaDatabaseCidrs={${GRAFANA_DATABASE_CIDRS}}")
   fi
 
   log "rendering helmfile environment ${ENVIRONMENT}"
@@ -326,13 +355,9 @@ render() {
     fi
     if [[ "$render_network_policy_mode" == "enforce" ]]; then
       printf '%s\n' "---"
-      local require_observability_identity="true"
-      if [[ "$render_observability_scope" == "legacy" ]]; then
-        require_observability_identity="false"
-      fi
       helm template ocf-network-policies "${BASE_DIR}/charts/network-policies" \
         --namespace platform-system \
-        --set "observability.requireWorkloadIdentity=${require_observability_identity}"
+        "${network_policy_values[@]}"
     fi
   } >"$render_file"
   log "rendered manifest written to ${render_file}"
@@ -397,12 +422,17 @@ apply_network_policies() {
 
   log "enforcing the base namespace NetworkPolicies"
   local require_observability_identity="true"
+  local network_policy_values=()
   if [[ "$OCF_RESOLVED_OBSERVABILITY_SCOPE" == "legacy" ]]; then
     require_observability_identity="false"
   fi
+  network_policy_values+=(--set "observability.requireWorkloadIdentity=${require_observability_identity}")
+  if profile_enabled highAvailability "$ENVIRONMENT"; then
+    network_policy_values+=(--set "grafanaDatabaseCidrs={${GRAFANA_DATABASE_CIDRS}}")
+  fi
   helm upgrade --install ocf-network-policies "${BASE_DIR}/charts/network-policies" \
     --namespace platform-system \
-    --set "observability.requireWorkloadIdentity=${require_observability_identity}" \
+    "${network_policy_values[@]}" \
     --atomic \
     --wait \
     --timeout 5m
@@ -417,8 +447,6 @@ apply_base() {
   kubectl apply -f "${BASE_DIR}/manifests/namespace-baseline.yaml"
 
   prepare_valkey_acl_secret
-  check_optional_profile_inputs
-  check_identity_inputs
   apply_prometheus_operator_crds
 
   # Envoy Gateway ships (and owns) the Gateway API CRDs, which cert-manager's

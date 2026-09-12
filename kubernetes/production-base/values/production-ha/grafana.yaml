@@ -1,0 +1,115 @@
+replicas: 3
+
+deploymentStrategy:
+  type: RollingUpdate
+
+persistence:
+  enabled: false
+
+podDisruptionBudget:
+  minAvailable: 2
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+
+envFromSecrets:
+  - name: grafana-oidc-credentials
+  - name: grafana-database
+
+extraSecretMounts:
+  - name: grafana-database-ca
+    secretName: grafana-database-ca
+    defaultMode: 0440
+    mountPath: /etc/grafana/database-ca
+    readOnly: true
+
+grafana.ini:
+  database:
+    type: postgres
+    host: ${GF_DATABASE_HOST}
+    name: ${GF_DATABASE_NAME}
+    user: ${GF_DATABASE_USER}
+    password: ${GF_DATABASE_PASSWORD}
+    ssl_mode: verify-full
+    ca_cert_path: /etc/grafana/database-ca/ca.crt
+  security:
+    secret_key: ${GF_SECURITY_SECRET_KEY}
+  unified_alerting:
+    enabled: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    deleteDatasources:
+      - name: Prometheus
+        orgId: 1
+      - name: Loki
+        orgId: 1
+      - name: Tempo
+        orgId: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://thanos-query.monitoring.svc.cluster.local:10902
+        isDefault: true
+        jsonData:
+          timeInterval: 30s
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.monitoring.svc.cluster.local
+        jsonData:
+          maxLines: 1000
+          derivedFields:
+            - name: TraceID
+              matcherType: label
+              matcherRegex: trace_id
+              url: $${__value.raw}
+              datasourceUid: tempo
+              urlDisplayLabel: View trace
+            - name: TraceIDInLine
+              matcherRegex: '"trace\.id":"([a-f0-9]+)"'
+              url: $${__value.raw}
+              datasourceUid: tempo
+              urlDisplayLabel: View trace
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo-distributed-query-frontend.monitoring.svc.cluster.local:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: -5m
+            spanEndTimeShift: 5m
+            customQuery: true
+            query: '{app="$${__span.tags["service.name"]}"} | trace_id=`$${__trace.traceId}`'
+          tracesToMetrics:
+            datasourceUid: prometheus
+            spanStartTimeShift: -5m
+            spanEndTimeShift: 5m
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+          lokiSearch:
+            datasourceUid: loki
+      - name: Alertmanager
+        uid: alertmanager
+        type: alertmanager
+        access: proxy
+        url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+        jsonData:
+          implementation: prometheus
+          handleGrafanaManagedAlerts: false

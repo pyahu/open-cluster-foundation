@@ -1,0 +1,5 @@
+cloudNativePg:
+  minAvailable: 2
+
+argoCdRedis:
+  minAvailable: 2

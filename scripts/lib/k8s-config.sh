@@ -149,6 +149,83 @@ validate_infisical_values() {
   reject_placeholder "$hostname" "platform.hostname in values/local/infisical.yaml"
 }
 
+validate_durable_observability_values() {
+  local loki_values="${BASE_DIR}/values/local/loki.yaml"
+  local tempo_values="${BASE_DIR}/values/local/tempo-distributed.yaml"
+  local loki_storage_type loki_endpoint loki_region tempo_backend tempo_bucket tempo_endpoint tempo_region bucket loki_endpoint_reference tempo_endpoint_reference
+
+  loki_endpoint_reference="\${LOKI_S3_ENDPOINT}"
+  tempo_endpoint_reference="\${TEMPO_S3_ENDPOINT}"
+
+  require_instance_values_file loki
+  require_instance_values_file tempo-distributed
+
+  loki_storage_type="$(read_yaml_value "$loki_values" '.loki.storage.type')"
+  loki_endpoint="$(read_yaml_value "$loki_values" '.loki.storage.s3.endpoint')"
+  loki_region="$(read_yaml_value "$loki_values" '.loki.storage.s3.region')"
+  [[ "$loki_storage_type" == "s3" ]] || die "loki.storage.type in values/local/loki.yaml must be s3 for durable observability"
+  reject_placeholder "$loki_endpoint" "loki.storage.s3.endpoint in values/local/loki.yaml"
+  reject_placeholder "$loki_region" "loki.storage.s3.region in values/local/loki.yaml"
+  if [[ "$loki_endpoint" != "$loki_endpoint_reference" ]]; then
+    require_https_url "$loki_endpoint" "loki.storage.s3.endpoint in values/local/loki.yaml"
+  fi
+  for bucket in chunks ruler admin; do
+    reject_placeholder "$(read_yaml_value "$loki_values" ".loki.storage.bucketNames.${bucket}")" "loki.storage.bucketNames.${bucket} in values/local/loki.yaml"
+  done
+  yq -e '[.loki.storage.bucketNames.chunks, .loki.storage.bucketNames.ruler, .loki.storage.bucketNames.admin] | unique | length == 3' "$loki_values" >/dev/null || die "Loki chunks, ruler and admin must use three distinct buckets"
+
+  tempo_backend="$(read_yaml_value "$tempo_values" '.storage.trace.backend')"
+  tempo_bucket="$(read_yaml_value "$tempo_values" '.storage.trace.s3.bucket')"
+  tempo_endpoint="$(read_yaml_value "$tempo_values" '.storage.trace.s3.endpoint')"
+  tempo_region="$(read_yaml_value "$tempo_values" '.storage.trace.s3.region')"
+  [[ "$tempo_backend" == "s3" ]] || die "storage.trace.backend in values/local/tempo-distributed.yaml must be s3"
+  reject_placeholder "$tempo_bucket" "storage.trace.s3.bucket in values/local/tempo-distributed.yaml"
+  reject_placeholder "$tempo_endpoint" "storage.trace.s3.endpoint in values/local/tempo-distributed.yaml"
+  reject_placeholder "$tempo_region" "storage.trace.s3.region in values/local/tempo-distributed.yaml"
+  if [[ "$tempo_endpoint" != "$tempo_endpoint_reference" ]]; then
+    [[ "$tempo_endpoint" != *://* ]] || die "storage.trace.s3.endpoint in values/local/tempo-distributed.yaml must be a hostname without a URL scheme"
+  fi
+}
+
+validate_high_availability_topology_json() {
+  local nodes="$1"
+  local ready_nodes zoned_nodes zones
+
+  ready_nodes="$(yq -r '[.items[] | select(.spec.unschedulable != true) | select([.spec.taints[]? | select(.effect == "NoSchedule" or .effect == "NoExecute")] | length == 0) | select([.status.conditions[] | select(.type == "Ready" and .status == "True")] | length == 1)] | length' <<<"$nodes")"
+  zoned_nodes="$(yq -r '[.items[] | select(.spec.unschedulable != true) | select([.spec.taints[]? | select(.effect == "NoSchedule" or .effect == "NoExecute")] | length == 0) | select([.status.conditions[] | select(.type == "Ready" and .status == "True")] | length == 1) | select(.metadata.labels."topology.kubernetes.io/zone" != null)] | length' <<<"$nodes")"
+  zones="$(yq -r '[.items[] | select(.spec.unschedulable != true) | select([.spec.taints[]? | select(.effect == "NoSchedule" or .effect == "NoExecute")] | length == 0) | select([.status.conditions[] | select(.type == "Ready" and .status == "True")] | length == 1) | select(.metadata.labels."topology.kubernetes.io/zone" != null) | .metadata.labels."topology.kubernetes.io/zone"] | unique | length' <<<"$nodes")"
+
+  [[ "$ready_nodes" -ge 3 ]] || die "production-ha requires at least 3 Ready, schedulable and generally tolerable nodes; found ${ready_nodes}"
+  [[ "$zoned_nodes" -eq "$ready_nodes" ]] || die "every production-ha node must carry topology.kubernetes.io/zone"
+  [[ "$zones" -ge 2 ]] || die "production-ha requires at least 2 failure zones; found ${zones}"
+  log "high-availability topology: ${ready_nodes} eligible nodes across ${zones} zones"
+}
+
+validate_grafana_database_cidrs() {
+  local cidr cidrs="${OCF_GRAFANA_DATABASE_CIDRS:-}" address prefix octet
+  local parsed_cidrs=()
+  local octets=()
+
+  [[ -n "$cidrs" ]] || die "production-ha requires OCF_GRAFANA_DATABASE_CIDRS for Grafana PostgreSQL egress"
+  IFS=',' read -r -a parsed_cidrs <<<"$cidrs"
+  for cidr in "${parsed_cidrs[@]}"; do
+    [[ "$cidr" =~ ^[0-9A-Fa-f:.]+/[0-9]{1,3}$ ]] || die "invalid CIDR in OCF_GRAFANA_DATABASE_CIDRS: ${cidr}"
+    [[ "$cidr" != "0.0.0.0/0" && "$cidr" != "::/0" ]] || die "OCF_GRAFANA_DATABASE_CIDRS must not allow the entire internet"
+    address="${cidr%/*}"
+    prefix="${cidr#*/}"
+    if [[ "$address" == *:* ]]; then
+      [[ "$prefix" -le 128 ]] || die "invalid IPv6 prefix in OCF_GRAFANA_DATABASE_CIDRS: ${cidr}"
+      continue
+    fi
+    IFS='.' read -r -a octets <<<"$address"
+    [[ "${#octets[@]}" -eq 4 && "$prefix" -le 32 ]] || die "invalid IPv4 CIDR in OCF_GRAFANA_DATABASE_CIDRS: ${cidr}"
+    for octet in "${octets[@]}"; do
+      [[ "$octet" =~ ^[0-9]{1,3}$ ]] || die "invalid IPv4 CIDR in OCF_GRAFANA_DATABASE_CIDRS: ${cidr}"
+      [[ $((10#$octet)) -le 255 ]] || die "invalid IPv4 CIDR in OCF_GRAFANA_DATABASE_CIDRS: ${cidr}"
+    done
+  done
+}
+
 validate_instance_values() {
   if [[ "$ENVIRONMENT" == "ci" ]]; then
     return
@@ -193,6 +270,10 @@ validate_instance_values() {
     if [[ "${OCF_RESOLVED_IDENTITY_ACCESS_MODE:-legacy}" == "sso" ]]; then
       validate_grafana_sso_values "$grafana_values"
     fi
+
+    if profile_enabled durableObservability "$ENVIRONMENT"; then
+      validate_durable_observability_values
+    fi
   fi
 
   if profile_enabled identity "$ENVIRONMENT"; then
@@ -218,4 +299,20 @@ validate_profile_contract() {
   if profile_enabled secrets "$ENVIRONMENT" && ! profile_enabled cache "$ENVIRONMENT"; then
     die "profile secrets requires profile cache"
   fi
+
+  if profile_enabled durableObservability "$ENVIRONMENT" && ! profile_enabled highAvailability "$ENVIRONMENT"; then
+    die "profile durableObservability requires profile highAvailability"
+  fi
+
+  if profile_enabled durableObservability "$ENVIRONMENT" && ! profile_enabled observability "$ENVIRONMENT"; then
+    die "profile durableObservability requires profile observability"
+  fi
+
+  if profile_enabled highAvailability "$ENVIRONMENT"; then
+    local required_profile
+    for required_profile in edge certificates gitops postgresOperator messagingOperators observability; do
+      profile_enabled "$required_profile" "$ENVIRONMENT" || die "profile highAvailability requires profile ${required_profile}"
+    done
+  fi
+
 }

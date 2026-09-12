@@ -1,0 +1,7 @@
+storage:
+  trace:
+    backend: s3
+    s3:
+      bucket: ${TEMPO_S3_BUCKET}
+      endpoint: ${TEMPO_S3_ENDPOINT}
+      region: ${S3_REGION}

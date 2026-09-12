@@ -2,8 +2,8 @@ profiles:
   edge: true
   certificates: true
   gitops: true
-  postgresOperator: false
-  messagingOperators: false
+  postgresOperator: true
+  messagingOperators: true
   observability: true
   cache: false
   identity: false
@@ -11,5 +11,5 @@ profiles:
   rabbitmqOperators: false
   kafka: false
   kafkaConnect: false
-  highAvailability: false
-  durableObservability: false
+  highAvailability: true
+  durableObservability: true

@@ -132,6 +132,12 @@ components:
     # renovate: datasource=helm depName=tempo registryUrl=https://grafana-community.github.io/helm-charts
     chartVersion: 2.2.3
     appVersion: 2.10.7
+  tempoDistributed:
+    installMethod: helm-chart
+    repository: https://grafana-community.github.io/helm-charts
+    chart: grafana-community/tempo-distributed
+    chartVersion: 2.26.2
+    appVersion: 2.10.7
   grafana:
     installMethod: helm-chart
     repository: https://grafana-community.github.io/helm-charts

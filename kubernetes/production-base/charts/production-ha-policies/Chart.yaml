@@ -1,0 +1,6 @@
+apiVersion: v2
+name: production-ha-policies
+description: Disruption policies for charts without native high-availability support
+type: application
+version: 0.1.0
+appVersion: "1"

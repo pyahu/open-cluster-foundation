@@ -1,0 +1,10 @@
+loki:
+  storage:
+    type: s3
+    bucketNames:
+      chunks: replace-me-loki-chunks
+      ruler: replace-me-loki-ruler
+      admin: replace-me-loki-admin
+    s3:
+      endpoint: ${LOKI_S3_ENDPOINT}
+      region: ${S3_REGION}

@@ -30,11 +30,19 @@ profile_enabled cache production-data || die "production-data must enable Valkey
 profile_enabled kafka default || die "default must preserve Kafka for existing installations"
 profile_enabled kafkaConnect default || die "default must preserve Kafka Connect for existing installations"
 profile_enabled cache default || die "default must preserve Valkey for existing installations"
+profile_enabled highAvailability production-ha || die "production-ha must enable high availability"
+profile_enabled durableObservability production-ha || die "production-ha must enable durable observability"
+profile_enabled observability production-ha || die "production-ha must enable observability"
+
+for environment in starter production production-data default all-components ci; do
+  profile_enabled highAvailability "$environment" && die "${environment} must not implicitly enable high availability"
+  profile_enabled durableObservability "$environment" && die "${environment} must not implicitly enable durable observability"
+done
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-for environment in starter production production-data default all-components ci; do
+for environment in starter production production-ha production-data default all-components ci; do
   log "rendering helmfile environment ${environment}"
   (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$environment" template) \
     >"${WORK_DIR}/rendered-${environment}.yaml"
@@ -46,6 +54,63 @@ for environment in starter production production-data default all-components ci;
     -ignore-missing-schemas \
     "${WORK_DIR}/rendered-${environment}.yaml"
 done
+
+PRODUCTION_HA_RENDER="${WORK_DIR}/rendered-production-ha.yaml"
+ha_placement_violations="$(yq ea '[
+  select(.kind == "Deployment" or .kind == "StatefulSet") |
+  select(.spec.replicas > 1) |
+  select(
+    ([.spec.template.spec.topologySpreadConstraints[]? | select(.topologyKey == "kubernetes.io/hostname" and .whenUnsatisfiable == "DoNotSchedule")] | length == 0) and
+    ([.spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[]? | select(.topologyKey == "kubernetes.io/hostname")] | length == 0)
+  )
+] | length' "$PRODUCTION_HA_RENDER")"
+[[ "$ha_placement_violations" -eq 0 ]] || die "every replicated production-ha workload must use hard hostname placement"
+
+ha_resource_violations="$(yq ea '[
+  select(.kind == "Deployment" or .kind == "StatefulSet") |
+  select(.spec.replicas > 1) |
+  .spec.template.spec.containers[] |
+  select(.resources.requests.cpu == null or .resources.requests.memory == null or .resources.limits.memory == null)
+] | length' "$PRODUCTION_HA_RENDER")"
+[[ "$ha_resource_violations" -eq 0 ]] || die "every replicated production-ha container must declare CPU and memory requests and a memory limit"
+
+while IFS=$'\t' read -r workload_name; do
+  pdb_name="$workload_name"
+  [[ "$workload_name" != "loki" ]] || pdb_name="loki-single-binary"
+  [[ "$workload_name" != "strimzi-cluster-operator" ]] || pdb_name="strimzi-cluster-operator-pdb"
+  pdb_count="$(PDB_NAME="$pdb_name" yq ea '[select(.kind == "PodDisruptionBudget" and .metadata.name == strenv(PDB_NAME))] | length' "$PRODUCTION_HA_RENDER")"
+  [[ "$pdb_count" -eq 1 ]] || die "replicated production-ha workload ${workload_name} must have one PodDisruptionBudget"
+done < <(yq ea -N -r 'select(.kind == "Deployment" or .kind == "StatefulSet") | select(.spec.replicas > 1) | .metadata.name' "$PRODUCTION_HA_RENDER")
+
+prometheus_replicas="$(yq ea -N 'select(.kind == "Prometheus" and .metadata.name == "kube-prometheus-stack-prometheus") | .spec.replicas' "$PRODUCTION_HA_RENDER")"
+alertmanager_replicas="$(yq ea -N 'select(.kind == "Alertmanager" and .metadata.name == "kube-prometheus-stack-alertmanager") | .spec.replicas' "$PRODUCTION_HA_RENDER")"
+prometheus_object_storage="$(yq ea -N 'select(.kind == "Prometheus" and .metadata.name == "kube-prometheus-stack-prometheus") | .spec.thanos.objectStorageConfig.name' "$PRODUCTION_HA_RENDER")"
+[[ "$prometheus_replicas" -eq 2 ]] || die "production-ha must run two Prometheus replicas"
+[[ "$alertmanager_replicas" -eq 3 ]] || die "production-ha must run three Alertmanager replicas"
+[[ "$prometheus_object_storage" == "thanos-object-storage" ]] || die "production-ha Prometheus must upload blocks through the Thanos object-storage secret"
+
+loki_replicas="$(yq ea -N 'select(.kind == "StatefulSet" and .metadata.name == "loki") | .spec.replicas' "$PRODUCTION_HA_RENDER")"
+tempo_ingester_replicas="$(yq ea -N 'select(.kind == "StatefulSet" and .metadata.name == "tempo-distributed-ingester") | .spec.replicas' "$PRODUCTION_HA_RENDER")"
+grafana_replicas="$(yq ea -N 'select(.kind == "Deployment" and .metadata.name == "grafana") | .spec.replicas' "$PRODUCTION_HA_RENDER")"
+grafana_config="$(yq ea -N 'select(.kind == "ConfigMap" and .metadata.name == "grafana") | .data."grafana.ini"' "$PRODUCTION_HA_RENDER")"
+grafana_datasources="$(yq ea -N 'select(.kind == "ConfigMap" and .metadata.name == "grafana") | .data."datasources.yaml"' "$PRODUCTION_HA_RENDER")"
+[[ "$loki_replicas" -eq 3 ]] || die "production-ha must run three Loki replicas"
+[[ "$tempo_ingester_replicas" -eq 3 ]] || die "production-ha must run three Tempo ingesters"
+[[ "$grafana_replicas" -eq 3 ]] || die "production-ha must run three Grafana replicas"
+grep -q '^type = postgres$' <<<"$grafana_config" || die "production-ha Grafana must use PostgreSQL"
+grep -q 'thanos-query.monitoring.svc.cluster.local' <<<"$grafana_datasources" || die "production-ha Grafana must query Prometheus data through Thanos"
+
+thanos_query_replicas="$(yq ea -N 'select(.kind == "Deployment" and .metadata.name == "thanos-query") | .spec.replicas' "$PRODUCTION_HA_RENDER")"
+thanos_store_replicas="$(yq ea -N 'select(.kind == "StatefulSet" and .metadata.name == "thanos-store") | .spec.replicas' "$PRODUCTION_HA_RENDER")"
+thanos_query_args="$(yq ea -N -r 'select(.kind == "Deployment" and .metadata.name == "thanos-query") | .spec.template.spec.containers[0].args[]' "$PRODUCTION_HA_RENDER")"
+thanos_query_endpoints="$(yq ea -N -r 'select(.kind == "ConfigMap" and .metadata.name == "thanos-query-endpoints") | .data."endpoints.yaml"' "$PRODUCTION_HA_RENDER")"
+[[ "$thanos_query_replicas" -eq 3 && "$thanos_store_replicas" -eq 3 ]] || die "production-ha must run three Thanos Query and Store replicas"
+grep -q '^--endpoint.sd-config-file=' <<<"$thanos_query_args" || die "Thanos Query must use the endpoint service-discovery configuration"
+if grep -Eq '^--endpoint(-group)?=' <<<"$thanos_query_args"; then
+  die "Thanos Query must not use deprecated endpoint flags"
+fi
+grep -q 'kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local:10901' <<<"$thanos_query_endpoints" || die "Thanos Query must discover Prometheus sidecars"
+grep -q 'thanos-store.monitoring.svc.cluster.local:10901' <<<"$thanos_query_endpoints" || die "Thanos Query must discover object-store gateways"
 
 # Static manifests and custom resources are validated without
 # -ignore-missing-schemas: every kind used here must have a schema in the
@@ -212,9 +277,19 @@ NETWORK_POLICY_CHART="${BASE_DIR}/charts/network-policies"
 NETWORK_POLICY_RENDER="${WORK_DIR}/network-policies.yaml"
 helm lint "${BASE_DIR}/charts/infisical-platform"
 helm lint "$NETWORK_POLICY_CHART"
+helm lint "${BASE_DIR}/charts/thanos"
+helm lint "${BASE_DIR}/charts/production-ha-policies"
 helm template ocf-network-policies "$NETWORK_POLICY_CHART" \
   --namespace platform-system >"$NETWORK_POLICY_RENDER"
 kubeconform -strict -summary "$NETWORK_POLICY_RENDER"
+
+HA_NETWORK_POLICY_RENDER="${WORK_DIR}/production-ha-network-policies.yaml"
+helm template ocf-network-policies "$NETWORK_POLICY_CHART" \
+  --namespace platform-system \
+  --set 'grafanaDatabaseCidrs={10.20.30.40/32,2001:db8::/64}' >"$HA_NETWORK_POLICY_RENDER"
+kubeconform -strict -summary "$HA_NETWORK_POLICY_RENDER"
+grafana_database_policy_cidrs="$(yq ea -o=json -I=0 'select(.kind == "NetworkPolicy" and .metadata.name == "ocf-grafana-database") | [.spec.egress[0].to[].ipBlock.cidr] | sort' "$HA_NETWORK_POLICY_RENDER")"
+[[ "$grafana_database_policy_cidrs" == '["10.20.30.40/32","2001:db8::/64"]' ]] || die "production-ha must restrict Grafana PostgreSQL egress to configured CIDRs"
 
 declared_managed_namespaces="$(yq -o=json -I=0 '.managedNamespaces | sort' "${NETWORK_POLICY_CHART}/values.yaml")"
 labeled_managed_namespaces="$(yq ea -o=json -I=0 '[select(.kind == "Namespace" and .metadata.labels."open-cluster-foundation.io/network-policy" == "managed") | .metadata.name] | sort' "${BASE_DIR}/manifests/namespace-baseline.yaml")"

@@ -39,6 +39,8 @@ to force a newer binary outside the chart's tested path.
 | kube-prometheus-stack | Helm chart | chart `87.2.1`, Prometheus `v3.12.0` | Yes |
 | Loki | Helm chart | chart `18.1.1`, app `3.7.3` | Yes |
 | Tempo | Helm chart | chart `2.2.3`, app `2.10.7` | Yes |
+| Tempo distributed | Helm chart | chart `2.26.2`, app `2.10.7` | HA profile |
+| Thanos | Local Helm chart | app `v0.42.4` | HA profile |
 | Grafana | Helm chart | chart `12.7.1`, app `13.1.0` | Yes |
 | Grafana Alloy | Helm chart | chart `1.10.0`, app `v1.17.0` | Yes |
 | Blackbox exporter | Helm chart | chart `11.18.0`, app `v0.28.0` | Yes |
@@ -64,6 +66,7 @@ already running.
 | --- | --- | --- | --- |
 | `starter` | Small first installation | Edge, certificates, GitOps and observability | None |
 | `production` | Production control plane | Starter plus CloudNativePG and Strimzi operators | None |
+| `production-ha` | Failure-tolerant production control plane | Production with replicated services and durable observability | None |
 | `production-data` | Explicit data-services installation | Production platform | Kafka, Kafka Connect and Valkey |
 | `default` | Compatibility for existing OCF installs | Previous default set | Kafka, Kafka Connect and Valkey |
 | `all-components` | Explicit full installation | All operators, ZITADEL and Infisical | Kafka, Kafka Connect and Valkey |
@@ -177,6 +180,13 @@ application data. Select `production-data` only after reviewing Kafka and
 Valkey capacity, storage and recovery requirements. The `all-components`
 environment also enables ZITADEL, Infisical and the RabbitMQ operators; do not
 run it until their database, master key and application secrets are created.
+
+Select `production-ha` only after completing the
+[HA prerequisites and migration procedure](../../docs/production-ha.md) and
+the [capacity and cost review](../../docs/capacity-planning.md). It requires
+three eligible nodes across at least two zones, external PostgreSQL for Grafana
+and S3-compatible storage for Prometheus, Loki and Tempo. The profile is
+explicitly opt-in and does not alter compatibility upgrades.
 
 The `production-data`, `default`, `all-components` and `ci` environments also
 apply:

@@ -27,7 +27,7 @@ assert_succeeds() {
 
 require_command yq
 
-for environment in starter production production-data default all-components ci; do
+for environment in starter production production-ha production-data default all-components ci; do
   ENVIRONMENT="$environment"
   assert_succeeds validate_profile_contract
 done
@@ -48,8 +48,53 @@ assert_fails require_instance_values_file grafana
 touch "${BASE_DIR}/values/local/grafana.yaml"
 assert_succeeds require_instance_values_file grafana
 
+valid_topology='{"items":[{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-a"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}},{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-b"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}},{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-a"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}}]}'
+single_zone_topology='{"items":[{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-a"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}},{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-a"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}},{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-a"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}}]}'
+insufficient_topology='{"items":[{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-a"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}},{"metadata":{"labels":{"topology.kubernetes.io/zone":"zone-b"}},"spec":{},"status":{"conditions":[{"type":"Ready","status":"True"}]}}]}'
+assert_succeeds validate_high_availability_topology_json "$valid_topology"
+assert_fails validate_high_availability_topology_json "$single_zone_topology"
+assert_fails validate_high_availability_topology_json "$insufficient_topology"
+
+unset OCF_GRAFANA_DATABASE_CIDRS
+assert_fails validate_grafana_database_cidrs
+OCF_GRAFANA_DATABASE_CIDRS='10.20.30.40/32,2001:db8::/64'
+assert_succeeds validate_grafana_database_cidrs
+OCF_GRAFANA_DATABASE_CIDRS='0.0.0.0/0'
+assert_fails validate_grafana_database_cidrs
+OCF_GRAFANA_DATABASE_CIDRS='10.20.30.999/32'
+assert_fails validate_grafana_database_cidrs
+OCF_GRAFANA_DATABASE_CIDRS='10.20.30.40/99'
+assert_fails validate_grafana_database_cidrs
+unset OCF_GRAFANA_DATABASE_CIDRS
+
 ENVIRONMENT="ci"
 assert_succeeds validate_instance_values
+
+cat >"${BASE_DIR}/values/local/loki.yaml" <<'EOF'
+loki:
+  storage:
+    type: s3
+    bucketNames:
+      chunks: prod-loki-chunks
+      ruler: prod-loki-ruler
+      admin: prod-loki-admin
+    s3:
+      endpoint: ${LOKI_S3_ENDPOINT}
+      region: ${S3_REGION}
+EOF
+cat >"${BASE_DIR}/values/local/tempo-distributed.yaml" <<'EOF'
+storage:
+  trace:
+    backend: s3
+    s3:
+      bucket: ${TEMPO_S3_BUCKET}
+      endpoint: ${TEMPO_S3_ENDPOINT}
+      region: ${S3_REGION}
+EOF
+assert_succeeds validate_durable_observability_values
+sed -i.bak 's/prod-loki-admin/prod-loki-chunks/' "${BASE_DIR}/values/local/loki.yaml"
+rm "${BASE_DIR}/values/local/loki.yaml.bak"
+assert_fails validate_durable_observability_values
 
 ENVIRONMENT="default"
 OCF_RESOLVED_IDENTITY_ACCESS_MODE="legacy"

@@ -1,0 +1,42 @@
+image:
+  repository: quay.io/thanos/thanos
+  tag: v0.42.4
+  pullPolicy: IfNotPresent
+
+objectStorageSecret:
+  name: thanos-object-storage
+  key: objstore.yml
+
+query:
+  replicas: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+store:
+  replicas: 3
+  persistence:
+    size: 20Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+compactor:
+  persistence:
+    size: 50Gi
+  retention:
+    raw: 30d
+    fiveMinutes: 180d
+    oneHour: 365d
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi

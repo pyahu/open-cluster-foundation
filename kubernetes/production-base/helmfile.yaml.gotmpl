@@ -6,6 +6,9 @@ environments:
   production:
     values:
       - environments/production.yaml
+  production-ha:
+    values:
+      - environments/production-ha.yaml
   production-data:
     values:
       - environments/production-data.yaml
@@ -72,6 +75,9 @@ releases:
     version: {{ $versions.components.envoyGateway.chartVersion | quote }}
     values:
       - values/envoy-gateway.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/envoy-gateway.yaml
+{{- end }}
 
   - name: cert-manager
     namespace: cert-manager
@@ -86,6 +92,9 @@ releases:
       - envoy-gateway-system/envoy-gateway
     values:
       - values/cert-manager.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/cert-manager.yaml
+{{- end }}
 
   - name: argocd
     namespace: argocd
@@ -97,6 +106,9 @@ releases:
     missingFileHandler: Info
     values:
       - values/argocd.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/argocd.yaml
+{{- end }}
 {{- if eq $identityAccessMode "legacy" }}
       - values/legacy/argocd.yaml
 {{- end }}
@@ -114,6 +126,9 @@ releases:
     version: {{ $versions.components.cloudNativePg.chartVersion | quote }}
     values:
       - values/cloudnative-pg.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/cloudnative-pg.yaml
+{{- end }}
 
   - name: strimzi-kafka-operator
     namespace: strimzi-system
@@ -124,6 +139,9 @@ releases:
     version: {{ $versions.components.strimzi.chartVersion | quote }}
     values:
       - values/strimzi-kafka-operator.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/strimzi-kafka-operator.yaml
+{{- end }}
 
   - name: kube-prometheus-stack
     namespace: monitoring
@@ -137,6 +155,9 @@ releases:
     missingFileHandler: Info
     values:
       - values/kube-prometheus-stack.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/kube-prometheus-stack.yaml
+{{- end }}
 {{- if eq $observabilityScope "trusted" }}
       - values/trusted/kube-prometheus-stack.yaml
 {{- end }}
@@ -157,6 +178,9 @@ releases:
     version: {{ $versions.components.metricsServer.chartVersion | quote }}
     values:
       - values/metrics-server.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/metrics-server.yaml
+{{- end }}
 {{- if eq .Environment.Name "ci" }}
       - values/ci/metrics-server.yaml
 {{- end }}
@@ -172,6 +196,9 @@ releases:
     version: {{ $versions.components.blackboxExporter.chartVersion | quote }}
     values:
       - values/blackbox-exporter.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/blackbox-exporter.yaml
+{{- end }}
 
   - name: loki
     namespace: monitoring
@@ -185,13 +212,16 @@ releases:
     missingFileHandler: Info
     values:
       - values/loki.yaml
+{{- if .Values.profiles.durableObservability }}
+      - values/production-ha/loki.yaml
+{{- end }}
       - values/local/loki.yaml
 
   - name: tempo
     namespace: monitoring
     labels:
       profile: observability
-    installed: {{ .Values.profiles.observability }}
+    installed: {{ and .Values.profiles.observability (not .Values.profiles.durableObservability) }}
     chart: grafana-community/tempo
     version: {{ $versions.components.tempo.chartVersion | quote }}
     # values/local/tempo.yaml (gitignored) carries instance settings such as
@@ -200,6 +230,18 @@ releases:
     values:
       - values/tempo.yaml
       - values/local/tempo.yaml
+
+  - name: tempo-distributed
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ and .Values.profiles.observability .Values.profiles.durableObservability }}
+    chart: grafana-community/tempo-distributed
+    version: {{ $versions.components.tempoDistributed.chartVersion | quote }}
+    missingFileHandler: Info
+    values:
+      - values/production-ha/tempo-distributed.yaml
+      - values/local/tempo-distributed.yaml
 
   - name: alloy
     namespace: monitoring
@@ -225,12 +267,20 @@ releases:
     needs:
       - monitoring/kube-prometheus-stack
       - monitoring/loki
+{{- if .Values.profiles.durableObservability }}
+      - monitoring/tempo-distributed
+      - monitoring/thanos
+{{- else }}
       - monitoring/tempo
+{{- end }}
     # values/local/*.yaml carries instance-specific settings (public URL, OIDC
     # issuer) and is gitignored; helmfile skips it when absent.
     missingFileHandler: Info
     values:
       - values/grafana.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/grafana.yaml
+{{- end }}
 {{- if eq $identityAccessMode "legacy" }}
       - values/legacy/grafana.yaml
 {{- end }}
@@ -251,6 +301,29 @@ releases:
     version: {{ $versions.components.reloader.chartVersion | quote }}
     values:
       - values/reloader.yaml
+{{- if .Values.profiles.highAvailability }}
+      - values/production-ha/reloader.yaml
+{{- end }}
+
+  - name: thanos
+    namespace: monitoring
+    labels:
+      profile: observability
+    installed: {{ and .Values.profiles.observability .Values.profiles.durableObservability }}
+    chart: charts/thanos
+    needs:
+      - monitoring/kube-prometheus-stack
+    values:
+      - values/production-ha/thanos.yaml
+
+  - name: production-ha-policies
+    namespace: platform-system
+    labels:
+      profile: high-availability
+    installed: {{ .Values.profiles.highAvailability }}
+    chart: charts/production-ha-policies
+    needs:
+      - cnpg-system/cloudnative-pg
 
   - name: valkey
     namespace: cache

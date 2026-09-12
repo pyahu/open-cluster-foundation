@@ -1,0 +1,36 @@
+global:
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+
+controller:
+  replicas: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+server:
+  replicas: 3
+  pdb:
+    enabled: true
+    minAvailable: 2
+
+repoServer:
+  replicas: 3
+  pdb:
+    enabled: true
+    minAvailable: 2
+
+applicationSet:
+  replicas: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+notifications:
+  pdb:
+    enabled: false

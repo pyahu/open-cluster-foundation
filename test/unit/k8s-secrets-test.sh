@@ -58,6 +58,45 @@ read_secret_value() {
     valkey-acl/default)
       printf '%s' "$MOCK_VALKEY_PASSWORD"
       ;;
+    observability-object-storage/LOKI_S3_ENDPOINT)
+      printf '%s' "$MOCK_LOKI_S3_ENDPOINT"
+      ;;
+    observability-object-storage/TEMPO_S3_ENDPOINT)
+      printf '%s' "$MOCK_TEMPO_S3_ENDPOINT"
+      ;;
+    observability-object-storage/S3_REGION)
+      printf '%s' "$MOCK_S3_REGION"
+      ;;
+    observability-object-storage/AWS_ACCESS_KEY_ID)
+      printf '%s' "$MOCK_S3_ACCESS_KEY"
+      ;;
+    observability-object-storage/AWS_SECRET_ACCESS_KEY)
+      printf '%s' "$MOCK_S3_SECRET_KEY"
+      ;;
+    observability-object-storage/TEMPO_S3_BUCKET)
+      printf '%s' "$MOCK_TEMPO_BUCKET"
+      ;;
+    grafana-database/GF_DATABASE_HOST)
+      printf '%s' "$MOCK_GRAFANA_DATABASE_HOST"
+      ;;
+    grafana-database/GF_DATABASE_NAME)
+      printf '%s' "$MOCK_GRAFANA_DATABASE_NAME"
+      ;;
+    grafana-database/GF_DATABASE_USER)
+      printf '%s' "$MOCK_GRAFANA_DATABASE_USER"
+      ;;
+    grafana-database/GF_DATABASE_PASSWORD)
+      printf '%s' "$MOCK_GRAFANA_DATABASE_PASSWORD"
+      ;;
+    grafana-database/GF_SECURITY_SECRET_KEY)
+      printf '%s' "$MOCK_GRAFANA_SECURITY_KEY"
+      ;;
+    grafana-database-ca/ca.crt)
+      printf '%s' "$MOCK_GRAFANA_DATABASE_CA"
+      ;;
+    thanos-object-storage/objstore.yml)
+      printf '%s' "$MOCK_THANOS_OBJECT_STORAGE"
+      ;;
     *)
       die "unexpected mock secret: $2/$3"
       ;;
@@ -98,5 +137,32 @@ assert_fails validate_infisical_inputs
 MOCK_INFISICAL_TRUSTED_PROXY_CIDRS='10.244.0.0/16'
 MOCK_INFISICAL_REDIS_PASSWORD=wrong
 assert_fails validate_infisical_inputs
+
+MOCK_LOKI_S3_ENDPOINT='https://objectstorage.prod.internal'
+MOCK_TEMPO_S3_ENDPOINT='objectstorage.prod.internal'
+MOCK_S3_REGION='eu-west-production'
+MOCK_S3_ACCESS_KEY='production-access-key'
+MOCK_S3_SECRET_KEY='production-secret-key'
+MOCK_TEMPO_BUCKET='production-tempo'
+MOCK_GRAFANA_DATABASE_HOST='postgres.prod.internal:5432'
+MOCK_GRAFANA_DATABASE_NAME='grafana'
+MOCK_GRAFANA_DATABASE_USER='grafana'
+MOCK_GRAFANA_DATABASE_PASSWORD='production-database-password'
+MOCK_GRAFANA_SECURITY_KEY='0123456789abcdef0123456789abcdef'
+MOCK_GRAFANA_DATABASE_CA=$'-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----'
+MOCK_THANOS_OBJECT_STORAGE=$'type: S3\nconfig:\n  bucket: production-thanos\n  endpoint: objectstorage.prod.internal\n  region: eu-west-production\n  access_key: production-access-key\n  secret_key: production-secret-key\n  insecure: false'
+validate_durable_observability_inputs
+
+MOCK_LOKI_S3_ENDPOINT='http://objectstorage.prod.internal'
+assert_fails validate_durable_observability_inputs
+MOCK_LOKI_S3_ENDPOINT='https://objectstorage.prod.internal'
+MOCK_TEMPO_S3_ENDPOINT='https://objectstorage.prod.internal'
+assert_fails validate_durable_observability_inputs
+MOCK_TEMPO_S3_ENDPOINT='objectstorage.prod.internal'
+MOCK_GRAFANA_SECURITY_KEY='short'
+assert_fails validate_durable_observability_inputs
+MOCK_GRAFANA_SECURITY_KEY='0123456789abcdef0123456789abcdef'
+MOCK_THANOS_OBJECT_STORAGE=$'type: S3\nconfig:\n  bucket: production-thanos\n  endpoint: objectstorage.prod.internal\n  region: eu-west-production\n  insecure: true'
+assert_fails validate_durable_observability_inputs
 
 printf '%s\n' "Kubernetes secret validation unit tests passed"

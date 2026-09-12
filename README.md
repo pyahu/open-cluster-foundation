@@ -54,6 +54,9 @@ running critical workloads.
 Fresh installations and upgrades follow an explicit
 [compatibility contract](docs/compatibility.md). Existing installations keep
 the compatible upgrade path until a documented migration is selected.
+Failure-tolerant deployments use the opt-in
+[`production-ha` profile](docs/production-ha.md) after an explicit
+[capacity and cost review](docs/capacity-planning.md).
 
 ## Quickstart (OCI)
 
