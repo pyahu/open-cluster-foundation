@@ -132,8 +132,8 @@ mise run k8s:base:apply -- --mode upgrade --network-policies enforce --yes
 
 The policy contract allows communication among OCF-managed namespaces, DNS on
 TCP/UDP 53, outbound HTTP/HTTPS, Kubernetes admission webhooks, public Envoy
-listeners and labeled access to platform services. Other ingress and egress is
-denied in OCF-managed namespaces.
+listeners, the Kubernetes API on TCP 443/6443 and labeled access to platform
+services. Other ingress and egress is denied in OCF-managed namespaces.
 
 If a missed dependency causes an outage, remove only the policy release and
 restore service before changing the allowlist:

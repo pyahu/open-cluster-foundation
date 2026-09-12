@@ -118,4 +118,11 @@ labeled_managed_namespaces="$(yq ea -o=json -I=0 '[select(.kind == "Namespace" a
 network_policy_count="$(yq ea '[select(.apiVersion == "networking.k8s.io/v1" and .kind == "NetworkPolicy")] | length' "$NETWORK_POLICY_RENDER")"
 [[ "$network_policy_count" -ge 20 ]] || die "expected at least 20 rendered NetworkPolicies"
 
+api_server_policy_count="$(yq ea '[
+  select(.kind == "NetworkPolicy" and .metadata.name == "ocf-baseline") |
+  select([.spec.egress[].ports[]? | select(.protocol == "TCP" and .port == 6443)] | length > 0)
+] | length' "$NETWORK_POLICY_RENDER")"
+managed_namespace_count="$(yq '.managedNamespaces | length' "${NETWORK_POLICY_CHART}/values.yaml")"
+[[ "$api_server_policy_count" -eq "$managed_namespace_count" ]] || die "every baseline policy must allow the Kubernetes API server port"
+
 log "kubernetes checks passed"

@@ -33,4 +33,6 @@ spec:
           port: 80
         - protocol: TCP
           port: 443
+        - protocol: TCP
+          port: 6443
 {{- end }}
