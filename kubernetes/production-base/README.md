@@ -64,6 +64,8 @@ The default environment enables:
 - kube-prometheus-stack, Loki, Tempo, Grafana, Alloy and Reloader, plus
   curated Grafana dashboards and PrometheusRules for Kafka, CloudNativePG,
   Loki and cert-manager.
+- Valkey, for cluster-internal caching and Redis-compatible dependencies such
+  as Infisical.
 - Edge and synthetic monitoring: Envoy proxy and Envoy Gateway scrape
   targets, per-route request, error and latency rules, and the blackbox
   exporter for Probe resources (availability, latency and certificate expiry
@@ -105,10 +107,23 @@ Alertmanager, so silences can be set from there.
 
 Retention, alert receivers and anything else specific to one cluster go in
 `values/local/<release>.yaml` (gitignored), which helmfile layers on top of
-the base values for `kube-prometheus-stack`, `loki`, `tempo`, `alloy` and
-`grafana` when the file exists.
-- Valkey, for cluster-internal caching and Redis-compatible dependencies such
-  as Infisical.
+the base values for `argocd`, `kube-prometheus-stack`, `loki`, `tempo`,
+`alloy` and `grafana` when the file exists.
+
+Argo CD and Grafana contain public-domain and identity-provider settings that
+must never fall back to repository placeholders on a real cluster. Before a
+non-CI apply, create both required local files:
+
+```sh
+mkdir -p values/local
+cp values/local-examples/argocd.yaml values/local/argocd.yaml
+cp values/local-examples/grafana.yaml values/local/grafana.yaml
+${EDITOR:-vi} values/local/argocd.yaml values/local/grafana.yaml
+```
+
+The apply preflight rejects missing files, placeholder domains, non-HTTPS
+Grafana endpoints and a Grafana role expression that grants every OIDC user
+administrator access. Rendering and CI do not require private instance values.
 
 The optional `all-components` environment also enables ZITADEL and Infisical.
 Do not run that environment until their database, master key and application

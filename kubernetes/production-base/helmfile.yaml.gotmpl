@@ -82,8 +82,10 @@ releases:
     installed: {{ .Values.profiles.gitops }}
     chart: argo/argo-cd
     version: {{ $versions.components.argoCd.chartVersion | quote }}
+    missingFileHandler: Info
     values:
       - values/argocd.yaml
+      - values/local/argocd.yaml
 {{- if eq .Environment.Name "ci" }}
       - values/ci/argocd.yaml
 {{- end }}

@@ -5,6 +5,8 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/k8s-config.sh
+source "${SCRIPT_DIR}/lib/k8s-config.sh"
 
 ACTION="${1:-check}"
 shift || true
@@ -58,6 +60,7 @@ require_k8s_tools() {
   require_command helm
   require_command helmfile
   require_command openssl
+  require_command yq
 
   # helmfile apply diffs releases through the helm-diff plugin.
   helm plugin list 2>/dev/null | grep -q '^diff' ||
@@ -84,6 +87,13 @@ preflight() {
   kubectl get nodes -o wide
   check_default_storage_class
   kubectl auth can-i '*' '*' --all-namespaces >/dev/null || die "current identity does not have cluster-admin-like permissions"
+}
+
+check_configuration() {
+  require_command kubectl
+  require_command yq
+  preflight
+  validate_instance_values
 }
 
 ensure_secret_exists() {
@@ -282,7 +292,7 @@ apply_kafka_base() {
 
 apply_base() {
   require_k8s_tools
-  preflight
+  check_configuration
   confirm_apply "This will install or update the Kubernetes production base on the current context" "$AUTO_APPROVE"
 
   log "applying namespaces and Pod Security labels"
@@ -322,7 +332,7 @@ apply_base() {
 
 case "$ACTION" in
   check)
-    preflight
+    check_configuration
     ;;
   render)
     render

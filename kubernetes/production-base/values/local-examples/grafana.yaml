@@ -1,0 +1,11 @@
+grafana.ini:
+  server:
+    root_url: https://grafana.cluster.example
+  auth.generic_oauth:
+    name: OIDC
+    scopes: openid profile email groups
+    auth_url: https://identity.cluster.example/oauth2/authorize
+    token_url: https://identity.cluster.example/oauth2/token
+    api_url: https://identity.cluster.example/userinfo
+    role_attribute_path: contains(groups[*], 'grafana-admin') && 'GrafanaAdmin' || contains(groups[*], 'grafana-editor') && 'Editor' || 'Viewer'
+    allow_assign_grafana_admin: true
