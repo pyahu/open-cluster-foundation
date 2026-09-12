@@ -128,6 +128,15 @@ cp kubernetes/production-base/values/local-examples/grafana.yaml \
 ${EDITOR:-vi} kubernetes/production-base/values/local/argocd.yaml \
   kubernetes/production-base/values/local/grafana.yaml
 
+kubectl apply -f kubernetes/production-base/manifests/namespace-baseline.yaml
+kubectl -n argocd create secret generic argocd-oidc-credentials \
+  --from-literal=clientSecret="<oidc-application-secret>"
+kubectl -n argocd label secret argocd-oidc-credentials \
+  app.kubernetes.io/part-of=argocd
+kubectl -n monitoring create secret generic grafana-oidc-credentials \
+  --from-literal=client_id="<oidc-application-client-id>" \
+  --from-literal=client_secret="<oidc-application-client-secret>"
+
 mise run k8s:base:check
 export ACME_EMAIL="platform@example.com"   # optional; enables Let's Encrypt issuers
 mise run k8s:base:apply -- --yes
@@ -138,6 +147,11 @@ Automatic fresh installs use the lightweight `starter` preset. Use
 `--environment production-data` to opt in to the repository's Kafka, Kafka
 Connect and Valkey operands. Existing installations retain the former default
 profile automatically.
+
+Fresh installations require group-mapped SSO for Argo CD and Grafana. Existing
+installations keep their current access model until the explicit
+[`--identity-access sso` migration](docs/compatibility.md#identity-access-migration)
+is completed, so an upgrade cannot silently disable working operator access.
 
 After the base is installed, point DNS at the Envoy Gateway load balancer,
 replace the example domains and follow the

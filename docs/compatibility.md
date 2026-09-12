@@ -25,8 +25,8 @@ After every successful apply, OCF writes
 `platform-system/open-cluster-foundation-installation`. The ConfigMap records
 the state schema, environment, resolved operation, installation origin, source
 revision, component-version digest, enabled profiles, NetworkPolicy state,
-observability scope and completion time. A failed or interrupted apply never
-updates this state.
+observability scope, identity access mode and completion time. A failed or
+interrupted apply never updates this state.
 
 The first successful apply to a legacy installation records `origin=adopted`.
 It does not change the selected environment or enable new components merely
@@ -215,3 +215,59 @@ mise run k8s:base:apply -- --mode upgrade --observability-scope legacy --yes
 Direct Helmfile runs default to the trusted scope because they cannot detect
 installation history. Use `OCF_OBSERVABILITY_SCOPE=legacy` only for a reviewed
 manual upgrade that intentionally preserves the former discovery behavior.
+
+## Identity access migration
+
+Fresh installations use `identity-access=sso`. Argo CD disables its local
+administrator and assigns no default application permission beyond the empty
+`role:authenticated`. Grafana disables the login form, enables PKCE and refresh
+tokens, requires explicit group-derived roles and prevents OAuth claims from
+assigning Grafana server administrator. The CI profile disables external OAuth
+because its cluster is disposable and has no identity provider.
+
+Legacy installations and managed installations without an identity access
+state retain `identity-access=legacy`. This preserves the Argo CD local
+administrator, default read-only Argo CD access and the former Grafana login
+and OAuth mapping during adoption. An automatic upgrade therefore does not
+lock operators out of an existing cluster.
+
+Create separate OIDC applications for Argo CD and Grafana. While the cluster
+is still in legacy mode, configure their exact redirect URIs, require MFA at
+the identity provider, create administrator and read-only/viewer groups and
+place the application settings in the two gitignored local values files. Start
+from `values/local-examples/argocd.yaml` and
+`values/local-examples/grafana.yaml`.
+
+Create the credentials without committing them:
+
+```sh
+kubectl --context <context> -n argocd create secret generic argocd-oidc-credentials \
+  --from-literal=clientSecret='<secret>'
+kubectl --context <context> -n argocd label secret argocd-oidc-credentials \
+  app.kubernetes.io/part-of=argocd
+kubectl --context <context> -n monitoring create secret generic grafana-oidc-credentials \
+  --from-literal=client_id='<client-id>' \
+  --from-literal=client_secret='<secret>'
+```
+
+Run the read-only preflight, then enable SSO explicitly:
+
+```sh
+mise run k8s:base:check -- --mode upgrade --identity-access sso
+mise run k8s:base:apply -- --mode upgrade --identity-access sso --yes
+```
+
+Use a private browser session to verify an administrator login and a
+read-only/viewer login in both products. Confirm that an unmapped identity has
+no application role. Keep a current cluster-admin kubeconfig outside Argo CD;
+it is the recovery path if the identity provider is unavailable.
+
+To restore the former local access while investigating a failed migration:
+
+```sh
+mise run k8s:base:apply -- --mode upgrade --identity-access legacy --yes
+```
+
+Direct Helmfile runs default to SSO because they cannot detect installation
+history. Set `OCF_IDENTITY_ACCESS_MODE=legacy` only for a reviewed manual
+upgrade that intentionally preserves the former access model.

@@ -41,6 +41,11 @@ tags (`vYYYY.M.PATCH`).
 
 ### Changed
 
+- Fresh installations now use group-mapped SSO-only access for Argo CD and
+  Grafana, with Argo CD local admin disabled, no implicit application access,
+  Grafana PKCE and refresh tokens, strict roles and no OAuth server-admin
+  assignment. Existing installations retain the former access model behind an
+  explicit, stateful migration gate.
 - The blackbox `http_reachable` module accepts 404 and 405: an API with
   nothing mapped at `/` answers that way and is up. The module now matches its
   own description, anything but a server error.

@@ -52,6 +52,7 @@ ENVIRONMENT="ci"
 assert_succeeds validate_instance_values
 
 ENVIRONMENT="default"
+OCF_RESOLVED_IDENTITY_ACCESS_MODE="legacy"
 assert_fails validate_instance_values
 
 printf '%s\n' \
@@ -84,5 +85,63 @@ printf '%s\n' \
   >"${BASE_DIR}/values/local/grafana.yaml"
 
 assert_succeeds validate_instance_values
+
+OCF_RESOLVED_IDENTITY_ACCESS_MODE="sso"
+assert_fails validate_instance_values
+
+cat >"${BASE_DIR}/values/local/argocd.yaml" <<'EOF'
+global:
+  domain: argocd.prod.internal
+configs:
+  cm:
+    admin.enabled: false
+    url: https://argocd.prod.internal
+    oidc.config: |
+      name: OIDC
+      issuer: https://identity.prod.internal
+      clientID: argocd-production
+      clientSecret: $argocd-oidc-credentials:clientSecret
+      allowedAudiences:
+        - argocd-production
+      requestedScopes:
+        - openid
+        - profile
+        - email
+        - groups
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+  rbac:
+    policy.default: role:authenticated
+    policy.csv: |
+      g, platform-argocd-admins, role:admin
+      g, platform-argocd-readonly, role:readonly
+    scopes: '[groups]'
+EOF
+
+cat >"${BASE_DIR}/values/local/grafana.yaml" <<'EOF'
+grafana.ini:
+  server:
+    root_url: https://grafana.prod.internal
+  auth:
+    disable_login_form: true
+  auth.generic_oauth:
+    enabled: true
+    scopes: openid profile email groups offline_access
+    auth_url: https://identity.prod.internal/authorize
+    token_url: https://identity.prod.internal/token
+    api_url: https://identity.prod.internal/userinfo
+    use_pkce: true
+    use_refresh_token: true
+    role_attribute_strict: true
+    role_attribute_path: contains(groups[*], 'platform-grafana-admins') && 'Admin' || contains(groups[*], 'platform-grafana-editors') && 'Editor' || contains(groups[*], 'platform-grafana-viewers') && 'Viewer' || 'None'
+    allow_assign_grafana_admin: false
+EOF
+
+assert_succeeds validate_instance_values
+
+sed -i.bak "s/allow_assign_grafana_admin: false/allow_assign_grafana_admin: true/" "${BASE_DIR}/values/local/grafana.yaml"
+rm "${BASE_DIR}/values/local/grafana.yaml.bak"
+assert_fails validate_instance_values
 
 printf '%s\n' "k8s production base unit tests passed"

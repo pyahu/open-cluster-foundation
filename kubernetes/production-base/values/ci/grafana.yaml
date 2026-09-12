@@ -5,5 +5,7 @@
 envFromSecrets: []
 
 grafana.ini:
+  auth:
+    disable_login_form: false
   auth.generic_oauth:
     enabled: false

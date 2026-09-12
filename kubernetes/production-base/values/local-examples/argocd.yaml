@@ -1,2 +1,28 @@
 global:
   domain: argocd.cluster.example
+
+configs:
+  cm:
+    admin.enabled: false
+    url: https://argocd.cluster.example
+    oidc.config: |
+      name: OIDC
+      issuer: https://identity.cluster.example
+      clientID: replace-me
+      clientSecret: $argocd-oidc-credentials:clientSecret
+      allowedAudiences:
+        - replace-me
+      requestedScopes:
+        - openid
+        - profile
+        - email
+        - groups
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+  rbac:
+    policy.default: role:authenticated
+    policy.csv: |
+      g, replace-me-argocd-admins, role:admin
+      g, replace-me-argocd-readonly, role:readonly
+    scopes: '[groups]'

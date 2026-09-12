@@ -47,6 +47,13 @@ assert_output trusted resolve_observability_scope auto managed trusted
 assert_output trusted resolve_observability_scope trusted legacy
 assert_output legacy resolve_observability_scope legacy fresh
 assert_fails resolve_observability_scope invalid fresh
+assert_output sso resolve_identity_access_mode auto fresh
+assert_output legacy resolve_identity_access_mode auto legacy
+assert_output legacy resolve_identity_access_mode auto managed
+assert_output sso resolve_identity_access_mode auto managed sso
+assert_output sso resolve_identity_access_mode sso legacy
+assert_output legacy resolve_identity_access_mode legacy fresh
+assert_fails resolve_identity_access_mode invalid fresh
 assert_output 'team-a|team-b' build_observability_application_namespace_regex platform-system team-a monitoring team-b
 assert_output 'a^' build_observability_application_namespace_regex platform-system monitoring
 
@@ -74,17 +81,20 @@ INSTALL_MODE=auto
 ALLOW_ENVIRONMENT_CHANGE=false
 NETWORK_POLICY_MODE=auto
 OBSERVABILITY_SCOPE=auto
+IDENTITY_ACCESS_MODE=auto
 DETECTED_INSTALLATION_STATE=fresh
 ENVIRONMENT=auto
 prepare_installation >/dev/null
 assert_output starter printf '%s\n' "$ENVIRONMENT"
 assert_output fresh printf '%s\n' "$OCF_RESOLVED_INSTALL_MODE"
+assert_output sso printf '%s\n' "$OCF_RESOLVED_IDENTITY_ACCESS_MODE"
 DETECTED_INSTALLATION_STATE=legacy
 ENVIRONMENT=auto
 prepare_installation >/dev/null
 assert_output default printf '%s\n' "$ENVIRONMENT"
 assert_output upgrade printf '%s\n' "$OCF_RESOLVED_INSTALL_MODE"
 assert_output legacy printf '%s\n' "$OCF_RESOLVED_OBSERVABILITY_SCOPE"
+assert_output legacy printf '%s\n' "$OCF_RESOLVED_IDENTITY_ACCESS_MODE"
 
 DETECTED_INSTALLATION_STATE=legacy
 ENVIRONMENT=auto
@@ -122,6 +132,9 @@ read_installation_state_value() {
     observability-scope)
       printf '%s\n' "${MOCK_OBSERVABILITY_SCOPE:-legacy}"
       ;;
+    identity-access)
+      printf '%s\n' "${MOCK_IDENTITY_ACCESS_MODE:-legacy}"
+      ;;
   esac
 }
 
@@ -149,6 +162,7 @@ OCF_OBSERVED_INSTALLATION_STATE=fresh
 OCF_RESOLVED_INSTALL_MODE=fresh
 OCF_RESOLVED_NETWORK_POLICY_MODE=enforce
 OCF_RESOLVED_OBSERVABILITY_SCOPE=trusted
+OCF_RESOLVED_IDENTITY_ACCESS_MODE=sso
 OCF_SOURCE_REVISION=test-revision
 
 kubectl() {
@@ -170,5 +184,6 @@ assert_output test-revision yq -r '.data."source-revision"' "$STATE_MANIFEST"
 assert_output true yq -r '.data.profiles | from_json | .edge' "$STATE_MANIFEST"
 assert_output enforced yq -r '.data."network-policies"' "$STATE_MANIFEST"
 assert_output trusted yq -r '.data."observability-scope"' "$STATE_MANIFEST"
+assert_output sso yq -r '.data."identity-access"' "$STATE_MANIFEST"
 
 printf '%s\n' "k8s installation state unit tests passed"

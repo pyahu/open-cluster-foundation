@@ -3,11 +3,12 @@ global:
 
 configs:
   cm:
-    admin.enabled: true
+    admin.enabled: false
   params:
     server.insecure: true
   rbac:
-    policy.default: role:readonly
+    policy.default: role:authenticated
+    scopes: '[groups]'
 
 server:
   resources:

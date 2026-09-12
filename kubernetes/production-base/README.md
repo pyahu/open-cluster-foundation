@@ -134,8 +134,9 @@ ${EDITOR:-vi} values/local/argocd.yaml values/local/grafana.yaml
 ```
 
 The apply preflight rejects missing files, placeholder domains, non-HTTPS
-Grafana endpoints and a Grafana role expression that grants every OIDC user
-administrator access. Rendering and CI do not require private instance values.
+identity endpoints, incomplete OIDC claims or audiences, permissive RBAC and
+Grafana role expressions that grant server administrator access. Rendering and
+CI do not require private instance values.
 
 The installer distinguishes fresh, legacy and state-managed targets before it
 applies anything. The full contract, explicit `--mode` controls and environment
@@ -154,6 +155,14 @@ Existing installations retain cluster-wide discovery until the staged
 [observability trust migration](../../docs/compatibility.md#observability-trust-migration)
 is selected with `--observability-scope trusted`. The installation state keeps
 the chosen scope across later automatic upgrades.
+
+Fresh installations use SSO-only access for Argo CD and Grafana. Argo CD's
+local administrator and Grafana's login form are disabled, identities without
+an explicit group mapping receive no application access, and Grafana OAuth
+cannot assign server administrator. Existing installations retain their former
+access behavior until the staged
+[identity access migration](../../docs/compatibility.md#identity-access-migration)
+is selected with `--identity-access sso`.
 
 Select `production` to add database and messaging operators without creating
 application data. Select `production-data` only after reviewing Kafka and
@@ -299,10 +308,21 @@ kubectl -n monitoring create secret generic grafana-oidc-credentials \
   --from-literal=client_secret="<oidc-application-client-secret>"
 ```
 
-The public URL and the issuer endpoints in `values/grafana.yaml` are
-placeholders. Put the real ones in `values/local/grafana.yaml`, a gitignored
-file that helmfile layers on top of the committed values when it exists (same
-rule as `.local/`: instance-specific names never reach Git):
+Argo CD reads its OIDC client secret through a labeled Secret. The client ID,
+issuer, audience, scopes and group mappings remain in the local values file:
+
+```sh
+kubectl -n argocd create secret generic argocd-oidc-credentials \
+  --from-literal=clientSecret="<oidc-application-client-secret>"
+kubectl -n argocd label secret argocd-oidc-credentials \
+  app.kubernetes.io/part-of=argocd
+```
+
+The public URLs, issuer endpoints, client identifiers and authorization groups
+in the local examples are placeholders. Copy both example files into
+`values/local/` and replace every placeholder. These gitignored files are
+layered on top of committed values so instance-specific names never reach Git.
+The Grafana file follows this shape:
 
 ```yaml
 # kubernetes/production-base/values/local/grafana.yaml
@@ -311,10 +331,15 @@ grafana.ini:
     root_url: https://grafana.example.com
   auth.generic_oauth:
     name: ZITADEL
-    scopes: openid profile email urn:zitadel:iam:org:id:<org-id>
+    scopes: openid profile email groups offline_access urn:zitadel:iam:org:id:<org-id>
     auth_url: https://<issuer>/oauth/v2/authorize
     token_url: https://<issuer>/oauth/v2/token
     api_url: https://<issuer>/oidc/v1/userinfo
+    use_pkce: true
+    use_refresh_token: true
+    role_attribute_strict: true
+    role_attribute_path: contains(groups[*], '<admin-group>') && 'Admin' || contains(groups[*], '<editor-group>') && 'Editor' || contains(groups[*], '<viewer-group>') && 'Viewer' || 'None'
+    allow_assign_grafana_admin: false
 ```
 
 The remaining secrets in this section are only required when applying the
@@ -581,7 +606,8 @@ Also test:
 - Configure Alertmanager receivers and escalation rules; the PrometheusRules
   under [`resources/monitoring`](resources/monitoring) fire nowhere until a
   receiver exists.
-- Enable SSO/MFA for Argo CD, Grafana, ZITADEL and Infisical.
+- Verify SSO group mappings and require MFA for Argo CD, Grafana, ZITADEL and
+  Infisical.
 - Test physical backup restore and logical dump restore.
 - Define upgrade windows for Kubernetes, operators and charts.
 - Pin application manifests in Git and let Argo CD reconcile them after the
@@ -593,6 +619,7 @@ Also test:
 - Envoy Gateway Helm install: <https://gateway.envoyproxy.io/docs/install/install-helm/>
 - cert-manager Helm install: <https://cert-manager.io/docs/installation/helm/>
 - Argo CD Helm chart: <https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd>
+- Argo CD user management and external Secret references: <https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/>
 - CloudNativePG installation and backup: <https://cloudnative-pg.io/documentation/current/>
 - RabbitMQ Cluster Operator: <https://www.rabbitmq.com/kubernetes/operator/operator-overview>
 - Strimzi documentation: <https://strimzi.io/documentation/>
@@ -601,6 +628,7 @@ Also test:
 - Infisical Kubernetes deployment: <https://infisical.com/docs/self-hosting/deployment-options/kubernetes>
 - kube-prometheus-stack: <https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>
 - Grafana Helm charts: <https://github.com/grafana-community/helm-charts>
+- Grafana Generic OAuth: <https://grafana.com/docs/grafana/latest/setup-grafana/configure-access/configure-authentication/generic-oauth/>
 - Kubernetes dashboards (dotdc): <https://github.com/dotdc/grafana-dashboards-kubernetes>
 - CNPG Barman Cloud plugin: <https://cloudnative-pg.io/plugin-barman-cloud/>
 - Valkey Helm chart: <https://github.com/valkey-io/valkey-helm>

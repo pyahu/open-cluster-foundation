@@ -22,6 +22,7 @@ environments:
 ---
 {{- $versions := readFile "versions.yaml" | fromYaml -}}
 {{- $observabilityScope := env "OCF_OBSERVABILITY_SCOPE" | default "trusted" -}}
+{{- $identityAccessMode := env "OCF_IDENTITY_ACCESS_MODE" | default "sso" -}}
 # CRD ownership is singular by design: every chart installs and owns its own
 # CRDs (including the Gateway API CRDs, which ship with the Envoy Gateway
 # chart), except the Prometheus Operator CRDs, which the apply script installs
@@ -95,6 +96,9 @@ releases:
     missingFileHandler: Info
     values:
       - values/argocd.yaml
+{{- if eq $identityAccessMode "legacy" }}
+      - values/legacy/argocd.yaml
+{{- end }}
       - values/local/argocd.yaml
 {{- if eq .Environment.Name "ci" }}
       - values/ci/argocd.yaml
@@ -226,6 +230,9 @@ releases:
     missingFileHandler: Info
     values:
       - values/grafana.yaml
+{{- if eq $identityAccessMode "legacy" }}
+      - values/legacy/grafana.yaml
+{{- end }}
 {{- if eq $observabilityScope "trusted" }}
       - values/trusted/grafana.yaml
 {{- end }}

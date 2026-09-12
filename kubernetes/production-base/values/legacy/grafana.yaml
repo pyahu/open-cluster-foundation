@@ -1,0 +1,10 @@
+grafana.ini:
+  auth:
+    disable_login_form: false
+  auth.generic_oauth:
+    scopes: openid profile email
+    use_pkce: false
+    use_refresh_token: false
+    role_attribute_strict: false
+    role_attribute_path: "'GrafanaAdmin'"
+    allow_assign_grafana_admin: true

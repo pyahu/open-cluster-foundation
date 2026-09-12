@@ -95,6 +95,7 @@ STATE_CONFIGMAP="open-cluster-foundation-installation"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "origin" }}')" == "fresh" ]] || die "unexpected installation state origin"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "network-policies" }}')" == "enforced" ]] || die "unexpected installation NetworkPolicy state"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "observability-scope" }}')" == "trusted" ]] || die "unexpected installation observability scope"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "identity-access" }}')" == "sso" ]] || die "unexpected installation identity access mode"
 "${SCRIPT_DIR}/k8s-production-base.sh" check --mode upgrade
 if "${SCRIPT_DIR}/k8s-production-base.sh" check --mode fresh >/dev/null 2>&1; then
   die "fresh mode accepted an existing managed installation"
@@ -174,6 +175,15 @@ done
 kubectl -n monitoring get role grafana >/dev/null
 if kubectl get clusterrole grafana >/dev/null 2>&1; then
   die "Grafana retained cluster-wide dashboard discovery RBAC"
+fi
+
+[[ "$(kubectl -n argocd get configmap argocd-cm -o go-template='{{ index .data "admin.enabled" }}')" == "false" ]] || die "Argo CD local admin is enabled on a fresh installation"
+[[ "$(kubectl -n argocd get configmap argocd-rbac-cm -o go-template='{{ index .data "policy.default" }}')" == "role:authenticated" ]] || die "Argo CD grants read access by default"
+GRAFANA_CONFIG="$(kubectl -n monitoring get configmap grafana -o go-template='{{ index .data "grafana.ini" }}')"
+grep -q '^role_attribute_strict = true$' <<<"$GRAFANA_CONFIG" || die "Grafana does not require explicit role mapping"
+grep -q '^allow_assign_grafana_admin = false$' <<<"$GRAFANA_CONFIG" || die "Grafana allows OAuth server-admin assignment"
+if grep -q GrafanaAdmin <<<"$GRAFANA_CONFIG"; then
+  die "Grafana grants server administrator through OAuth"
 fi
 
 [[ "$(kubectl -n monitoring get configmap strimzi-kafka -o jsonpath='{.metadata.namespace}')" == "monitoring" ]] || die "Strimzi dashboards are not colocated with Grafana"

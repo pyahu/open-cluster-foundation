@@ -109,6 +109,32 @@ expected_observability_namespaces="$(yq -o=json -I=0 '[.managedNamespaces[] | se
 [[ "$trusted_observability_namespaces" == "$expected_observability_namespaces" ]] || die "trusted observability namespaces must match managed namespaces except default"
 
 PROMETHEUS_RENDER="${WORK_DIR}/rendered-ci.yaml"
+SECURE_IDENTITY_RENDER="${WORK_DIR}/rendered-starter.yaml"
+argocd_admin_enabled="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "argocd-cm") | .data."admin.enabled"' "$SECURE_IDENTITY_RENDER")"
+argocd_default_role="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "argocd-rbac-cm") | .data."policy.default"' "$SECURE_IDENTITY_RENDER")"
+secure_grafana_config="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "grafana") | .data."grafana.ini"' "$SECURE_IDENTITY_RENDER")"
+[[ "$argocd_admin_enabled" == "false" ]] || die "fresh Argo CD installations must disable the local admin"
+[[ "$argocd_default_role" == "role:authenticated" ]] || die "fresh Argo CD installations must not grant read access by default"
+grep -q '^disable_login_form = true$' <<<"$secure_grafana_config" || die "fresh Grafana installations must disable the login form"
+grep -q '^use_pkce = true$' <<<"$secure_grafana_config" || die "fresh Grafana installations must enable PKCE"
+grep -q '^use_refresh_token = true$' <<<"$secure_grafana_config" || die "fresh Grafana installations must enable refresh tokens"
+grep -q '^role_attribute_strict = true$' <<<"$secure_grafana_config" || die "fresh Grafana installations must require an explicit role mapping"
+grep -q '^allow_assign_grafana_admin = false$' <<<"$secure_grafana_config" || die "fresh Grafana installations must reject OAuth server-admin assignment"
+if grep -q GrafanaAdmin <<<"$secure_grafana_config"; then
+  die "fresh Grafana installations must not grant server administrator through OAuth"
+fi
+
+LEGACY_IDENTITY_RENDER="${WORK_DIR}/legacy-identity.yaml"
+(cd "$BASE_DIR" && OCF_IDENTITY_ACCESS_MODE=legacy helmfile -f helmfile.yaml.gotmpl -e starter template --selector name=argocd --selector name=grafana) >"$LEGACY_IDENTITY_RENDER"
+legacy_argocd_admin_enabled="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "argocd-cm") | .data."admin.enabled"' "$LEGACY_IDENTITY_RENDER")"
+legacy_argocd_default_role="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "argocd-rbac-cm") | .data."policy.default"' "$LEGACY_IDENTITY_RENDER")"
+legacy_grafana_config="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "grafana") | .data."grafana.ini"' "$LEGACY_IDENTITY_RENDER")"
+[[ "$legacy_argocd_admin_enabled" == "true" ]] || die "legacy Argo CD mode must preserve the local admin"
+[[ "$legacy_argocd_default_role" == "role:readonly" ]] || die "legacy Argo CD mode must preserve default read access"
+grep -q '^disable_login_form = false$' <<<"$legacy_grafana_config" || die "legacy Grafana mode must preserve the login form"
+grep -q "^role_attribute_path = 'GrafanaAdmin'$" <<<"$legacy_grafana_config" || die "legacy Grafana mode must preserve the former role mapping"
+grep -q '^allow_assign_grafana_admin = true$' <<<"$legacy_grafana_config" || die "legacy Grafana mode must preserve OAuth server-admin assignment"
+
 for selector in serviceMonitorNamespaceSelector podMonitorNamespaceSelector ruleNamespaceSelector probeNamespaceSelector scrapeConfigNamespaceSelector; do
   selector_value="$(yq ea "select(.kind == \"Prometheus\") | .spec.${selector}.matchLabels.\"open-cluster-foundation.io/observability-access\"" "$PROMETHEUS_RENDER")"
   [[ "$selector_value" == "true" ]] || die "Prometheus ${selector} must require the trusted namespace label"

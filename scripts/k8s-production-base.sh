@@ -19,13 +19,14 @@ INSTALL_MODE="${OCF_INSTALL_MODE:-auto}"
 ALLOW_ENVIRONMENT_CHANGE="${OCF_ALLOW_ENVIRONMENT_CHANGE:-false}"
 NETWORK_POLICY_MODE="${OCF_NETWORK_POLICY_MODE:-auto}"
 OBSERVABILITY_SCOPE="${OCF_OBSERVABILITY_SCOPE:-auto}"
+IDENTITY_ACCESS_MODE="${OCF_IDENTITY_ACCESS_MODE:-auto}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy]
-  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy]
-  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--allow-environment-change] [--yes]
+  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy]
+  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy]
+  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--allow-environment-change] [--yes]
 
 Environment:
   ACME_EMAIL              Optional. If set, Let's Encrypt issuers are created with this email.
@@ -34,6 +35,7 @@ Environment:
   OCF_INSTALL_MODE        Installation mode. Defaults to "auto".
   OCF_NETWORK_POLICY_MODE Network policy mode. Defaults to "auto".
   OCF_OBSERVABILITY_SCOPE Observability discovery scope. Defaults to "auto".
+  OCF_IDENTITY_ACCESS_MODE Identity access mode. Defaults to "auto".
   OCF_ALLOW_ENVIRONMENT_CHANGE=true
                           Allow a managed installation to change environment.
 EOF
@@ -62,6 +64,11 @@ while [[ $# -gt 0 ]]; do
     --observability-scope)
       OBSERVABILITY_SCOPE="${2:-}"
       [[ -n "$OBSERVABILITY_SCOPE" ]] || die "--observability-scope requires a value"
+      shift
+      ;;
+    --identity-access)
+      IDENTITY_ACCESS_MODE="${2:-}"
+      [[ -n "$IDENTITY_ACCESS_MODE" ]] || die "--identity-access requires a value"
       shift
       ;;
     --allow-environment-change)
@@ -146,6 +153,18 @@ ensure_secret_key_exists() {
   [[ -n "$value" ]] || die "secret ${namespace}/${name} is missing key ${key}. ${help_text}"
 }
 
+ensure_secret_label_equals() {
+  local namespace="$1"
+  local name="$2"
+  local label="$3"
+  local expected="$4"
+  local help_text="$5"
+  local actual
+
+  actual="$(kubectl -n "$namespace" get secret "$name" -o json | yq -r ".metadata.labels.\"${label}\" // \"\"")"
+  [[ "$actual" == "$expected" ]] || die "secret ${namespace}/${name} must have label ${label}=${expected}. ${help_text}"
+}
+
 check_optional_profile_inputs() {
   if [[ "$ENVIRONMENT" != "all-components" ]]; then
     return
@@ -158,15 +177,22 @@ check_optional_profile_inputs() {
   ensure_secret_key_exists secrets infisical-secrets REDIS_URL "Infisical requires a Redis-compatible store; point REDIS_URL at the base Valkey service (redis://valkey.cache.svc.cluster.local:6379)."
 }
 
-# Grafana mounts the OIDC client through envFromSecrets: without the secret the
-# pod never starts and helm only gives up 10 minutes later, on release timeout.
-# The ci environment disables OIDC (values/ci/grafana.yaml), so it is exempt.
-check_grafana_oidc_secret() {
-  if [[ "$ENVIRONMENT" == "ci" ]] || ! profile_enabled observability "$ENVIRONMENT"; then
+check_identity_inputs() {
+  if [[ "$ENVIRONMENT" == "ci" ]]; then
     return
   fi
 
-  ensure_secret_exists monitoring grafana-oidc-credentials "Create it with the Zitadel application credentials: kubectl -n monitoring create secret generic grafana-oidc-credentials --from-literal=client_id=<id> --from-literal=client_secret=<secret>"
+  if profile_enabled observability "$ENVIRONMENT"; then
+    ensure_secret_exists monitoring grafana-oidc-credentials "Create it with the identity provider application credentials: kubectl -n monitoring create secret generic grafana-oidc-credentials --from-literal=client_id=<id> --from-literal=client_secret=<secret>"
+    ensure_secret_key_exists monitoring grafana-oidc-credentials client_id "Grafana reads this key through envFromSecrets."
+    ensure_secret_key_exists monitoring grafana-oidc-credentials client_secret "Grafana reads this key through envFromSecrets."
+  fi
+
+  if [[ "$OCF_RESOLVED_IDENTITY_ACCESS_MODE" == "sso" ]] && profile_enabled gitops "$ENVIRONMENT"; then
+    ensure_secret_exists argocd argocd-oidc-credentials "Create it with the identity provider application secret: kubectl -n argocd create secret generic argocd-oidc-credentials --from-literal=clientSecret=<secret>"
+    ensure_secret_key_exists argocd argocd-oidc-credentials clientSecret "Argo CD reads this key from oidc.config."
+    ensure_secret_label_equals argocd argocd-oidc-credentials app.kubernetes.io/part-of argocd "Argo CD only allows secret references from labeled secrets."
+  fi
 }
 
 create_grafana_admin_secret() {
@@ -311,12 +337,15 @@ render() {
   local render_file="/tmp/open-cluster-foundation-${ENVIRONMENT}.yaml"
   local render_network_policy_mode
   local render_observability_scope
+  local render_identity_access_mode
   render_network_policy_mode="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" fresh)"
   render_observability_scope="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" fresh)"
+  render_identity_access_mode="$(resolve_identity_access_mode "$IDENTITY_ACCESS_MODE" fresh)"
   if [[ "$render_observability_scope" == "trusted" && "$render_network_policy_mode" != "enforce" ]]; then
     die "trusted observability requires enforced NetworkPolicies"
   fi
   export OCF_OBSERVABILITY_SCOPE="$render_observability_scope"
+  export OCF_IDENTITY_ACCESS_MODE="$render_identity_access_mode"
   if [[ "$render_observability_scope" == "trusted" ]]; then
     export OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX="${OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX:-a^}"
   fi
@@ -429,7 +458,7 @@ apply_base() {
   kubectl apply -f "${BASE_DIR}/manifests/namespace-baseline.yaml"
 
   check_optional_profile_inputs
-  check_grafana_oidc_secret
+  check_identity_inputs
   apply_prometheus_operator_crds
 
   # Envoy Gateway ships (and owns) the Gateway API CRDs, which cert-manager's
