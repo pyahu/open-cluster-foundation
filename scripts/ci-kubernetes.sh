@@ -104,6 +104,46 @@ for namespace in platform-system argocd monitoring identity; do
   [[ "$access" == "public" ]] || die "base route namespace ${namespace} must be allowed to attach public routes"
 done
 
+trusted_observability_namespaces="$(yq ea -o=json -I=0 '[select(.kind == "Namespace" and .metadata.labels."open-cluster-foundation.io/observability-access" == "true") | .metadata.name] | sort' "${BASE_DIR}/manifests/namespace-baseline.yaml")"
+expected_observability_namespaces="$(yq -o=json -I=0 '[.managedNamespaces[] | select(. != "default")] | sort' "${BASE_DIR}/charts/network-policies/values.yaml")"
+[[ "$trusted_observability_namespaces" == "$expected_observability_namespaces" ]] || die "trusted observability namespaces must match managed namespaces except default"
+
+PROMETHEUS_RENDER="${WORK_DIR}/rendered-ci.yaml"
+for selector in serviceMonitorNamespaceSelector podMonitorNamespaceSelector ruleNamespaceSelector probeNamespaceSelector scrapeConfigNamespaceSelector; do
+  selector_value="$(yq ea "select(.kind == \"Prometheus\") | .spec.${selector}.matchLabels.\"open-cluster-foundation.io/observability-access\"" "$PROMETHEUS_RENDER")"
+  [[ "$selector_value" == "true" ]] || die "Prometheus ${selector} must require the trusted namespace label"
+done
+
+probe_selector="$(yq ea 'select(.kind == "Prometheus") | .spec.probeSelector.matchLabels."open-cluster-foundation.io/probe"' "$PROMETHEUS_RENDER")"
+scrape_config_selector="$(yq ea 'select(.kind == "Prometheus") | .spec.scrapeConfigSelector.matchLabels."open-cluster-foundation.io/scrape-config"' "$PROMETHEUS_RENDER")"
+[[ "$probe_selector" == "trusted" ]] || die "Prometheus probes must require the trusted resource label"
+[[ "$scrape_config_selector" == "trusted" ]] || die "Prometheus scrape configs must require the trusted resource label"
+
+example_probe_label="$(yq '.metadata.labels."open-cluster-foundation.io/probe"' "${BASE_DIR}/resources/monitoring/probes.yaml.example")"
+[[ "$example_probe_label" == "trusted" ]] || die "the Probe example must opt in to trusted discovery"
+
+grafana_role_count="$(yq ea '[select(.kind == "Role" and .metadata.name == "grafana" and .metadata.namespace == "monitoring")] | length' "$PROMETHEUS_RENDER")"
+grafana_cluster_role_count="$(yq ea '[select(.kind == "ClusterRole" and .metadata.name == "grafana")] | length' "$PROMETHEUS_RENDER")"
+grafana_dashboard_namespace="$(yq ea 'select(.kind == "Deployment" and .metadata.name == "grafana") | .spec.template.spec.containers[] | select(.name == "grafana-sc-dashboard") | .env[] | select(.name == "NAMESPACE") | .value' "$PROMETHEUS_RENDER")"
+[[ "$grafana_role_count" -eq 1 && "$grafana_cluster_role_count" -eq 0 ]] || die "Grafana dashboard discovery must use namespaced RBAC"
+[[ "$grafana_dashboard_namespace" == "monitoring" ]] || die "Grafana dashboard discovery must stay in monitoring"
+
+strimzi_dashboard_count="$(yq ea '[select(.kind == "ConfigMap" and .metadata.labels.grafana_dashboard == "1" and .metadata.name | test("^strimzi-"))] | length' "$PROMETHEUS_RENDER")"
+strimzi_dashboard_violations="$(yq ea '[select(.kind == "ConfigMap" and .metadata.labels.grafana_dashboard == "1" and .metadata.name | test("^strimzi-")) | select(.metadata.namespace != "monitoring")] | length' "$PROMETHEUS_RENDER")"
+[[ "$strimzi_dashboard_count" -gt 0 ]] || die "Strimzi dashboards were not rendered"
+[[ "$strimzi_dashboard_violations" -eq 0 ]] || die "Strimzi dashboards must be created in monitoring"
+
+trusted_alloy_config="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "alloy") | .data."config.alloy"' "$PROMETHEUS_RENDER")"
+grep -q 'open-cluster-foundation.io/telemetry-client=trusted' <<<"$trusted_alloy_config" || die "trusted Alloy discovery must require the telemetry client label"
+grep -q 'names = \["platform-system"' <<<"$trusted_alloy_config" || die "trusted Alloy discovery must enumerate foundation namespaces"
+
+LEGACY_ALLOY_RENDER="${WORK_DIR}/legacy-alloy.yaml"
+(cd "$BASE_DIR" && OCF_OBSERVABILITY_SCOPE=legacy helmfile -f helmfile.yaml.gotmpl -e ci template --selector name=alloy) >"$LEGACY_ALLOY_RENDER"
+legacy_alloy_config="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "alloy") | .data."config.alloy"' "$LEGACY_ALLOY_RENDER")"
+if grep -q 'open-cluster-foundation.io/telemetry-client=trusted' <<<"$legacy_alloy_config"; then
+  die "legacy Alloy discovery must preserve cluster-wide log collection"
+fi
+
 NETWORK_POLICY_CHART="${BASE_DIR}/charts/network-policies"
 NETWORK_POLICY_RENDER="${WORK_DIR}/network-policies.yaml"
 helm lint "$NETWORK_POLICY_CHART"
@@ -124,5 +164,26 @@ api_server_policy_count="$(yq ea '[
 ] | length' "$NETWORK_POLICY_RENDER")"
 managed_namespace_count="$(yq '.managedNamespaces | length' "${NETWORK_POLICY_CHART}/values.yaml")"
 [[ "$api_server_policy_count" -eq "$managed_namespace_count" ]] || die "every baseline policy must allow the Kubernetes API server port"
+
+observability_identity_count="$(yq ea '[
+  select(.kind == "NetworkPolicy" and .metadata.name == "ocf-observability-ingestion") |
+  .spec.ingress[].from[] |
+  select(
+    .namespaceSelector.matchLabels."open-cluster-foundation.io/observability-access" == "true" and
+    .podSelector.matchLabels."open-cluster-foundation.io/telemetry-client" == "trusted"
+  )
+] | length' "$NETWORK_POLICY_RENDER")"
+[[ "$observability_identity_count" -eq 1 ]] || die "observability ingestion must require trusted namespace and workload identity"
+
+LEGACY_NETWORK_POLICY_RENDER="${WORK_DIR}/legacy-network-policies.yaml"
+helm template ocf-network-policies "$NETWORK_POLICY_CHART" \
+  --namespace platform-system \
+  --set observability.requireWorkloadIdentity=false >"$LEGACY_NETWORK_POLICY_RENDER"
+legacy_observability_identity_count="$(yq ea '[
+  select(.kind == "NetworkPolicy" and .metadata.name == "ocf-observability-ingestion") |
+  .spec.ingress[].from[] |
+  select(has("podSelector"))
+] | length' "$LEGACY_NETWORK_POLICY_RENDER")"
+[[ "$legacy_observability_identity_count" -eq 0 ]] || die "legacy observability policies must preserve namespace-only ingestion"
 
 log "kubernetes checks passed"

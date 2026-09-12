@@ -15,6 +15,11 @@ spec:
         - namespaceSelector:
             matchLabels:
               open-cluster-foundation.io/observability-access: "true"
+{{- if .Values.observability.requireWorkloadIdentity }}
+          podSelector:
+            matchLabels:
+              open-cluster-foundation.io/telemetry-client: trusted
+{{- end }}
       ports:
 {{- range .Values.observabilityPorts }}
         - protocol: TCP

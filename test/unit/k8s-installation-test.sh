@@ -40,6 +40,22 @@ assert_output enforce resolve_network_policy_mode auto managed enforced
 assert_output enforce resolve_network_policy_mode enforce legacy
 assert_output preserve resolve_network_policy_mode preserve fresh
 assert_fails resolve_network_policy_mode invalid fresh
+assert_output trusted resolve_observability_scope auto fresh
+assert_output legacy resolve_observability_scope auto legacy
+assert_output legacy resolve_observability_scope auto managed
+assert_output trusted resolve_observability_scope auto managed trusted
+assert_output trusted resolve_observability_scope trusted legacy
+assert_output legacy resolve_observability_scope legacy fresh
+assert_fails resolve_observability_scope invalid fresh
+assert_output 'team-a|team-b' build_observability_application_namespace_regex platform-system team-a monitoring team-b
+assert_output 'a^' build_observability_application_namespace_regex platform-system monitoring
+
+kubectl() {
+  return 0
+}
+kubectl
+assert_output 'a^' observability_application_namespace_regex
+unset -f kubectl
 assert_output starter resolve_default_environment fresh
 assert_output default resolve_default_environment legacy
 assert_output production resolve_default_environment managed production
@@ -50,9 +66,14 @@ detect_installation_state() {
   printf '%s\n' "$DETECTED_INSTALLATION_STATE"
 }
 
+observability_application_namespace_regex() {
+  printf '%s\n' 'a^'
+}
+
 INSTALL_MODE=auto
 ALLOW_ENVIRONMENT_CHANGE=false
 NETWORK_POLICY_MODE=auto
+OBSERVABILITY_SCOPE=auto
 DETECTED_INSTALLATION_STATE=fresh
 ENVIRONMENT=auto
 prepare_installation >/dev/null
@@ -63,6 +84,21 @@ ENVIRONMENT=auto
 prepare_installation >/dev/null
 assert_output default printf '%s\n' "$ENVIRONMENT"
 assert_output upgrade printf '%s\n' "$OCF_RESOLVED_INSTALL_MODE"
+assert_output legacy printf '%s\n' "$OCF_RESOLVED_OBSERVABILITY_SCOPE"
+
+DETECTED_INSTALLATION_STATE=legacy
+ENVIRONMENT=auto
+NETWORK_POLICY_MODE=auto
+OBSERVABILITY_SCOPE=trusted
+assert_fails prepare_installation
+
+ENVIRONMENT=auto
+NETWORK_POLICY_MODE=enforce
+prepare_installation >/dev/null
+assert_output trusted printf '%s\n' "$OCF_RESOLVED_OBSERVABILITY_SCOPE"
+assert_output trusted printf '%s\n' "$OCF_OBSERVABILITY_SCOPE"
+OBSERVABILITY_SCOPE=auto
+NETWORK_POLICY_MODE=auto
 
 OCF_OBSERVED_INSTALLATION_STATE=fresh
 assert_output fresh installation_origin
@@ -82,6 +118,9 @@ read_installation_state_value() {
       ;;
     network-policies)
       printf '%s\n' "${MOCK_NETWORK_POLICY_STATE:-unmanaged}"
+      ;;
+    observability-scope)
+      printf '%s\n' "${MOCK_OBSERVABILITY_SCOPE:-legacy}"
       ;;
   esac
 }
@@ -109,6 +148,7 @@ ENVIRONMENT=ci
 OCF_OBSERVED_INSTALLATION_STATE=fresh
 OCF_RESOLVED_INSTALL_MODE=fresh
 OCF_RESOLVED_NETWORK_POLICY_MODE=enforce
+OCF_RESOLVED_OBSERVABILITY_SCOPE=trusted
 OCF_SOURCE_REVISION=test-revision
 
 kubectl() {
@@ -129,5 +169,6 @@ assert_output fresh yq -r '.data.origin' "$STATE_MANIFEST"
 assert_output test-revision yq -r '.data."source-revision"' "$STATE_MANIFEST"
 assert_output true yq -r '.data.profiles | from_json | .edge' "$STATE_MANIFEST"
 assert_output enforced yq -r '.data."network-policies"' "$STATE_MANIFEST"
+assert_output trusted yq -r '.data."observability-scope"' "$STATE_MANIFEST"
 
 printf '%s\n' "k8s installation state unit tests passed"

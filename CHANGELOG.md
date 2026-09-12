@@ -72,7 +72,7 @@ tags (`vYYYY.M.PATCH`).
   chart-native Loki alerts, recording rules and dashboards.
 - CI: shellcheck, Terraform fmt/validate/tflint for every stack, Helmfile
   render validated with kubeconform against upstream CRD schemas.
-- End-to-end suite (kind + cloud-provider-kind): installs the full base on a
-  disposable cluster and asserts HTTP through the gateway, certificate
+- End-to-end suite on kind: installs the full base, traverses the Envoy
+  data-plane Service and asserts HTTP through the gateway, certificate
   issuance, CNPG, Kafka, Valkey and the monitoring resources.
 - Renovate configuration keeping every pinned component fresh.

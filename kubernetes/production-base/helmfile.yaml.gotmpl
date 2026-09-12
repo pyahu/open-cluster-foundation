@@ -21,6 +21,7 @@ environments:
 
 ---
 {{- $versions := readFile "versions.yaml" | fromYaml -}}
+{{- $observabilityScope := env "OCF_OBSERVABILITY_SCOPE" | default "trusted" -}}
 # CRD ownership is singular by design: every chart installs and owns its own
 # CRDs (including the Gateway API CRDs, which ship with the Envoy Gateway
 # chart), except the Prometheus Operator CRDs, which the apply script installs
@@ -131,6 +132,9 @@ releases:
     missingFileHandler: Info
     values:
       - values/kube-prometheus-stack.yaml
+{{- if eq $observabilityScope "trusted" }}
+      - values/trusted/kube-prometheus-stack.yaml
+{{- end }}
       - values/local/kube-prometheus-stack.yaml
 {{- if eq .Environment.Name "ci" }}
       - values/ci/kube-prometheus-stack.yaml
@@ -203,7 +207,7 @@ releases:
     # retention and alert receivers; helmfile skips it when absent.
     missingFileHandler: Info
     values:
-      - values/alloy.yaml
+      - values/alloy.yaml.gotmpl
       - values/local/alloy.yaml
 
   - name: grafana
@@ -222,6 +226,9 @@ releases:
     missingFileHandler: Info
     values:
       - values/grafana.yaml
+{{- if eq $observabilityScope "trusted" }}
+      - values/trusted/grafana.yaml
+{{- end }}
       - values/local/grafana.yaml
 {{- if eq .Environment.Name "ci" }}
       - values/ci/grafana.yaml

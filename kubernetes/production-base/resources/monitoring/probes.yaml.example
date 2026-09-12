@@ -12,6 +12,8 @@ kind: Probe
 metadata:
   name: platform-endpoints
   namespace: monitoring
+  labels:
+    open-cluster-foundation.io/probe: trusted
 spec:
   interval: 60s
   module: http_reachable

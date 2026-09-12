@@ -110,6 +110,67 @@ resolve_network_policy_mode() {
   esac
 }
 
+resolve_observability_scope() {
+  local requested_scope="$1"
+  local observed_state="$2"
+  local managed_scope="${3:-}"
+
+  case "$requested_scope" in
+    auto)
+      if [[ "$observed_state" == "fresh" ]]; then
+        printf '%s\n' trusted
+      elif [[ "$observed_state" == "managed" && "$managed_scope" == "trusted" ]]; then
+        printf '%s\n' trusted
+      else
+        printf '%s\n' legacy
+      fi
+      ;;
+    trusted|legacy)
+      printf '%s\n' "$requested_scope"
+      ;;
+    *)
+      die "unknown observability scope: ${requested_scope}; expected auto, trusted or legacy"
+      ;;
+  esac
+}
+
+build_observability_application_namespace_regex() {
+  local namespace
+  local escaped_namespace
+  local namespace_regex=""
+
+  for namespace in "$@"; do
+    case "$namespace" in
+      platform-system|envoy-gateway-system|cert-manager|argocd|cnpg-system|data|strimzi-system|messaging|rabbitmq-system|monitoring|identity|secrets|cache|reloader)
+        continue
+        ;;
+    esac
+
+    escaped_namespace="${namespace//./\\.}"
+    namespace_regex="${namespace_regex:+${namespace_regex}|}${escaped_namespace}"
+  done
+
+  printf '%s\n' "${namespace_regex:-a^}"
+}
+
+observability_application_namespace_regex() {
+  local namespaces=()
+  local namespace
+
+  while IFS= read -r namespace; do
+    [[ -n "$namespace" ]] && namespaces+=("$namespace")
+  done < <(kubectl get namespace \
+    -l open-cluster-foundation.io/observability-access=true \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+
+  if [[ -z "${namespaces[*]-}" ]]; then
+    printf '%s\n' 'a^'
+    return
+  fi
+
+  build_observability_application_namespace_regex "${namespaces[@]}"
+}
+
 read_installation_state_value() {
   local key="$1"
 
@@ -134,9 +195,12 @@ prepare_installation() {
   OCF_OBSERVED_INSTALLATION_STATE="$(detect_installation_state)"
 
   local managed_network_policy_state=""
+  local managed_observability_scope=""
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
     managed_network_policy_state="$(read_installation_state_value network-policies)"
     [[ "$managed_network_policy_state" != "<no value>" ]] || managed_network_policy_state=""
+    managed_observability_scope="$(read_installation_state_value observability-scope)"
+    [[ "$managed_observability_scope" != "<no value>" ]] || managed_observability_scope=""
   fi
 
   if [[ "$ENVIRONMENT" == "auto" ]]; then
@@ -149,6 +213,17 @@ prepare_installation() {
 
   OCF_RESOLVED_INSTALL_MODE="$(resolve_install_mode "$INSTALL_MODE" "$OCF_OBSERVED_INSTALLATION_STATE")"
   OCF_RESOLVED_NETWORK_POLICY_MODE="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_network_policy_state")"
+  OCF_RESOLVED_OBSERVABILITY_SCOPE="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_observability_scope")"
+
+  if [[ "$OCF_RESOLVED_OBSERVABILITY_SCOPE" == "trusted" && "$(installation_network_policy_state)" != "enforced" ]]; then
+    die "trusted observability requires enforced NetworkPolicies; pass --network-policies enforce after completing the migration"
+  fi
+
+  export OCF_OBSERVABILITY_SCOPE="$OCF_RESOLVED_OBSERVABILITY_SCOPE"
+  if [[ "$OCF_RESOLVED_OBSERVABILITY_SCOPE" == "trusted" ]]; then
+    OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX="$(observability_application_namespace_regex)"
+    export OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX
+  fi
 
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
     validate_managed_installation
@@ -156,9 +231,14 @@ prepare_installation() {
 
   log "installation mode: ${OCF_RESOLVED_INSTALL_MODE} (detected state: ${OCF_OBSERVED_INSTALLATION_STATE})"
   log "network policy mode: ${OCF_RESOLVED_NETWORK_POLICY_MODE}"
+  log "observability scope: ${OCF_RESOLVED_OBSERVABILITY_SCOPE}"
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "legacy" ]]; then
     log "existing installation will retain the current compatibility path and receive state metadata only after a successful apply"
   fi
+}
+
+installation_observability_scope_state() {
+  printf '%s\n' "$OCF_RESOLVED_OBSERVABILITY_SCOPE"
 }
 
 installation_network_policy_state() {
@@ -226,6 +306,7 @@ record_installation_state() {
     --from-literal="versions-sha256=${versions_digest}" \
     --from-literal="profiles=${profiles}" \
     --from-literal="network-policies=$(installation_network_policy_state)" \
+    --from-literal="observability-scope=$(installation_observability_scope_state)" \
     --from-literal="applied-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --dry-run=client -o yaml |
     yq '.metadata.labels."app.kubernetes.io/name" = "open-cluster-foundation" | .metadata.labels."app.kubernetes.io/managed-by" = "open-cluster-foundation"' |

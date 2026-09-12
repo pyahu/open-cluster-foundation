@@ -1,3 +1,5 @@
+{{- $observabilityScope := env "OCF_OBSERVABILITY_SCOPE" | default "trusted" -}}
+{{- $applicationNamespaceRegex := env "OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX" | default "a^" -}}
 alloy:
   # Uso medido: 213-356Mi por no.
   resources:
@@ -14,12 +16,45 @@ alloy:
         format = "logfmt"
       }
 
+{{- if eq $observabilityScope "trusted" }}
+      discovery.kubernetes "foundation_pods" {
+        role = "pod"
+
+        namespaces {
+          names = ["platform-system", "envoy-gateway-system", "cert-manager", "argocd", "cnpg-system", "data", "strimzi-system", "messaging", "rabbitmq-system", "monitoring", "identity", "secrets", "cache", "reloader"]
+        }
+      }
+
+      discovery.kubernetes "trusted_application_pods" {
+        role = "pod"
+
+        selectors {
+          role  = "pod"
+          label = "open-cluster-foundation.io/telemetry-client=trusted"
+        }
+      }
+
+      discovery.relabel "trusted_application_pods" {
+        targets = discovery.kubernetes.trusted_application_pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "{{ $applicationNamespaceRegex }}"
+          action        = "keep"
+        }
+      }
+{{- else }}
       discovery.kubernetes "pods" {
         role = "pod"
       }
+{{- end }}
 
       discovery.relabel "pod_logs" {
+{{- if eq $observabilityScope "trusted" }}
+        targets = array.concat(discovery.kubernetes.foundation_pods.targets, discovery.relabel.trusted_application_pods.output)
+{{- else }}
         targets = discovery.kubernetes.pods.targets
+{{- end }}
 
         rule {
           source_labels = ["__meta_kubernetes_namespace"]

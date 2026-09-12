@@ -27,7 +27,6 @@ shellcheck = "0.11.0"
 
 # End-to-end testing.
 kind = "0.32.0"
-"github:kubernetes-sigs/cloud-provider-kind" = "0.11.1"
 
 [tasks.doctor]
 description = "Check local tools required by the Terraform and Kubernetes foundations."

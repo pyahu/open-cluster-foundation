@@ -1,0 +1,6 @@
+rbac:
+  namespaced: true
+
+sidecar:
+  dashboards:
+    searchNamespace: monitoring

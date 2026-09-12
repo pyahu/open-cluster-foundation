@@ -17,7 +17,7 @@ source "${SCRIPT_DIR}/lib/common.sh"
 CLUSTER_NAME="${OCF_E2E_CLUSTER:-ocf-e2e}"
 KEEP="${OCF_E2E_KEEP:-false}"
 E2E_DIR="${OCF_ROOT}/test/e2e"
-CPK_PID=""
+GATEWAY_FORWARD_PID=""
 
 # The whole run lives in a private kubeconfig so the operator's real contexts
 # are never touched or repointed.
@@ -26,7 +26,6 @@ export KUBECONFIG
 
 require_command docker
 require_command kind
-require_command cloud-provider-kind
 require_command kubectl
 require_command helm
 require_command helmfile
@@ -66,8 +65,9 @@ cleanup() {
   if [[ $code -ne 0 ]]; then
     dump_diagnostics
   fi
-  if [[ -n "$CPK_PID" ]]; then
-    kill "$CPK_PID" 2>/dev/null || true
+  if [[ -n "$GATEWAY_FORWARD_PID" ]]; then
+    kill "$GATEWAY_FORWARD_PID" 2>/dev/null || true
+    wait "$GATEWAY_FORWARD_PID" 2>/dev/null || true
   fi
   if [[ "$KEEP" != "true" ]]; then
     kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
@@ -94,31 +94,27 @@ STATE_CONFIGMAP="open-cluster-foundation-installation"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "mode" }}')" == "fresh" ]] || die "unexpected installation state mode"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "origin" }}')" == "fresh" ]] || die "unexpected installation state origin"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "network-policies" }}')" == "enforced" ]] || die "unexpected installation NetworkPolicy state"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "observability-scope" }}')" == "trusted" ]] || die "unexpected installation observability scope"
 "${SCRIPT_DIR}/k8s-production-base.sh" check --mode upgrade
 if "${SCRIPT_DIR}/k8s-production-base.sh" check --mode fresh >/dev/null 2>&1; then
   die "fresh mode accepted an existing managed installation"
 fi
 
-# Started only after the base install: cloud-provider-kind applies its own
-# copy of the Gateway API CRDs at startup and would fight the foundation's
-# server-side apply over field ownership.
-log "starting cloud-provider-kind (LoadBalancer support)"
-cloud-provider-kind >/tmp/cloud-provider-kind.log 2>&1 &
-CPK_PID=$!
-
 log "asserting the GatewayClass is accepted"
 kubectl wait --for=condition=Accepted gatewayclass/envoy --timeout=120s
 
-log "waiting for the Gateway to receive a LoadBalancer address"
-GATEWAY_ADDRESS=""
+log "waiting for the Envoy data-plane service"
+GATEWAY_SERVICE=""
 for _ in $(seq 1 60); do
-  GATEWAY_ADDRESS="$(kubectl -n platform-system get gateway public-gateway \
-    -o jsonpath='{.status.addresses[0].value}' 2>/dev/null || true)"
-  [[ -n "$GATEWAY_ADDRESS" ]] && break
-  sleep 5
+  GATEWAY_SERVICE="$(kubectl -n envoy-gateway-system get service \
+    -l gateway.envoyproxy.io/owning-gateway-namespace=platform-system,gateway.envoyproxy.io/owning-gateway-name=public-gateway \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+  [[ -n "$GATEWAY_SERVICE" ]] && break
+  sleep 2
 done
-[[ -n "$GATEWAY_ADDRESS" ]] || die "gateway never received an address (is cloud-provider-kind running?)"
-log "gateway address: ${GATEWAY_ADDRESS}"
+[[ -n "$GATEWAY_SERVICE" ]] || die "Envoy data-plane service was not created"
+kubectl -n envoy-gateway-system port-forward "service/${GATEWAY_SERVICE}" 18080:80 >/tmp/ocf-e2e-gateway-forward.log 2>&1 &
+GATEWAY_FORWARD_PID=$!
 
 log "asserting HTTP traffic flows through the edge"
 kubectl label namespace default open-cluster-foundation.io/gateway-access=public
@@ -128,7 +124,7 @@ kubectl -n default rollout status deploy/e2e-echo --timeout=180s
 HTTP_CODE=""
 for _ in $(seq 1 30); do
   HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' \
-    -H "Host: e2e.example.com" "http://${GATEWAY_ADDRESS}/hostname" || true)"
+    -H "Host: e2e.example.com" "http://127.0.0.1:18080/hostname" || true)"
   [[ "$HTTP_CODE" == "200" ]] && break
   sleep 5
 done
@@ -167,5 +163,20 @@ RULES="$(kubectl -n monitoring get prometheusrules -o name | wc -l)"
 [[ "$RULES" -ge 4 ]] || die "expected at least 4 PrometheusRules in monitoring, found ${RULES}"
 MONITORS="$(kubectl -n monitoring get podmonitors -o name | wc -l)"
 [[ "$MONITORS" -ge 3 ]] || die "expected at least 3 PodMonitors in monitoring, found ${MONITORS}"
+
+PROMETHEUS_NAME="$(kubectl -n monitoring get prometheus -o jsonpath='{.items[0].metadata.name}')"
+[[ -n "$PROMETHEUS_NAME" ]] || die "Prometheus custom resource not found"
+for selector in serviceMonitorNamespaceSelector podMonitorNamespaceSelector ruleNamespaceSelector probeNamespaceSelector scrapeConfigNamespaceSelector; do
+  selector_value="$(kubectl -n monitoring get prometheus "$PROMETHEUS_NAME" -o "go-template={{ index (index .spec.${selector}.matchLabels \"open-cluster-foundation.io/observability-access\") }}")"
+  [[ "$selector_value" == "true" ]] || die "Prometheus ${selector} is not restricted to trusted namespaces"
+done
+
+kubectl -n monitoring get role grafana >/dev/null
+if kubectl get clusterrole grafana >/dev/null 2>&1; then
+  die "Grafana retained cluster-wide dashboard discovery RBAC"
+fi
+
+[[ "$(kubectl -n monitoring get configmap strimzi-kafka -o jsonpath='{.metadata.namespace}')" == "monitoring" ]] || die "Strimzi dashboards are not colocated with Grafana"
+kubectl -n monitoring get configmap alloy -o go-template='{{ index .data "config.alloy" }}' | grep -q 'open-cluster-foundation.io/telemetry-client=trusted' || die "Alloy is not filtering untrusted pod logs"
 
 log "e2e passed: edge, TLS issuance, Postgres, Kafka, cache and monitoring are functional"

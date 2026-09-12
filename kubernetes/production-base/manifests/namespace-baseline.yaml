@@ -5,6 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
@@ -17,6 +18,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -28,6 +30,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -39,6 +42,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
@@ -51,6 +55,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -62,6 +67,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -73,6 +79,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -84,6 +91,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -95,6 +103,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -106,6 +115,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: restricted
@@ -118,6 +128,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     open-cluster-foundation.io/gateway-access: public
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
@@ -130,6 +141,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -141,6 +153,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -152,6 +165,7 @@ metadata:
   labels:
     app.kubernetes.io/name: production-base
     open-cluster-foundation.io/network-policy: managed
+    open-cluster-foundation.io/observability-access: "true"
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted

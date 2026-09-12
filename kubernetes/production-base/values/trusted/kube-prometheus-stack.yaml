@@ -1,0 +1,23 @@
+prometheus:
+  prometheusSpec:
+    serviceMonitorNamespaceSelector:
+      matchLabels:
+        open-cluster-foundation.io/observability-access: "true"
+    podMonitorNamespaceSelector:
+      matchLabels:
+        open-cluster-foundation.io/observability-access: "true"
+    ruleNamespaceSelector:
+      matchLabels:
+        open-cluster-foundation.io/observability-access: "true"
+    probeNamespaceSelector:
+      matchLabels:
+        open-cluster-foundation.io/observability-access: "true"
+    scrapeConfigNamespaceSelector:
+      matchLabels:
+        open-cluster-foundation.io/observability-access: "true"
+    probeSelector:
+      matchLabels:
+        open-cluster-foundation.io/probe: trusted
+    scrapeConfigSelector:
+      matchLabels:
+        open-cluster-foundation.io/scrape-config: trusted

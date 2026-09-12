@@ -18,13 +18,14 @@ AUTO_APPROVE="${OCF_AUTO_APPROVE:-false}"
 INSTALL_MODE="${OCF_INSTALL_MODE:-auto}"
 ALLOW_ENVIRONMENT_CHANGE="${OCF_ALLOW_ENVIRONMENT_CHANGE:-false}"
 NETWORK_POLICY_MODE="${OCF_NETWORK_POLICY_MODE:-auto}"
+OBSERVABILITY_SCOPE="${OCF_OBSERVABILITY_SCOPE:-auto}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve]
-  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve]
-  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--allow-environment-change] [--yes]
+  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy]
+  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy]
+  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--allow-environment-change] [--yes]
 
 Environment:
   ACME_EMAIL              Optional. If set, Let's Encrypt issuers are created with this email.
@@ -32,6 +33,7 @@ Environment:
   OCF_K8S_ENVIRONMENT     Helmfile environment. Defaults to automatic selection.
   OCF_INSTALL_MODE        Installation mode. Defaults to "auto".
   OCF_NETWORK_POLICY_MODE Network policy mode. Defaults to "auto".
+  OCF_OBSERVABILITY_SCOPE Observability discovery scope. Defaults to "auto".
   OCF_ALLOW_ENVIRONMENT_CHANGE=true
                           Allow a managed installation to change environment.
 EOF
@@ -55,6 +57,11 @@ while [[ $# -gt 0 ]]; do
     --network-policies)
       NETWORK_POLICY_MODE="${2:-}"
       [[ -n "$NETWORK_POLICY_MODE" ]] || die "--network-policies requires a value"
+      shift
+      ;;
+    --observability-scope)
+      OBSERVABILITY_SCOPE="${2:-}"
+      [[ -n "$OBSERVABILITY_SCOPE" ]] || die "--observability-scope requires a value"
       shift
       ;;
     --allow-environment-change)
@@ -303,7 +310,16 @@ render() {
 
   local render_file="/tmp/open-cluster-foundation-${ENVIRONMENT}.yaml"
   local render_network_policy_mode
+  local render_observability_scope
   render_network_policy_mode="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" fresh)"
+  render_observability_scope="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" fresh)"
+  if [[ "$render_observability_scope" == "trusted" && "$render_network_policy_mode" != "enforce" ]]; then
+    die "trusted observability requires enforced NetworkPolicies"
+  fi
+  export OCF_OBSERVABILITY_SCOPE="$render_observability_scope"
+  if [[ "$render_observability_scope" == "trusted" ]]; then
+    export OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX="${OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX:-a^}"
+  fi
 
   log "rendering helmfile environment ${ENVIRONMENT}"
   {
@@ -329,8 +345,13 @@ render() {
     fi
     if [[ "$render_network_policy_mode" == "enforce" ]]; then
       printf '%s\n' "---"
+      local require_observability_identity="true"
+      if [[ "$render_observability_scope" == "legacy" ]]; then
+        require_observability_identity="false"
+      fi
       helm template ocf-network-policies "${BASE_DIR}/charts/network-policies" \
-        --namespace platform-system
+        --namespace platform-system \
+        --set "observability.requireWorkloadIdentity=${require_observability_identity}"
     fi
   } >"$render_file"
   log "rendered manifest written to ${render_file}"
@@ -387,8 +408,13 @@ apply_network_policies() {
   fi
 
   log "enforcing the base namespace NetworkPolicies"
+  local require_observability_identity="true"
+  if [[ "$OCF_RESOLVED_OBSERVABILITY_SCOPE" == "legacy" ]]; then
+    require_observability_identity="false"
+  fi
   helm upgrade --install ocf-network-policies "${BASE_DIR}/charts/network-policies" \
     --namespace platform-system \
+    --set "observability.requireWorkloadIdentity=${require_observability_identity}" \
     --atomic \
     --wait \
     --timeout 5m

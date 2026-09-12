@@ -26,9 +26,9 @@ mise run ci:kubernetes   # helmfile render + kubeconform schema validation
 
 PRs that touch `kubernetes/`, `scripts/` or `test/e2e/` also trigger the
 end-to-end suite: it installs the full base on a disposable kind cluster
-(with cloud-provider-kind for real LoadBalancer addresses) and asserts the
-edge path, certificate issuance, Postgres, Kafka, cache and monitoring all
-work. It needs Docker and ~15 minutes:
+and traverses the real Envoy data-plane Service through an ephemeral local
+forward. It asserts the edge path, certificate issuance, Postgres, Kafka,
+cache and monitoring all work. It needs Docker and ~15 minutes:
 
 ```sh
 mise run ci:e2e                     # OCF_E2E_KEEP=true keeps the cluster

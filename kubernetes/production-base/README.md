@@ -87,8 +87,11 @@ The starter environment enables:
 
 ### Log parsing is opt-in per pod
 
-Alloy stores every container's output as printed. Annotate a pod to have it
-parsed:
+In the trusted observability scope, Alloy collects every container log from
+OCF-managed namespaces. An application Pod is collected only when its namespace
+has `open-cluster-foundation.io/observability-access=true` and its Pod template
+has `open-cluster-foundation.io/telemetry-client=trusted`. Annotate a collected
+Pod to have its output parsed:
 
 | Annotation `logging.open-cluster-foundation.io/format` | What Alloy does |
 | --- | --- |
@@ -145,6 +148,12 @@ preserve their current network behavior until an operator follows the staged
 [NetworkPolicy migration](../../docs/compatibility.md#networkpolicy-migration)
 and passes `--network-policies enforce`. Application namespaces opt into the
 minimum platform, observability and Gateway paths with separate labels.
+
+Fresh installations also restrict observability discovery and ingestion.
+Existing installations retain cluster-wide discovery until the staged
+[observability trust migration](../../docs/compatibility.md#observability-trust-migration)
+is selected with `--observability-scope trusted`. The installation state keeps
+the chosen scope across later automatic upgrades.
 
 Select `production` to add database and messaging operators without creating
 application data. Select `production-data` only after reviewing Kafka and

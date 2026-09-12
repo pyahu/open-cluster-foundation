@@ -6,6 +6,7 @@ watchAnyNamespace: true
 
 dashboards:
   enabled: true
+  namespace: monitoring
 
 resources:
   requests:

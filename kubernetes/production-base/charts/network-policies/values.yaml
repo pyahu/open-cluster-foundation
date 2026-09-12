@@ -55,3 +55,6 @@ nodeScrapePorts:
   - 9100
   - 9153
   - 10250
+
+observability:
+  requireWorkloadIdentity: true
