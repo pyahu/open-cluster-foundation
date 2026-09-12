@@ -156,12 +156,13 @@ yq -i '(
 kubectl create -f "$CALICO_MANIFEST"
 kubectl -n kube-system rollout status daemonset/calico-node --timeout=300s
 kubectl -n kube-system rollout status deployment/calico-kube-controllers --timeout=300s
+kubectl -n kube-system rollout status deployment/coredns --timeout=300s
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
 kubectl run e2e-network-smoke \
   --image=curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40 \
   --restart=Never \
   --command -- \
-  curl --insecure --fail --silent --output /dev/null https://kubernetes.default.svc/version
+  sh -ec "attempt=0; until curl --insecure --fail --show-error --silent --connect-timeout 2 --max-time 5 --output /dev/null https://kubernetes.default.svc/version; do attempt=\$((attempt + 1)); [ \"\$attempt\" -ge 30 ] && exit 1; sleep 2; done"
 kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/e2e-network-smoke --timeout=120s
 kubectl delete pod e2e-network-smoke --wait=true
 
