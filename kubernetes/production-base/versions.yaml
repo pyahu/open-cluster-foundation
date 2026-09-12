@@ -6,6 +6,20 @@ notes:
   - When a product release is newer than the latest non-deprecated chart, this blueprint follows the chart-supported appVersion instead of overriding images out of band.
   - Fields annotated with "# renovate:" are updated automatically by Renovate. Unannotated versions (kafkaVersion, debezium, appVersion documentation fields) are updated manually.
 components:
+  crdCatalog:
+    commit: ad3b08c5045129d7bb1eeffd8e61719b2c8dd1e2
+  helmDiff:
+    version: v3.15.10
+    repository: https://github.com/databus23/helm-diff
+    commit: 5873f8d94712f014dc2bb329acae63b8ffbf569b
+    linuxAmd64Sha256: ffeff863e4a3cbe83282a13a55ee972f7497966dfb66f326a117f9b094fff161
+    linuxArm64Sha256: 6832085986feef54b7be82906f2516f3565fdd1be11c109737e8833f1e1c0a5c
+    macosAmd64Sha256: 5d1ae1d4cfdc138612ec99faac5ffa1251306e8c66dfad2cdeb7c4457f3dd875
+    macosArm64Sha256: a53fc7515226e071c748a19cd6d3f7b490e2cfd7301cb6e1ce02e6fee19d54cf
+  calico:
+    version: v3.32.2
+    manifest: https://raw.githubusercontent.com/projectcalico/calico/v3.32.2/manifests/calico.yaml
+    manifestSha256: a8c828a06a87c629a282ebbc424895b77f3a030251993e41ea400a743675bb02
   envoyGateway:
     installMethod: oci-helm-chart
     chart: oci://docker.io/envoyproxy/gateway-helm
@@ -41,18 +55,21 @@ components:
     # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
     version: v0.13.0
     manifest: https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.13.0/manifest.yaml
+    manifestSha256: d2e71e7b06822448f1a421f05781846cfdb9cc621e7ef32eef5e20c5133213b0
   postgresql:
-    exampleImage: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+    exampleImage: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm@sha256:702a5fd1e2de98afc72965149e90a633082df964087697b9cf89a81f21e343a7
   rabbitmqClusterOperator:
     installMethod: upstream-release-manifest
     # renovate: datasource=github-releases depName=rabbitmq/cluster-operator
     version: v2.21.1
     manifest: https://github.com/rabbitmq/cluster-operator/releases/download/v2.21.1/cluster-operator.yml
+    manifestSha256: d859369dc044d765f316fe50dbc45368ef99a99bc4d1268ae6187d7a98b319bd
   rabbitmqMessagingTopologyOperator:
     installMethod: upstream-release-manifest
     # renovate: datasource=github-releases depName=rabbitmq/messaging-topology-operator
     version: v1.19.3
     manifest: https://github.com/rabbitmq/messaging-topology-operator/releases/download/v1.19.3/messaging-topology-operator-with-certmanager.yaml
+    manifestSha256: 9711dd3f4b1634b9ad097432acd332868a95b280450fe420329ab9a502e67c0c
   strimzi:
     installMethod: helm-chart
     repository: https://strimzi.io/charts/
@@ -95,6 +112,7 @@ components:
     # renovate: datasource=github-releases depName=prometheus-operator/prometheus-operator
     version: v0.92.0
     manifest: https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.92.0/stripped-down-crds.yaml
+    manifestSha256: e87ffbdd1a85b427eb62dab0527a7eb20368695b18f52618a570a332ffdd88ff
   kubePrometheusStack:
     installMethod: helm-chart
     repository: https://prometheus-community.github.io/helm-charts

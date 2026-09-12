@@ -16,7 +16,6 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 CLUSTER_NAME="${OCF_E2E_CLUSTER:-ocf-e2e}"
 KEEP="${OCF_E2E_KEEP:-false}"
-CALICO_VERSION="${OCF_E2E_CALICO_VERSION:-3.32.2}"
 E2E_DIR="${OCF_ROOT}/test/e2e"
 GATEWAY_FORWARD_PID=""
 CALICO_MANIFEST="$(mktemp)"
@@ -35,10 +34,51 @@ require_command curl
 require_command jq
 require_command yq
 
-# helmfile apply needs the helm-diff plugin; install it when missing.
-# helm 4 verifies plugin signatures by default, which git sources do not support.
-helm plugin list 2>/dev/null | grep -q '^diff' ||
-  helm plugin install https://github.com/databus23/helm-diff --version v3.15.10 --verify=false
+install_helm_diff() {
+  local version
+  local installed_version
+  local repository
+  local commit
+  local platform
+  local architecture
+  local checksum_key
+  local checksum
+  local archive
+  local install_status
+
+  version="$(component_value helmDiff version)"
+  installed_version="$(helm plugin list 2>/dev/null | awk '$1 == "diff" { print $2 }')"
+  if [[ "$installed_version" == "${version#v}" ]]; then
+    return
+  fi
+  [[ -z "$installed_version" ]] || die "helm diff ${version#v} is required; found ${installed_version}"
+
+  repository="$(component_value helmDiff repository)"
+  commit="$(component_value helmDiff commit)"
+  case "$(uname -s)" in
+    Darwin) platform="macos" ;;
+    Linux) platform="linux" ;;
+    *) die "unsupported helm diff platform: $(uname -s)" ;;
+  esac
+  case "$(uname -m)" in
+    x86_64 | amd64) architecture="amd64" ;;
+    arm64 | aarch64) architecture="arm64" ;;
+    *) die "unsupported helm diff architecture: $(uname -m)" ;;
+  esac
+  checksum_key="${platform}$(tr '[:lower:]' '[:upper:]' <<<"${architecture:0:1}")${architecture:1}Sha256"
+  checksum="$(component_value helmDiff "$checksum_key")"
+  archive="$(mktemp)"
+  download_verified \
+    "${repository}/releases/download/${version}/helm-diff-${platform}-${architecture}.tgz" \
+    "$checksum" \
+    "$archive"
+  install_status=0
+  HELM_DIFF_BIN_TGZ="$archive" helm plugin install "$repository" --version "$commit" --verify=false || install_status=$?
+  rm -f "$archive"
+  [[ "$install_status" -eq 0 ]] || die "helm diff installation failed"
+}
+
+install_helm_diff
 
 dump_diagnostics() {
   warn "e2e failed; dumping cluster state"
@@ -85,10 +125,12 @@ trap cleanup EXIT
 log "creating kind cluster ${CLUSTER_NAME}"
 kind create cluster --name "$CLUSTER_NAME" --config "${E2E_DIR}/kind-config.yaml"
 
+CALICO_VERSION="$(component_value calico version)"
 log "installing Calico ${CALICO_VERSION} for NetworkPolicy enforcement"
-curl --fail --location --silent --show-error \
-  "https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/calico.yaml" \
-  --output "$CALICO_MANIFEST"
+download_verified \
+  "$(component_value calico manifest)" \
+  "$(component_value calico manifestSha256)" \
+  "$CALICO_MANIFEST"
 yq -i '(
   select(.kind == "DaemonSet" and .metadata.name == "calico-node") |
   .spec.template.spec.containers[] |
@@ -116,7 +158,7 @@ kubectl -n kube-system rollout status daemonset/calico-node --timeout=300s
 kubectl -n kube-system rollout status deployment/calico-kube-controllers --timeout=300s
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
 kubectl run e2e-network-smoke \
-  --image=curlimages/curl:8.17.0 \
+  --image=curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40 \
   --restart=Never \
   --command -- \
   curl --insecure --fail --silent --output /dev/null https://kubernetes.default.svc/version

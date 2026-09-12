@@ -29,7 +29,7 @@
       "description": "CloudNativePG PostgreSQL images in examples and versions.yaml",
       "managerFilePatterns": ["/^kubernetes/production-base/.+\\.yaml$/"],
       "matchStrings": [
-        "(?:imageName|exampleImage): (?<depName>ghcr\\.io/cloudnative-pg/postgresql):(?<currentValue>[^\\s]+)"
+        "(?:imageName|exampleImage): (?<depName>ghcr\\.io/cloudnative-pg/postgresql):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?"
       ],
       "datasourceTemplate": "docker"
     },

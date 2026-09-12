@@ -35,7 +35,7 @@ metadata:
   namespace: data
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm@sha256:702a5fd1e2de98afc72965149e90a633082df964087697b9cf89a81f21e343a7
   affinity:
     enablePodAntiAffinity: true
     podAntiAffinityType: preferred

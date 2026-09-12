@@ -7,7 +7,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
 BASE_DIR="${OCF_ROOT}/kubernetes/production-base"
-CRD_CATALOG='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+CRD_CATALOG_COMMIT="$(component_value crdCatalog commit)"
+[[ "$CRD_CATALOG_COMMIT" =~ ^[0-9a-f]{40}$ ]] || die "CRD catalog commit must be an immutable Git SHA"
+CRD_CATALOG="https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_CATALOG_COMMIT}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
 
 require_command helm
 require_command helmfile

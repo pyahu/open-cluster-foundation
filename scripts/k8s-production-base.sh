@@ -104,6 +104,8 @@ KAFKA_CLUSTER_FILE="${OCF_KAFKA_CLUSTER_FILE:-${BASE_DIR}/resources/kafka/kafka-
 KAFKA_CONNECT_FILE="${OCF_KAFKA_CONNECT_FILE:-${BASE_DIR}/resources/kafka/kafka-connect.yaml}"
 
 require_k8s_tools() {
+  local helm_diff_version
+
   require_command kubectl
   require_command helm
   require_command helmfile
@@ -111,9 +113,30 @@ require_k8s_tools() {
   require_command openssl
   require_command yq
 
-  # helmfile apply diffs releases through the helm-diff plugin.
-  helm plugin list 2>/dev/null | grep -q '^diff' ||
-    die "helm diff plugin not found. Install it with: helm plugin install https://github.com/databus23/helm-diff --verify=false"
+  helm_diff_version="$(component_value helmDiff version)"
+  helm_diff_version="${helm_diff_version#v}"
+  [[ "$(helm plugin list 2>/dev/null | awk '$1 == "diff" { print $2 }')" == "$helm_diff_version" ]] ||
+    die "helm diff plugin ${helm_diff_version} is required"
+}
+
+apply_verified_manifest() {
+  local component="$1"
+  local manifest_url
+  local manifest_sha256
+  local manifest_file
+  local apply_status
+
+  manifest_url="$(component_value "$component" manifest)"
+  manifest_sha256="$(component_value "$component" manifestSha256)"
+  [[ -n "$manifest_url" ]] || die "could not read ${component} manifest from versions.yaml"
+  [[ -n "$manifest_sha256" ]] || die "could not read ${component} manifest checksum from versions.yaml"
+
+  manifest_file="$(mktemp)"
+  download_verified "$manifest_url" "$manifest_sha256" "$manifest_file"
+  apply_status=0
+  kubectl apply --server-side --force-conflicts -f "$manifest_file" || apply_status=$?
+  rm -f "$manifest_file"
+  return "$apply_status"
 }
 
 check_default_storage_class() {
@@ -198,16 +221,9 @@ apply_rabbitmq_operators() {
     return
   fi
 
-  local cluster_operator_manifest topology_operator_manifest
-  cluster_operator_manifest="$(component_value rabbitmqClusterOperator manifest)"
-  topology_operator_manifest="$(component_value rabbitmqMessagingTopologyOperator manifest)"
-
-  [[ -n "$cluster_operator_manifest" ]] || die "could not read RabbitMQ Cluster Operator manifest from versions.yaml"
-  [[ -n "$topology_operator_manifest" ]] || die "could not read RabbitMQ Topology Operator manifest from versions.yaml"
-
   log "applying RabbitMQ operators"
-  kubectl apply --server-side --force-conflicts -f "$cluster_operator_manifest"
-  kubectl apply --server-side --force-conflicts -f "$topology_operator_manifest"
+  apply_verified_manifest rabbitmqClusterOperator
+  apply_verified_manifest rabbitmqMessagingTopologyOperator
 }
 
 apply_base_gateway() {
@@ -259,13 +275,8 @@ apply_prometheus_operator_crds() {
     return
   fi
 
-  local crds_manifest
-  crds_manifest="$(component_value prometheusOperatorCrds manifest)"
-
-  [[ -n "$crds_manifest" ]] || die "could not read Prometheus Operator CRDs manifest from versions.yaml"
-
   log "applying Prometheus Operator CRDs"
-  kubectl apply --server-side --force-conflicts -f "$crds_manifest"
+  apply_verified_manifest prometheusOperatorCrds
 }
 
 apply_plugin_barman_cloud() {
@@ -273,13 +284,8 @@ apply_plugin_barman_cloud() {
     return
   fi
 
-  local plugin_manifest
-  plugin_manifest="$(component_value pluginBarmanCloud manifest)"
-
-  [[ -n "$plugin_manifest" ]] || die "could not read plugin-barman-cloud manifest from versions.yaml"
-
   log "applying CloudNativePG Barman Cloud plugin"
-  kubectl apply --server-side --force-conflicts -f "$plugin_manifest"
+  apply_verified_manifest pluginBarmanCloud
 }
 
 apply_monitoring_resources() {

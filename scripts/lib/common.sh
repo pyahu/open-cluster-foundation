@@ -37,6 +37,49 @@ require_file() {
   die "missing required file: ${file_path}"
 }
 
+sha256_file() {
+  local file_path="$1"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file_path" | awk '{ print $1 }'
+    return
+  fi
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file_path" | awk '{ print $1 }'
+    return
+  fi
+
+  die "required SHA-256 tool not found: sha256sum or shasum"
+}
+
+download_verified() {
+  local url="$1"
+  local expected_sha256="$2"
+  local destination="$3"
+  local download_path
+  local actual_sha256
+
+  [[ "$url" == https://* ]] || die "download URL must use HTTPS: ${url}"
+  [[ "$expected_sha256" =~ ^[0-9a-f]{64}$ ]] || die "invalid SHA-256 for ${url}"
+  require_command curl
+
+  download_path="$(mktemp "${destination}.download.XXXXXX")"
+  if ! curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+    --output "$download_path" "$url"; then
+    rm -f "$download_path"
+    die "download failed: ${url}"
+  fi
+
+  actual_sha256="$(sha256_file "$download_path")"
+  if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+    rm -f "$download_path"
+    die "SHA-256 mismatch for ${url}: expected ${expected_sha256}, got ${actual_sha256}"
+  fi
+
+  mv "$download_path" "$destination"
+}
+
 confirm_apply() {
   local message="$1"
   local auto_approve="$2"
