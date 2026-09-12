@@ -29,7 +29,9 @@ validate the foundation and compose follow-up automation.
 `node_pools` is a map keyed by pool name. Each pool controls shape, size,
 OCPU/RAM, boot volume size, pod density and initial Kubernetes labels.
 
-The OCI Terraform provider supports initial node labels but does not currently
-expose Kubernetes taints for OKE managed node pools. Apply taints after
-kubeconfig generation when a pool must be reserved for database or other
-dedicated workloads.
+The module registers configured taints through kubelet startup metadata, so
+new nodes remain reserved through scaling and node cycling. A pool named
+`database` must carry the label
+`open-cluster-foundation.io/workload=database` and the taint
+`workload.open-cluster-foundation.io/database=true:NoSchedule`. This is the
+scheduling contract used by the CloudNativePG examples.

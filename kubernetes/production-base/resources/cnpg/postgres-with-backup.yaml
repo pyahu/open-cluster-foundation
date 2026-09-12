@@ -36,6 +36,17 @@ metadata:
 spec:
   instances: 3
   imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: preferred
+    topologyKey: kubernetes.io/hostname
+    nodeSelector:
+      open-cluster-foundation.io/workload: database
+    tolerations:
+      - key: workload.open-cluster-foundation.io/database
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
   storage:
     size: 100Gi
   monitoring:

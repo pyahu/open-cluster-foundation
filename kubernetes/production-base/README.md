@@ -405,6 +405,16 @@ your DNS provider before switching to a single `*.your-domain` listener.
 Review every resource before applying it. Storage size, backup bucket, endpoint,
 replica count and resource requests must match your environment.
 
+Every CloudNativePG example targets nodes labeled
+`open-cluster-foundation.io/workload=database` and tolerates only
+`workload.open-cluster-foundation.io/database=true:NoSchedule`. The OCI
+foundation instance template creates a compatible two-node database pool. For
+an existing OCI pool, run `mise run k8s:nodes:taint-database -- --yes` once.
+For another provider, configure at least two nodes with the same label and
+taint before applying a database resource. The pod anti-affinity is preferred,
+not required, so a three-instance cluster remains schedulable on the default
+two-node pool while replicas still spread whenever capacity exists.
+
 CloudNativePG with physical backup and PITR through the Barman Cloud plugin
 (the in-tree `barmanObjectStore` backup is deprecated since CNPG 1.26). On OCI,
 use the S3 Compatibility API endpoint

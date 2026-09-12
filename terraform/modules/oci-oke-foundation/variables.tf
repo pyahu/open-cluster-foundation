@@ -91,6 +91,18 @@ variable "node_pools" {
     ])
     error_message = "Taint effect must be NoSchedule, PreferNoSchedule or NoExecute."
   }
+
+  validation {
+    condition = !contains(keys(var.node_pools), "database") || try(
+      var.node_pools.database.labels["open-cluster-foundation.io/workload"] == "database" &&
+      contains(
+        [for taint in var.node_pools.database.taints : "${taint.key}=${taint.value}:${taint.effect}"],
+        "workload.open-cluster-foundation.io/database=true:NoSchedule",
+      ),
+      false,
+    )
+    error_message = "The database node pool must use open-cluster-foundation.io/workload=database and workload.open-cluster-foundation.io/database=true:NoSchedule."
+  }
 }
 
 variable "bastion_enabled" {

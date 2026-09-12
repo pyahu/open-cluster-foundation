@@ -168,7 +168,11 @@ mise run oci:instance:kubeconfig -- <instance-name>
 
 The template starts with a small production-shaped foundation: 3 worker plus
 2 database nodes (VM.Standard.E5.Flex, 2 OCPU / 24 GB each), with the database
-pool tainted at node registration.
+pool labeled `open-cluster-foundation.io/workload=database` and tainted with
+`workload.open-cluster-foundation.io/database=true:NoSchedule` at node
+registration. The CloudNativePG examples use this contract and prefer spreading
+replicas across hosts without making a three-instance database unschedulable on
+the two-node default pool.
 
 ## Support matrix
 

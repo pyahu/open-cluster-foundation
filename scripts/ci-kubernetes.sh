@@ -12,6 +12,7 @@ CRD_CATALOG='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Gro
 require_command helm
 require_command helmfile
 require_command kubeconform
+require_command yq
 
 profile_enabled kafka starter && die "starter must not enable Kafka"
 profile_enabled kafkaConnect starter && die "starter must not enable Kafka Connect"
@@ -53,5 +54,32 @@ find "${BASE_DIR}/manifests" "${BASE_DIR}/resources" -name '*.yaml' -print0 |
   xargs -0 kubeconform -strict -summary \
     -schema-location default \
     -schema-location "$CRD_CATALOG"
+
+cnpg_manifests=()
+while IFS= read -r -d '' manifest; do
+  cnpg_manifests+=("$manifest")
+done < <(find "${BASE_DIR}/resources" -name '*.yaml' -print0)
+cnpg_cluster_count="$(yq ea '[select(.apiVersion == "postgresql.cnpg.io/v1" and .kind == "Cluster")] | length' "${cnpg_manifests[@]}")"
+cnpg_scheduling_violations="$(yq ea '[
+  select(.apiVersion == "postgresql.cnpg.io/v1" and .kind == "Cluster") |
+  select(
+    .spec.affinity.nodeSelector."open-cluster-foundation.io/workload" != "database" or
+    .spec.affinity.enablePodAntiAffinity != true or
+    .spec.affinity.podAntiAffinityType != "preferred" or
+    .spec.affinity.topologyKey != "kubernetes.io/hostname" or
+    ([
+      (.spec.affinity.tolerations // [])[] |
+      select(
+        .key == "workload.open-cluster-foundation.io/database" and
+        .operator == "Equal" and
+        .value == "true" and
+        .effect == "NoSchedule"
+      )
+    ] | length) != 1
+  )
+] | length' "${cnpg_manifests[@]}")"
+
+[[ "$cnpg_cluster_count" -gt 0 ]] || die "no CloudNativePG cluster examples found"
+[[ "$cnpg_scheduling_violations" -eq 0 ]] || die "CloudNativePG examples must follow the database scheduling contract"
 
 log "kubernetes checks passed"
