@@ -84,12 +84,21 @@ scale_namespaced_workloads_to_zero() {
   local namespace="$1"
   local resource
   local resources=()
+  local scale_output
 
   while IFS= read -r resource; do
     [[ -n "$resource" ]] && resources+=("$resource")
   done < <(kubectl -n "$namespace" get deployment,statefulset -o name)
 
-  [[ "${#resources[@]}" -eq 0 ]] || kubectl -n "$namespace" scale "${resources[@]}" --replicas=0
+  [[ "${#resources[@]}" -eq 0 ]] && return
+
+  for resource in "${resources[@]}"; do
+    if ! scale_output="$(kubectl -n "$namespace" scale "$resource" --replicas=0 2>&1)"; then
+      [[ "$scale_output" == *"(NotFound)"* ]] && continue
+      printf '%s\n' "$scale_output" >&2
+      return 1
+    fi
+  done
 }
 
 confirm_apply() {

@@ -29,6 +29,8 @@ curl() {
 
 KUBECTL_OUTPUT=""
 KUBECTL_CALLS="${TEST_ROOT}/kubectl-calls"
+KUBECTL_SCALE_FAILURE=""
+KUBECTL_SCALE_FAILURE_KIND="not_found"
 kubectl() {
   if [[ "$*" == *" get deployment,statefulset -o name" ]]; then
     printf '%s' "$KUBECTL_OUTPUT"
@@ -36,6 +38,14 @@ kubectl() {
   fi
 
   printf '%s\n' "$*" >>"$KUBECTL_CALLS"
+  if [[ -n "$KUBECTL_SCALE_FAILURE" && "$*" == *"$KUBECTL_SCALE_FAILURE"* ]]; then
+    if [[ "$KUBECTL_SCALE_FAILURE_KIND" == "not_found" ]]; then
+      printf 'Error from server (NotFound): deployments.apps "%s" not found\n' "$KUBECTL_SCALE_FAILURE" >&2
+    else
+      printf 'Error from server (Forbidden): deployments.apps "%s" is forbidden\n' "$KUBECTL_SCALE_FAILURE" >&2
+    fi
+    return 1
+  fi
 }
 
 expected_sha256="$(sha256_file "$MOCK_SOURCE")"
@@ -62,6 +72,17 @@ scale_namespaced_workloads_to_zero empty
 
 KUBECTL_OUTPUT=$'deployment.apps/api\nstatefulset.apps/database\n'
 scale_namespaced_workloads_to_zero populated
-[[ "$(<"$KUBECTL_CALLS")" == "-n populated scale deployment.apps/api statefulset.apps/database --replicas=0" ]]
+[[ "$(<"$KUBECTL_CALLS")" == $'-n populated scale deployment.apps/api --replicas=0\n-n populated scale statefulset.apps/database --replicas=0' ]]
+
+rm "$KUBECTL_CALLS"
+KUBECTL_SCALE_FAILURE="deployment.apps/api"
+scale_namespaced_workloads_to_zero deleting
+[[ "$(<"$KUBECTL_CALLS")" == $'-n deleting scale deployment.apps/api --replicas=0\n-n deleting scale statefulset.apps/database --replicas=0' ]]
+
+KUBECTL_SCALE_FAILURE_KIND="forbidden"
+if scale_namespaced_workloads_to_zero forbidden >/dev/null 2>&1; then
+  printf 'workload scaling accepted an authorization failure\n' >&2
+  exit 1
+fi
 
 printf 'common library unit tests passed\n'
