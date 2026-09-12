@@ -85,4 +85,23 @@ if scale_namespaced_workloads_to_zero forbidden >/dev/null 2>&1; then
   exit 1
 fi
 
+ORIGINAL_OCF_ROOT="$OCF_ROOT"
+OCF_ROOT="${TEST_ROOT}/catalog"
+mkdir -p "${OCF_ROOT}/kubernetes/production-base/environments"
+cat >"${OCF_ROOT}/kubernetes/production-base/environments/structured.yaml" <<'EOF'
+profiles: {edge: true, observability: false}
+EOF
+cat >"${OCF_ROOT}/kubernetes/production-base/versions.yaml" <<'EOF'
+components:
+  example: {version: "v1.2.3", manifestSha256: abc123}
+EOF
+profile_enabled edge structured
+if profile_enabled observability structured; then
+  printf 'disabled profile was reported as enabled\n' >&2
+  exit 1
+fi
+[[ "$(component_value example version)" == "v1.2.3" ]]
+[[ "$(component_value example manifestSha256)" == "abc123" ]]
+OCF_ROOT="$ORIGINAL_OCF_ROOT"
+
 printf 'common library unit tests passed\n'

@@ -9,6 +9,7 @@ silently changing an existing cluster's profile.
 | `fresh` | No OCF state or known base workload exists. | Fresh installation |
 | `legacy` | Known OCF workloads exist but no state ConfigMap exists. | Compatible upgrade and adoption |
 | `managed` | The OCF state ConfigMap exists with a supported schema. | Managed upgrade |
+| `partial` | An apply checkpoint exists because an operation has not completed. | Resume the recorded operation exactly |
 
 `--mode auto` is the default and selects the operation from the detected state.
 Use `--mode fresh` or `--mode upgrade` in automation when a mismatch must stop
@@ -21,12 +22,23 @@ the environment recorded by its last successful apply. This keeps stateful
 application services out of new installations while preserving existing Kafka,
 Kafka Connect and Valkey installations during upgrades.
 
+Immediately before changing components, OCF writes
+`platform-system/open-cluster-foundation-operation` with the selected
+environment, mode and migration controls. If the process fails or is
+interrupted, the next `check` or `apply` detects that checkpoint and reuses the
+recorded settings. A conflicting environment or migration option is rejected
+until the idempotent apply completes. This prevents an interrupted fresh
+installation from being mistaken for a legacy installation with a broader
+default profile.
+
 After every successful apply, OCF writes
 `platform-system/open-cluster-foundation-installation`. The ConfigMap records
 the state schema, environment, resolved operation, installation origin, source
 revision, component-version digest, enabled profiles, NetworkPolicy state,
 observability scope, identity access mode, cache access mode and completion
-time. A failed or interrupted apply never updates this state.
+time. OCF then removes the operation checkpoint. A failed or interrupted apply
+does not replace the last successful state; its operation checkpoint remains
+as the safe resume contract.
 
 The first successful apply to a legacy installation records `origin=adopted`.
 It does not change the selected environment or enable new components merely

@@ -126,17 +126,12 @@ profile_enabled() {
   local profile="$1"
   local environment="$2"
   local environments_file="${OCF_ROOT}/kubernetes/production-base/environments/${environment}.yaml"
+  local value
 
   [[ -f "$environments_file" ]] || die "unknown helmfile environment: ${environment}"
 
-  local value
-  value="$(awk -v profile="$profile" '
-    $0 ~ "^  " profile ":" {
-      sub("^[[:space:]]*" profile ":[[:space:]]*", "")
-      print
-      exit
-    }
-  ' "$environments_file")"
+  value="$(PROFILE="$profile" yq -r '.profiles[strenv(PROFILE)] // false' "$environments_file")"
+  [[ "$value" == "true" || "$value" == "false" ]] || die "profile ${profile} must be a boolean in ${environments_file}"
 
   [[ "$value" == "true" ]]
 }
@@ -146,19 +141,6 @@ component_value() {
   local key="$2"
   local versions_file="${OCF_ROOT}/kubernetes/production-base/versions.yaml"
 
-  awk -v component="$component" -v key="$key" '
-    $0 ~ "^  " component ":" {
-      in_component = 1
-      next
-    }
-    in_component && $0 ~ "^  [A-Za-z0-9]+:" {
-      exit
-    }
-    in_component && $0 ~ "^    " key ":" {
-      sub("^[[:space:]]*" key ":[[:space:]]*", "")
-      gsub(/^"|"$/, "")
-      print
-      exit
-    }
-  ' "$versions_file"
+  [[ -f "$versions_file" ]] || die "missing component catalog: ${versions_file}"
+  COMPONENT="$component" KEY="$key" yq -r '.components[strenv(COMPONENT)][strenv(KEY)] // ""' "$versions_file"
 }

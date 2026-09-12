@@ -253,25 +253,27 @@ apply_base_gateway() {
     return
   fi
 
-  # The checks must live inside an "if": under "set -e" a "cmd && action"
-  # list aborts the script when cmd fails, and failing is the normal case
-  # here (a fresh cluster has no Gateway yet).
-  local existing=()
+  local gateway_class_exists="false"
+  local gateway_exists="false"
   if kubectl get gatewayclass envoy >/dev/null 2>&1; then
-    existing+=("GatewayClass/envoy")
+    gateway_class_exists="true"
   fi
   if kubectl -n platform-system get gateway public-gateway >/dev/null 2>&1; then
-    existing+=("Gateway/public-gateway")
+    gateway_exists="true"
   fi
 
-  if [[ "${#existing[@]}" -gt 0 ]]; then
-    log "base Gateway already present (${existing[*]}); keeping instance customisations"
-    log "  re-apply the placeholder with OCF_FORCE_BASE_GATEWAY=true if you really want it"
-    return
+  if [[ "$gateway_class_exists" == "false" ]]; then
+    log "applying missing base GatewayClass"
+    KIND=GatewayClass yq 'select(.kind == strenv(KIND))' "${BASE_DIR}/manifests/gateway.yaml" | kubectl apply -f -
+  fi
+  if [[ "$gateway_exists" == "false" ]]; then
+    log "applying missing base Gateway"
+    KIND=Gateway yq 'select(.kind == strenv(KIND))' "${BASE_DIR}/manifests/gateway.yaml" | kubectl apply -f -
   fi
 
-  log "applying base Gateway"
-  kubectl apply -f "${BASE_DIR}/manifests/gateway.yaml"
+  if [[ "$gateway_class_exists" == "true" && "$gateway_exists" == "true" ]]; then
+    log "base Gateway resources already exist; keeping instance customisations"
+  fi
 }
 
 apply_prometheus_operator_crds() {
@@ -452,6 +454,22 @@ helmfile_apply() {
   (cd "$BASE_DIR" && helmfile -f helmfile.yaml.gotmpl -e "$ENVIRONMENT" apply "${HELMFILE_APPLY_ARGS[@]}" "$@")
 }
 
+apply_bootstrap_releases() {
+  if profile_enabled edge "$ENVIRONMENT"; then
+    log "installing Envoy Gateway first"
+    helmfile_apply --selector profile=edge
+  else
+    log "skipping Envoy Gateway bootstrap (profile disabled)"
+  fi
+
+  if profile_enabled certificates "$ENVIRONMENT"; then
+    log "installing cert-manager"
+    helmfile_apply --selector profile=certificates
+  else
+    log "skipping cert-manager bootstrap (profile disabled)"
+  fi
+}
+
 apply_base() {
   require_k8s_tools
   check_configuration
@@ -459,6 +477,7 @@ apply_base() {
 
   log "applying namespaces and Pod Security labels"
   kubectl apply -f "${BASE_DIR}/manifests/namespace-baseline.yaml"
+  begin_installation_operation
 
   prepare_valkey_acl_secret
   apply_prometheus_operator_crds
@@ -466,11 +485,7 @@ apply_base() {
   # Envoy Gateway ships (and owns) the Gateway API CRDs, which cert-manager's
   # Gateway integration requires at startup; cert-manager must exist before
   # the RabbitMQ topology operator, which uses its webhook certificates.
-  log "installing Envoy Gateway first"
-  helmfile_apply --selector profile=edge
-
-  log "installing cert-manager"
-  helmfile_apply --selector profile=certificates
+  apply_bootstrap_releases
 
   apply_cluster_issuers_if_configured
   apply_rabbitmq_operators
@@ -491,23 +506,30 @@ apply_base() {
   apply_kafka_base
   apply_network_policies
   record_installation_state
+  complete_installation_operation
 }
 
-case "$ACTION" in
-  check)
-    check_configuration
-    ;;
-  render)
-    render
-    ;;
-  apply)
-    apply_base
-    ;;
-  -h|--help)
-    usage
-    ;;
-  *)
-    usage
-    die "unknown action: ${ACTION}"
-    ;;
-esac
+main() {
+  case "$ACTION" in
+    check)
+      check_configuration
+      ;;
+    render)
+      render
+      ;;
+    apply)
+      apply_base
+      ;;
+    -h|--help)
+      usage
+      ;;
+    *)
+      usage
+      die "unknown action: ${ACTION}"
+      ;;
+  esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main
+fi

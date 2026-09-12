@@ -5,6 +5,8 @@ set -Eeuo pipefail
 INSTALLATION_STATE_NAMESPACE="platform-system"
 INSTALLATION_STATE_NAME="open-cluster-foundation-installation"
 INSTALLATION_STATE_SCHEMA_VERSION="1"
+INSTALLATION_OPERATION_NAME="open-cluster-foundation-operation"
+INSTALLATION_OPERATION_SCHEMA_VERSION="1"
 
 known_installation_workload_exists() {
   local workload
@@ -26,6 +28,11 @@ known_installation_workload_exists() {
 }
 
 detect_installation_state() {
+  if kubectl -n "$INSTALLATION_STATE_NAMESPACE" get configmap "$INSTALLATION_OPERATION_NAME" >/dev/null 2>&1; then
+    printf '%s\n' partial
+    return
+  fi
+
   if kubectl -n "$INSTALLATION_STATE_NAMESPACE" get configmap "$INSTALLATION_STATE_NAME" >/dev/null 2>&1; then
     printf '%s\n' managed
     return
@@ -84,6 +91,20 @@ resolve_install_mode() {
       die "unknown installation mode: ${requested_mode}; expected auto, fresh or upgrade"
       ;;
   esac
+}
+
+resolve_partial_setting() {
+  local requested_value="$1"
+  local recorded_value="$2"
+  local option_name="$3"
+
+  [[ -n "$recorded_value" ]] || die "partial installation operation does not contain ${option_name}"
+  if [[ "$requested_value" == "auto" || "$requested_value" == "$recorded_value" ]]; then
+    printf '%s\n' "$recorded_value"
+    return
+  fi
+
+  die "partial installation recorded ${option_name}=${recorded_value}, but ${requested_value} was requested; resume with the recorded setting"
 }
 
 resolve_network_policy_mode() {
@@ -219,11 +240,24 @@ observability_application_namespace_regex() {
   build_observability_application_namespace_regex "${namespaces[@]}"
 }
 
+read_installation_configmap_value() {
+  local configmap_name="$1"
+  local key="$2"
+
+  kubectl -n "$INSTALLATION_STATE_NAMESPACE" get configmap "$configmap_name" -o json |
+    KEY="$key" yq -r '.data[strenv(KEY)] // ""'
+}
+
 read_installation_state_value() {
   local key="$1"
 
-  kubectl -n "$INSTALLATION_STATE_NAMESPACE" get configmap "$INSTALLATION_STATE_NAME" \
-    -o "go-template={{ index .data \"${key}\" }}"
+  read_installation_configmap_value "$INSTALLATION_STATE_NAME" "$key"
+}
+
+read_installation_operation_value() {
+  local key="$1"
+
+  read_installation_configmap_value "$INSTALLATION_OPERATION_NAME" "$key"
 }
 
 validate_managed_installation() {
@@ -239,37 +273,41 @@ validate_managed_installation() {
   fi
 }
 
+validate_partial_installation() {
+  local operation_schema
+  local recorded_environment
+
+  operation_schema="$(read_installation_operation_value schema-version)"
+  [[ "$operation_schema" == "$INSTALLATION_OPERATION_SCHEMA_VERSION" ]] || die "installation operation schema ${operation_schema:-missing} is not supported by this repository"
+
+  recorded_environment="$(read_installation_operation_value environment)"
+  [[ -f "${OCF_ROOT}/kubernetes/production-base/environments/${recorded_environment}.yaml" ]] || die "partial installation operation contains an unknown environment: ${recorded_environment:-missing}"
+  if [[ "$ENVIRONMENT" != "auto" && "$ENVIRONMENT" != "$recorded_environment" ]]; then
+    die "partial installation recorded environment=${recorded_environment}, but ${ENVIRONMENT} was requested; resume with the recorded environment"
+  fi
+  ENVIRONMENT="$recorded_environment"
+
+  OCF_RESOLVED_INSTALL_MODE="$(resolve_partial_setting "$INSTALL_MODE" "$(read_installation_operation_value mode)" mode)"
+  OCF_RESOLVED_NETWORK_POLICY_MODE="$(resolve_partial_setting "$NETWORK_POLICY_MODE" "$(read_installation_operation_value network-policy-mode)" network-policies)"
+  OCF_RESOLVED_OBSERVABILITY_SCOPE="$(resolve_partial_setting "$OBSERVABILITY_SCOPE" "$(read_installation_operation_value observability-scope)" observability-scope)"
+  OCF_RESOLVED_IDENTITY_ACCESS_MODE="$(resolve_partial_setting "$IDENTITY_ACCESS_MODE" "$(read_installation_operation_value identity-access)" identity-access)"
+  OCF_RESOLVED_CACHE_ACCESS_MODE="$(resolve_partial_setting "$CACHE_ACCESS_MODE" "$(read_installation_operation_value cache-access)" cache-access)"
+
+  resolve_install_mode "$OCF_RESOLVED_INSTALL_MODE" "$(read_installation_operation_value initial-state)" >/dev/null
+  resolve_network_policy_mode "$OCF_RESOLVED_NETWORK_POLICY_MODE" partial >/dev/null
+  resolve_observability_scope "$OCF_RESOLVED_OBSERVABILITY_SCOPE" partial >/dev/null
+  resolve_identity_access_mode "$OCF_RESOLVED_IDENTITY_ACCESS_MODE" partial >/dev/null
+  resolve_cache_access_mode "$OCF_RESOLVED_CACHE_ACCESS_MODE" partial >/dev/null
+}
+
 prepare_installation() {
   OCF_OBSERVED_INSTALLATION_STATE="$(detect_installation_state)"
 
-  local managed_network_policy_state=""
-  local managed_observability_scope=""
-  local managed_identity_access_mode=""
-  local managed_cache_access_mode=""
-  if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
-    managed_network_policy_state="$(read_installation_state_value network-policies)"
-    [[ "$managed_network_policy_state" != "<no value>" ]] || managed_network_policy_state=""
-    managed_observability_scope="$(read_installation_state_value observability-scope)"
-    [[ "$managed_observability_scope" != "<no value>" ]] || managed_observability_scope=""
-    managed_identity_access_mode="$(read_installation_state_value identity-access)"
-    [[ "$managed_identity_access_mode" != "<no value>" ]] || managed_identity_access_mode=""
-    managed_cache_access_mode="$(read_installation_state_value cache-access)"
-    [[ "$managed_cache_access_mode" != "<no value>" ]] || managed_cache_access_mode=""
+  if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "partial" ]]; then
+    validate_partial_installation
+  else
+    prepare_new_installation_operation
   fi
-
-  if [[ "$ENVIRONMENT" == "auto" ]]; then
-    local managed_environment=""
-    if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
-      managed_environment="$(read_installation_state_value environment)"
-    fi
-    ENVIRONMENT="$(resolve_default_environment "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_environment")"
-  fi
-
-  OCF_RESOLVED_INSTALL_MODE="$(resolve_install_mode "$INSTALL_MODE" "$OCF_OBSERVED_INSTALLATION_STATE")"
-  OCF_RESOLVED_NETWORK_POLICY_MODE="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_network_policy_state")"
-  OCF_RESOLVED_OBSERVABILITY_SCOPE="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_observability_scope")"
-  OCF_RESOLVED_IDENTITY_ACCESS_MODE="$(resolve_identity_access_mode "$IDENTITY_ACCESS_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_identity_access_mode")"
-  OCF_RESOLVED_CACHE_ACCESS_MODE="$(resolve_cache_access_mode "$CACHE_ACCESS_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_cache_access_mode")"
 
   if [[ "$OCF_RESOLVED_OBSERVABILITY_SCOPE" == "trusted" && "$(installation_network_policy_state)" != "enforced" ]]; then
     die "trusted observability requires enforced NetworkPolicies; pass --network-policies enforce after completing the migration"
@@ -294,7 +332,36 @@ prepare_installation() {
   log "cache access mode: ${OCF_RESOLVED_CACHE_ACCESS_MODE}"
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "legacy" ]]; then
     log "existing installation will retain the current compatibility path and receive state metadata only after a successful apply"
+  elif [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "partial" ]]; then
+    log "resuming the recorded partial installation operation"
   fi
+}
+
+prepare_new_installation_operation() {
+  local managed_network_policy_state=""
+  local managed_observability_scope=""
+  local managed_identity_access_mode=""
+  local managed_cache_access_mode=""
+  if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
+    managed_network_policy_state="$(read_installation_state_value network-policies)"
+    managed_observability_scope="$(read_installation_state_value observability-scope)"
+    managed_identity_access_mode="$(read_installation_state_value identity-access)"
+    managed_cache_access_mode="$(read_installation_state_value cache-access)"
+  fi
+
+  if [[ "$ENVIRONMENT" == "auto" ]]; then
+    local managed_environment=""
+    if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
+      managed_environment="$(read_installation_state_value environment)"
+    fi
+    ENVIRONMENT="$(resolve_default_environment "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_environment")"
+  fi
+
+  OCF_RESOLVED_INSTALL_MODE="$(resolve_install_mode "$INSTALL_MODE" "$OCF_OBSERVED_INSTALLATION_STATE")"
+  OCF_RESOLVED_NETWORK_POLICY_MODE="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_network_policy_state")"
+  OCF_RESOLVED_OBSERVABILITY_SCOPE="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_observability_scope")"
+  OCF_RESOLVED_IDENTITY_ACCESS_MODE="$(resolve_identity_access_mode "$IDENTITY_ACCESS_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_identity_access_mode")"
+  OCF_RESOLVED_CACHE_ACCESS_MODE="$(resolve_cache_access_mode "$CACHE_ACCESS_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_cache_access_mode")"
 }
 
 installation_observability_scope_state() {
@@ -324,6 +391,14 @@ installation_network_policy_state() {
     fi
   fi
 
+  if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "partial" ]]; then
+    local recorded_state
+    recorded_state="$(read_installation_operation_value network-policies-state)"
+    [[ "$recorded_state" == "enforced" || "$recorded_state" == "unmanaged" ]] || die "partial installation operation contains an invalid network-policies-state: ${recorded_state:-missing}"
+    printf '%s\n' "$recorded_state"
+    return
+  fi
+
   printf '%s\n' unmanaged
 }
 
@@ -340,6 +415,12 @@ installation_origin() {
       origin="$(read_installation_state_value origin)"
       printf '%s\n' "${origin:-adopted}"
       ;;
+    partial)
+      local recorded_origin
+      recorded_origin="$(read_installation_operation_value origin)"
+      [[ "$recorded_origin" == "fresh" || "$recorded_origin" == "adopted" ]] || die "partial installation operation contains an invalid origin: ${recorded_origin:-missing}"
+      printf '%s\n' "$recorded_origin"
+      ;;
   esac
 }
 
@@ -355,6 +436,37 @@ source_revision() {
   fi
 
   printf '%s\n' unknown
+}
+
+begin_installation_operation() {
+  if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "partial" ]]; then
+    log "using existing installation operation checkpoint"
+    return
+  fi
+
+  kubectl -n "$INSTALLATION_STATE_NAMESPACE" create configmap "$INSTALLATION_OPERATION_NAME" \
+    --from-literal="schema-version=${INSTALLATION_OPERATION_SCHEMA_VERSION}" \
+    --from-literal="environment=${ENVIRONMENT}" \
+    --from-literal="mode=${OCF_RESOLVED_INSTALL_MODE}" \
+    --from-literal="origin=$(installation_origin)" \
+    --from-literal="initial-state=${OCF_OBSERVED_INSTALLATION_STATE}" \
+    --from-literal="source-revision=$(source_revision)" \
+    --from-literal="network-policy-mode=${OCF_RESOLVED_NETWORK_POLICY_MODE}" \
+    --from-literal="network-policies-state=$(installation_network_policy_state)" \
+    --from-literal="observability-scope=${OCF_RESOLVED_OBSERVABILITY_SCOPE}" \
+    --from-literal="identity-access=${OCF_RESOLVED_IDENTITY_ACCESS_MODE}" \
+    --from-literal="cache-access=${OCF_RESOLVED_CACHE_ACCESS_MODE}" \
+    --from-literal="started-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --dry-run=client -o yaml |
+    yq '.metadata.labels."app.kubernetes.io/name" = "open-cluster-foundation" | .metadata.labels."app.kubernetes.io/managed-by" = "open-cluster-foundation" | .metadata.labels."open-cluster-foundation.io/state" = "operation"' |
+    kubectl apply -f -
+
+  log "recorded installation operation in ${INSTALLATION_STATE_NAMESPACE}/${INSTALLATION_OPERATION_NAME}"
+}
+
+complete_installation_operation() {
+  kubectl -n "$INSTALLATION_STATE_NAMESPACE" delete configmap "$INSTALLATION_OPERATION_NAME" --ignore-not-found=true
+  log "cleared installation operation checkpoint"
 }
 
 record_installation_state() {

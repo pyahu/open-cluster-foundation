@@ -180,6 +180,9 @@ STATE_CONFIGMAP="open-cluster-foundation-installation"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "environment" }}')" == "ci" ]] || die "unexpected installation state environment"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "mode" }}')" == "fresh" ]] || die "unexpected installation state mode"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "origin" }}')" == "fresh" ]] || die "unexpected installation state origin"
+if kubectl -n platform-system get configmap open-cluster-foundation-operation >/dev/null 2>&1; then
+  die "installation operation checkpoint remained after a successful apply"
+fi
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "network-policies" }}')" == "enforced" ]] || die "unexpected installation NetworkPolicy state"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "observability-scope" }}')" == "trusted" ]] || die "unexpected installation observability scope"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "identity-access" }}')" == "sso" ]] || die "unexpected installation identity access mode"
