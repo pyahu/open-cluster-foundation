@@ -7,24 +7,31 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 # shellcheck source=lib/k8s-config.sh
 source "${SCRIPT_DIR}/lib/k8s-config.sh"
+# shellcheck source=lib/k8s-installation.sh
+source "${SCRIPT_DIR}/lib/k8s-installation.sh"
 
 ACTION="${1:-check}"
 shift || true
 
 ENVIRONMENT="${OCF_K8S_ENVIRONMENT:-default}"
 AUTO_APPROVE="${OCF_AUTO_APPROVE:-false}"
+INSTALL_MODE="${OCF_INSTALL_MODE:-auto}"
+ALLOW_ENVIRONMENT_CHANGE="${OCF_ALLOW_ENVIRONMENT_CHANGE:-false}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/k8s-production-base.sh check
+  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade]
   scripts/k8s-production-base.sh render [--environment default|all-components]
-  scripts/k8s-production-base.sh apply [--environment default|all-components] [--yes]
+  scripts/k8s-production-base.sh apply [--environment default|all-components] [--mode auto|fresh|upgrade] [--allow-environment-change] [--yes]
 
 Environment:
   ACME_EMAIL              Optional. If set, Let's Encrypt issuers are created with this email.
   OCF_AUTO_APPROVE=true   Skip interactive confirmation for apply.
   OCF_K8S_ENVIRONMENT     Helmfile environment. Defaults to "default".
+  OCF_INSTALL_MODE        Installation mode. Defaults to "auto".
+  OCF_ALLOW_ENVIRONMENT_CHANGE=true
+                          Allow a managed installation to change environment.
 EOF
 }
 
@@ -37,6 +44,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --yes)
       AUTO_APPROVE="true"
+      ;;
+    --mode)
+      INSTALL_MODE="${2:-}"
+      [[ -n "$INSTALL_MODE" ]] || die "--mode requires a value"
+      shift
+      ;;
+    --allow-environment-change)
+      ALLOW_ENVIRONMENT_CHANGE="true"
       ;;
     -h|--help)
       usage
@@ -94,6 +109,7 @@ check_configuration() {
   require_command yq
   preflight
   validate_instance_values
+  prepare_installation
 }
 
 ensure_secret_exists() {
@@ -328,6 +344,7 @@ apply_base() {
 
   wait_for_controllers
   apply_kafka_base
+  record_installation_state
 }
 
 case "$ACTION" in

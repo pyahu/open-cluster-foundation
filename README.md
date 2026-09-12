@@ -51,6 +51,10 @@ These modules are starting points, not a production guarantee. Review them for
 your compliance, security, networking, backup and cost requirements before
 running critical workloads.
 
+Fresh installations and upgrades follow an explicit
+[compatibility contract](docs/compatibility.md). Existing installations keep
+the compatible upgrade path until a documented migration is selected.
+
 ## Quickstart (OCI)
 
 The map below is the whole journey — what to read, what to edit and what to

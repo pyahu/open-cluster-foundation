@@ -125,6 +125,11 @@ The apply preflight rejects missing files, placeholder domains, non-HTTPS
 Grafana endpoints and a Grafana role expression that grants every OIDC user
 administrator access. Rendering and CI do not require private instance values.
 
+The installer distinguishes fresh, legacy and state-managed targets before it
+applies anything. The full contract, explicit `--mode` controls and environment
+change gate are documented in
+[`docs/compatibility.md`](../../docs/compatibility.md).
+
 The optional `all-components` environment also enables ZITADEL and Infisical.
 Do not run that environment until their database, master key and application
 secrets are created.

@@ -86,6 +86,17 @@ export OCF_KAFKA_CLUSTER_FILE="${E2E_DIR}/kafka-cluster.yaml"
 export OCF_KAFKA_CONNECT_FILE="${E2E_DIR}/kafka-connect.yaml"
 "${SCRIPT_DIR}/k8s-production-base.sh" apply --yes
 
+log "asserting fresh-install state was recorded"
+STATE_CONFIGMAP="open-cluster-foundation-installation"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "schema-version" }}')" == "1" ]] || die "unexpected installation state schema"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "environment" }}')" == "ci" ]] || die "unexpected installation state environment"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "mode" }}')" == "fresh" ]] || die "unexpected installation state mode"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "origin" }}')" == "fresh" ]] || die "unexpected installation state origin"
+"${SCRIPT_DIR}/k8s-production-base.sh" check --mode upgrade
+if "${SCRIPT_DIR}/k8s-production-base.sh" check --mode fresh >/dev/null 2>&1; then
+  die "fresh mode accepted an existing managed installation"
+fi
+
 # Started only after the base install: cloud-provider-kind applies its own
 # copy of the Gateway API CRDs at startup and would fight the foundation's
 # server-side apply over field ownership.
