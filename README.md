@@ -57,6 +57,8 @@ the compatible upgrade path until a documented migration is selected.
 Failure-tolerant deployments use the opt-in
 [`production-ha` profile](docs/production-ha.md) after an explicit
 [capacity and cost review](docs/capacity-planning.md).
+New OCI foundations use the hardened defaults and migration contract in
+[`docs/oci-hardening.md`](docs/oci-hardening.md).
 
 ## Quickstart (OCI)
 
@@ -119,6 +121,9 @@ mise run oci:kubeconfig
 export KUBECONFIG="$HOME/.kube/<cluster-name>.yaml"
 kubectl get nodes
 ```
+
+The default API endpoint is private. Establish the documented VPN,
+FastConnect, in-VCN or OCI Bastion path before the first `kubectl` command.
 
 **4. Apply the Kubernetes production base:**
 
@@ -271,7 +276,8 @@ Apply tasks ask for interactive confirmation unless `--yes` is passed after
 - No committed secrets.
 - Predictable resource names.
 - Small modules with typed, documented variables.
-- Private nodes by default; public API access only through explicit CIDRs.
+- Private nodes and a private API endpoint by default; existing public API
+  endpoints migrate only through an explicit compatibility checkpoint.
 - Cluster add-ons are separate from cloud provisioning.
 - Provider modules should expose comparable inputs and outputs where possible.
 - The Kubernetes base must stay provider-agnostic.

@@ -48,7 +48,29 @@ output "network_security_group_ids" {
   value       = module.foundation.network_security_group_ids
 }
 
+output "logging" {
+  description = "OCI Logging resources created for the foundation."
+  value       = module.foundation.logging
+}
+
+output "cluster_autoscaler_node_groups" {
+  description = "Validated node-pool boundaries for OCI Cluster Autoscaler configuration."
+  value       = module.foundation.cluster_autoscaler_node_groups
+}
+
+output "cluster_autoscaler_nodes" {
+  description = "Value for the OCI Cluster Autoscaler managed add-on nodes configuration."
+  value       = module.foundation.cluster_autoscaler_nodes
+}
+
+output "kubeconfig" {
+  description = "Structured inputs used by scripts/oci-foundation.sh kubeconfig."
+  value = merge(module.foundation.kubeconfig, {
+    profile = var.oci_config_file_profile
+  })
+}
+
 output "kubeconfig_command" {
-  description = "OCI CLI command to create a kubeconfig for this cluster."
+  description = "Legacy OCI CLI command retained for compatibility. Automation should use the structured kubeconfig output."
   value       = module.foundation.kubeconfig_command
 }

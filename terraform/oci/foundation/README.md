@@ -11,7 +11,8 @@ This module creates:
 
 - Dedicated VCN.
 - Public subnet for load balancers.
-- Kubernetes API subnet with public access restricted by CIDR.
+- Private Kubernetes API subnet for new configurations, with an explicit
+  compatibility path for existing public endpoints.
 - Private subnets for nodes and pods.
 - Internet Gateway for public load balancers.
 - NAT Gateway with a reserved public IP for outbound internet access from
@@ -19,6 +20,7 @@ This module creates:
 - Service Gateway for private access to OCI services.
 - OKE Enhanced Cluster.
 - One or more private node pools with OCI VCN-Native Pod Networking.
+- OKE control-plane logs and VCN flow logs for new configurations.
 
 Envoy Gateway, Prometheus, Grafana, Loki, cert-manager and other add-ons are
 installed by separate Kubernetes modules.
@@ -62,6 +64,8 @@ Allow group ocf-cluster-admins to manage instance-family in compartment <compart
 Allow group ocf-cluster-admins to manage volume-family in compartment <compartment-name>
 Allow group ocf-cluster-admins to manage load-balancers in compartment <compartment-name>
 Allow group ocf-cluster-admins to manage object-family in compartment <compartment-name>
+Allow group ocf-cluster-admins to manage log-groups in compartment <compartment-name>
+Allow group ocf-cluster-admins to read log-content in compartment <compartment-name>
 ```
 
 For production, refine these policies by group, compartment and automation
@@ -191,10 +195,10 @@ terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
-## 6a. Optional: Private API Endpoint and Bastion
+## 6a. Private API Endpoint and Bastion
 
-With `api_endpoint_public_enabled = false` the Kubernetes API has no public
-IP, so enable the managed (free) OCI Bastion in the same apply:
+New entrypoint configurations default to a private Kubernetes API and an OCI
+Bastion:
 
 ```hcl
 api_endpoint_public_enabled = false
@@ -218,16 +222,20 @@ Then follow the SSH command printed by the session to tunnel
 `localhost:6443`, and point the kubeconfig server at `https://127.0.0.1:6443`.
 The bastion also serves SSH sessions to the private nodes.
 
+Existing public endpoints require a staged migration. Follow
+[OCI foundation hardening](../../../docs/oci-hardening.md) before changing the
+endpoint mode.
+
 ## 7. Generate Kubeconfig
 
 After apply:
 
 ```sh
-terraform output -raw kubeconfig_command
+mise run oci:kubeconfig
 ```
 
-Run the returned command. It writes the kubeconfig to
-`~/.kube/<cluster-name>.yaml`. Then:
+The script validates a structured Terraform output and writes the kubeconfig
+to `~/.kube/<cluster-name>.yaml` without evaluating shell text. Then:
 
 ```sh
 export KUBECONFIG="$HOME/.kube/<cluster-name>.yaml"
@@ -272,9 +280,9 @@ allowlisting for outbound traffic from workloads.
   without receiving public IPs, while operators keep a stable egress IP for
   external firewall allowlists.
 - Private nodes: workloads do not receive public IPs.
-- Public Kubernetes API endpoint for initial simplicity, restricted by CIDR;
-  private endpoint + managed Bastion available via `api_endpoint_public_enabled`
-  and `bastion_enabled`.
+- Private Kubernetes API endpoint and managed Bastion for new entrypoint
+  configurations; existing public endpoints remain on an explicit migration
+  path.
 - Layer-4 ingress via OCI Network Load Balancer (free, source-IP preserving):
   the node NSG admits ingress CIDRs on the NodePort range so source-preserved
   client traffic is accepted; the Kubernetes base ships the matching
@@ -283,7 +291,11 @@ allowlisting for outbound traffic from workloads.
 - VCN-Native Pod Networking: pods receive VCN IPs, which improves OCI integration.
 - Multiple node pools: callers can create workload-specific pools without
   duplicating the network and cluster code.
-- Add-ons stay outside this stack: the foundation should remain small and predictable.
+- Add-ons stay outside this stack: the foundation emits validated OCI Cluster
+  Autoscaler configuration without silently creating IAM policy or installing
+  the add-on.
+- OKE control-plane and VCN flow logs use a 30-day default retention for new
+  configurations.
 
 ## Official References
 

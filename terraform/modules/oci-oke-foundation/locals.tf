@@ -6,6 +6,27 @@ locals {
 
   kube_endpoint_mode = var.api_endpoint_public_enabled ? "PUBLIC_ENDPOINT" : "PRIVATE_ENDPOINT"
   kubeconfig_path    = "~/.kube/${var.cluster_name}.yaml"
+  logging_enabled    = var.control_plane_logging_enabled || var.vcn_flow_logging_enabled
+
+  ipv4_weights = [16777216, 65536, 256, 1]
+  vcn_range = {
+    first = try(sum([for index, octet in split(".", cidrhost(var.vcn_cidr, 0)) : tonumber(octet) * local.ipv4_weights[index]]), 0)
+    last  = try(sum([for index, octet in split(".", cidrhost(var.vcn_cidr, -1)) : tonumber(octet) * local.ipv4_weights[index]]), 0)
+  }
+  subnet_ranges = {
+    for name, cidr in var.subnet_cidrs : name => {
+      first = try(sum([for index, octet in split(".", cidrhost(cidr, 0)) : tonumber(octet) * local.ipv4_weights[index]]), 0)
+      last  = try(sum([for index, octet in split(".", cidrhost(cidr, -1)) : tonumber(octet) * local.ipv4_weights[index]]), 0)
+    }
+  }
+  subnet_pairs = [
+    { left = "api_endpoint", right = "load_balancer" },
+    { left = "api_endpoint", right = "nodes" },
+    { left = "api_endpoint", right = "pods" },
+    { left = "load_balancer", right = "nodes" },
+    { left = "load_balancer", right = "pods" },
+    { left = "nodes", right = "pods" },
+  ]
 
   # The same operators that reach the API endpoint reach the bastion, unless a
   # dedicated allowlist is provided.

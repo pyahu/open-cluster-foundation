@@ -65,9 +65,9 @@ variable "ssh_public_key" {
 }
 
 variable "api_endpoint_public_enabled" {
-  description = "Whether the Kubernetes API endpoint receives a public IP. Keep true only with tight api_endpoint_allowed_cidrs."
+  description = "Whether the Kubernetes API endpoint receives a public IP. Existing public clusters must set true explicitly until their private access path is validated."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "api_endpoint_allowed_cidrs" {
@@ -136,6 +136,10 @@ variable "node_pools" {
     max_pods_per_node         = number
     availability_domain_count = number
     labels                    = optional(map(string), {})
+    autoscaling = optional(object({
+      min_size = number
+      max_size = number
+    }))
     taints = optional(list(object({
       key    = string
       value  = string
@@ -153,6 +157,10 @@ variable "node_pools" {
       availability_domain_count = 3
       labels = {
         "node-pool" = "worker"
+      }
+      autoscaling = {
+        min_size = 3
+        max_size = 9
       }
     }
   }
@@ -173,9 +181,32 @@ variable "node_pools" {
 }
 
 variable "bastion_enabled" {
-  description = "Whether to create an OCI Bastion (managed, no cost) targeting the API endpoint subnet. Required when api_endpoint_public_enabled is false."
+  description = "Whether to create an OCI Bastion targeting the API endpoint subnet as the default operator access path to a private endpoint."
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "control_plane_logging_enabled" {
+  description = "Whether OCI Logging collects all OKE control-plane service logs."
+  type        = bool
+  default     = true
+}
+
+variable "vcn_flow_logging_enabled" {
+  description = "Whether OCI Logging collects VCN flow logs."
+  type        = bool
+  default     = true
+}
+
+variable "log_retention_duration" {
+  description = "OCI service-log retention in days."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.log_retention_duration >= 30 && var.log_retention_duration <= 180 && var.log_retention_duration % 30 == 0
+    error_message = "log_retention_duration must be a 30-day increment from 30 through 180."
+  }
 }
 
 variable "bastion_allowed_cidrs" {

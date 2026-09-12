@@ -45,9 +45,13 @@ terraform apply .terraform/plan.tfplan
 Generate kubeconfig from the Terraform output:
 
 ```sh
-terraform output -raw kubeconfig_command
-$(terraform output -raw kubeconfig_command)
+mise run oci:instance:kubeconfig -- <instance-name>
 ```
+
+New instances default to a private API endpoint, OCI Bastion, OKE
+control-plane logs and VCN flow logs. Existing public clusters must preserve
+their current settings explicitly and use the staged process in
+[OCI foundation hardening](../../docs/oci-hardening.md).
 
 ## Node Pools
 

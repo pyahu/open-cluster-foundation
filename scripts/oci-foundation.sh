@@ -5,6 +5,8 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/oci.sh
+source "${SCRIPT_DIR}/lib/oci.sh"
 
 ACTION="${1:-plan}"
 shift || true
@@ -61,17 +63,7 @@ run_plan() {
 }
 
 generate_kubeconfig() {
-  require_command terraform
-  require_command oci
-
-  local command_text
-  command_text="$(terraform -chdir="$FOUNDATION_DIR" output -raw kubeconfig_command)"
-
-  log "running kubeconfig command from Terraform output"
-  printf '%s\n' "$command_text"
-  eval "$command_text"
-
-  log "kubeconfig generated. Export KUBECONFIG to the file printed by the OCI command before running Kubernetes tasks."
+  generate_oci_kubeconfig "$FOUNDATION_DIR"
 }
 
 case "$ACTION" in
@@ -83,7 +75,7 @@ case "$ACTION" in
     run_plan
     confirm_apply "This will create or update OCI networking, OKE and node pool resources" "$AUTO_APPROVE"
     terraform -chdir="$FOUNDATION_DIR" apply "$PLAN_FILE"
-    terraform -chdir="$FOUNDATION_DIR" output kubeconfig_command
+    terraform -chdir="$FOUNDATION_DIR" output kubeconfig 2>/dev/null || terraform -chdir="$FOUNDATION_DIR" output kubeconfig_command
     ;;
   kubeconfig)
     generate_kubeconfig

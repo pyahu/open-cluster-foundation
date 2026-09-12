@@ -23,4 +23,8 @@ resource "oci_objectstorage_bucket" "terraform_state" {
   storage_tier   = "Standard"
   versioning     = "Enabled"
   freeform_tags  = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

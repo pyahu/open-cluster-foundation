@@ -65,8 +65,48 @@ output "network_security_group_ids" {
   }
 }
 
+output "logging" {
+  description = "OCI Logging resources created for the foundation."
+  value = {
+    log_group_id          = local.logging_enabled ? oci_logging_log_group.foundation[0].id : null
+    control_plane_log_id  = var.control_plane_logging_enabled ? oci_logging_log.control_plane[0].id : null
+    vcn_flow_log_id       = var.vcn_flow_logging_enabled ? oci_logging_log.vcn_flow[0].id : null
+    vcn_capture_filter_id = var.vcn_flow_logging_enabled ? oci_core_capture_filter.vcn_flow[0].id : null
+  }
+}
+
+output "cluster_autoscaler_node_groups" {
+  description = "Validated node-pool boundaries for the OCI Cluster Autoscaler nodes configuration."
+  value = {
+    for name, pool in var.node_pools : name => {
+      node_pool_id = oci_containerengine_node_pool.this[name].id
+      min_size     = pool.autoscaling.min_size
+      max_size     = pool.autoscaling.max_size
+    } if pool.autoscaling != null
+  }
+}
+
+output "cluster_autoscaler_nodes" {
+  description = "Value for the OCI Cluster Autoscaler managed add-on nodes configuration."
+  value = join(",", [
+    for name, pool in var.node_pools :
+    "${pool.autoscaling.min_size}:${pool.autoscaling.max_size}:${oci_containerengine_node_pool.this[name].id}"
+    if pool.autoscaling != null
+  ])
+}
+
+output "kubeconfig" {
+  description = "Structured inputs for OCI CLI kubeconfig generation."
+  value = {
+    cluster_id   = oci_containerengine_cluster.this.id
+    cluster_name = var.cluster_name
+    endpoint     = local.kube_endpoint_mode
+    region       = var.region
+  }
+}
+
 output "kubeconfig_command" {
-  description = "OCI CLI command to create a kubeconfig for this cluster."
+  description = "Legacy OCI CLI command retained for compatibility. Automation should use the structured kubeconfig output."
   value = join(" ", [
     "oci ce cluster create-kubeconfig",
     "--cluster-id ${oci_containerengine_cluster.this.id}",

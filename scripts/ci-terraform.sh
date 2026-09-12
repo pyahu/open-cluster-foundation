@@ -24,6 +24,12 @@ for dir in "${TERRAFORM_DIRS[@]}"; do
   terraform -chdir="${OCF_ROOT}/${dir}" validate
 done
 
+log "testing terraform/modules/oci-oke-foundation"
+terraform -chdir="${OCF_ROOT}/terraform/modules/oci-oke-foundation" test
+
+log "testing terraform/oci/foundation"
+terraform -chdir="${OCF_ROOT}/terraform/oci/foundation" test
+
 # The instance template references the module through a path that only
 # resolves from .local/instances/<name>/terraform, so validation and linting
 # run against a simulated copy of that layout.

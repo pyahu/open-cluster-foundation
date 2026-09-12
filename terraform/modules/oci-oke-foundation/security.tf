@@ -64,6 +64,24 @@ resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_n
   }
 }
 
+resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_bastion" {
+  count = var.bastion_enabled ? 1 : 0
+
+  network_security_group_id = oci_core_network_security_group.api_endpoint.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = var.subnet_cidrs.api_endpoint
+  source_type               = "CIDR_BLOCK"
+  description               = "Kubernetes API from OCI Bastion sessions"
+
+  tcp_options {
+    destination_port_range {
+      min = 6443
+      max = 6443
+    }
+  }
+}
+
 resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_nodes_internal" {
   network_security_group_id = oci_core_network_security_group.api_endpoint.id
   direction                 = "INGRESS"
@@ -323,4 +341,3 @@ resource "oci_core_network_security_group_security_rule" "pods_egress_all" {
   destination_type          = "CIDR_BLOCK"
   description               = "Pod outbound via NAT or Service Gateway"
 }
-

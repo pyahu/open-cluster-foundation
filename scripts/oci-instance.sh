@@ -5,6 +5,8 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/oci.sh
+source "${SCRIPT_DIR}/lib/oci.sh"
 
 ACTION="${1:-}"
 INSTANCE_NAME="${2:-}"
@@ -96,16 +98,8 @@ run_plan() {
 }
 
 generate_kubeconfig() {
-  require_command terraform
-  require_command oci
   require_file "${INSTANCE_DIR}/terraform.tfvars" "The instance has not been configured yet."
-
-  local command_text
-  command_text="$(terraform -chdir="$INSTANCE_DIR" output -raw kubeconfig_command)"
-
-  log "running kubeconfig command from Terraform output"
-  printf '%s\n' "$command_text"
-  eval "$command_text"
+  generate_oci_kubeconfig "$INSTANCE_DIR"
 }
 
 case "$ACTION" in
@@ -120,7 +114,7 @@ case "$ACTION" in
     run_plan
     confirm_apply "This will create or update OCI resources for private instance ${INSTANCE_NAME}" "$AUTO_APPROVE"
     terraform -chdir="$INSTANCE_DIR" apply "$PLAN_FILE"
-    terraform -chdir="$INSTANCE_DIR" output kubeconfig_command
+    terraform -chdir="$INSTANCE_DIR" output kubeconfig 2>/dev/null || terraform -chdir="$INSTANCE_DIR" output kubeconfig_command
     ;;
   kubeconfig)
     generate_kubeconfig

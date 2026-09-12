@@ -109,6 +109,7 @@ terraform/oci/foundation/backend.hcl
 
 - `terraform.tfvars`, `backend.hcl` and local state files are ignored by Git.
 - The bucket is created with `NoPublicAccess` and versioning enabled.
+- Terraform `prevent_destroy` blocks accidental deletion of the state bucket.
 - The `oci` backend uses the local OCI credential profile; no S3 compatibility
   Customer Secret Key is required.
 - Keep the private key outside the repository.

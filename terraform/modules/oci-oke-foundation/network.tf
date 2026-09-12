@@ -4,6 +4,24 @@ resource "oci_core_vcn" "this" {
   cidr_blocks    = [var.vcn_cidr]
   dns_label      = replace(substr(var.cluster_name, 0, 15), "-", "")
   freeform_tags  = local.tags
+
+  lifecycle {
+    precondition {
+      condition = alltrue([
+        for subnet in values(local.subnet_ranges) : subnet.first >= local.vcn_range.first && subnet.last <= local.vcn_range.last
+      ])
+      error_message = "Every subnet must be fully contained within vcn_cidr."
+    }
+
+    precondition {
+      condition = alltrue([
+        for pair in local.subnet_pairs :
+        local.subnet_ranges[pair.left].last < local.subnet_ranges[pair.right].first ||
+        local.subnet_ranges[pair.right].last < local.subnet_ranges[pair.left].first
+      ])
+      error_message = "subnet_cidrs must not overlap."
+    }
+  }
 }
 
 resource "oci_core_internet_gateway" "this" {
