@@ -158,6 +158,30 @@ resolve_identity_access_mode() {
   esac
 }
 
+resolve_cache_access_mode() {
+  local requested_mode="$1"
+  local observed_state="$2"
+  local managed_mode="${3:-}"
+
+  case "$requested_mode" in
+    auto)
+      if [[ "$observed_state" == "fresh" ]]; then
+        printf '%s\n' acl
+      elif [[ "$observed_state" == "managed" && "$managed_mode" == "acl" ]]; then
+        printf '%s\n' acl
+      else
+        printf '%s\n' legacy
+      fi
+      ;;
+    acl|legacy)
+      printf '%s\n' "$requested_mode"
+      ;;
+    *)
+      die "unknown cache access mode: ${requested_mode}; expected auto, acl or legacy"
+      ;;
+  esac
+}
+
 build_observability_application_namespace_regex() {
   local namespace
   local escaped_namespace
@@ -221,6 +245,7 @@ prepare_installation() {
   local managed_network_policy_state=""
   local managed_observability_scope=""
   local managed_identity_access_mode=""
+  local managed_cache_access_mode=""
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "managed" ]]; then
     managed_network_policy_state="$(read_installation_state_value network-policies)"
     [[ "$managed_network_policy_state" != "<no value>" ]] || managed_network_policy_state=""
@@ -228,6 +253,8 @@ prepare_installation() {
     [[ "$managed_observability_scope" != "<no value>" ]] || managed_observability_scope=""
     managed_identity_access_mode="$(read_installation_state_value identity-access)"
     [[ "$managed_identity_access_mode" != "<no value>" ]] || managed_identity_access_mode=""
+    managed_cache_access_mode="$(read_installation_state_value cache-access)"
+    [[ "$managed_cache_access_mode" != "<no value>" ]] || managed_cache_access_mode=""
   fi
 
   if [[ "$ENVIRONMENT" == "auto" ]]; then
@@ -242,6 +269,7 @@ prepare_installation() {
   OCF_RESOLVED_NETWORK_POLICY_MODE="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_network_policy_state")"
   OCF_RESOLVED_OBSERVABILITY_SCOPE="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_observability_scope")"
   OCF_RESOLVED_IDENTITY_ACCESS_MODE="$(resolve_identity_access_mode "$IDENTITY_ACCESS_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_identity_access_mode")"
+  OCF_RESOLVED_CACHE_ACCESS_MODE="$(resolve_cache_access_mode "$CACHE_ACCESS_MODE" "$OCF_OBSERVED_INSTALLATION_STATE" "$managed_cache_access_mode")"
 
   if [[ "$OCF_RESOLVED_OBSERVABILITY_SCOPE" == "trusted" && "$(installation_network_policy_state)" != "enforced" ]]; then
     die "trusted observability requires enforced NetworkPolicies; pass --network-policies enforce after completing the migration"
@@ -249,6 +277,7 @@ prepare_installation() {
 
   export OCF_OBSERVABILITY_SCOPE="$OCF_RESOLVED_OBSERVABILITY_SCOPE"
   export OCF_IDENTITY_ACCESS_MODE="$OCF_RESOLVED_IDENTITY_ACCESS_MODE"
+  export OCF_CACHE_ACCESS_MODE="$OCF_RESOLVED_CACHE_ACCESS_MODE"
   if [[ "$OCF_RESOLVED_OBSERVABILITY_SCOPE" == "trusted" ]]; then
     OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX="$(observability_application_namespace_regex)"
     export OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX
@@ -262,6 +291,7 @@ prepare_installation() {
   log "network policy mode: ${OCF_RESOLVED_NETWORK_POLICY_MODE}"
   log "observability scope: ${OCF_RESOLVED_OBSERVABILITY_SCOPE}"
   log "identity access mode: ${OCF_RESOLVED_IDENTITY_ACCESS_MODE}"
+  log "cache access mode: ${OCF_RESOLVED_CACHE_ACCESS_MODE}"
   if [[ "$OCF_OBSERVED_INSTALLATION_STATE" == "legacy" ]]; then
     log "existing installation will retain the current compatibility path and receive state metadata only after a successful apply"
   fi
@@ -273,6 +303,10 @@ installation_observability_scope_state() {
 
 installation_identity_access_state() {
   printf '%s\n' "$OCF_RESOLVED_IDENTITY_ACCESS_MODE"
+}
+
+installation_cache_access_state() {
+  printf '%s\n' "$OCF_RESOLVED_CACHE_ACCESS_MODE"
 }
 
 installation_network_policy_state() {
@@ -342,6 +376,7 @@ record_installation_state() {
     --from-literal="network-policies=$(installation_network_policy_state)" \
     --from-literal="observability-scope=$(installation_observability_scope_state)" \
     --from-literal="identity-access=$(installation_identity_access_state)" \
+    --from-literal="cache-access=$(installation_cache_access_state)" \
     --from-literal="applied-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --dry-run=client -o yaml |
     yq '.metadata.labels."app.kubernetes.io/name" = "open-cluster-foundation" | .metadata.labels."app.kubernetes.io/managed-by" = "open-cluster-foundation"' |

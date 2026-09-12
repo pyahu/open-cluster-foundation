@@ -7,6 +7,28 @@ infisical:
   kubeSecretRef: infisical-secrets
   service:
     type: ClusterIP
+  resources:
+    requests:
+      cpu: 350m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                component: infisical
+                release: infisical
+  extraEnv:
+    - name: TELEMETRY_ENABLED
+      value: "false"
+    - name: KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN
+      value: "false"
 
 ingress:
   enabled: false

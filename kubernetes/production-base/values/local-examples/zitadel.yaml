@@ -1,0 +1,15 @@
+zitadel:
+  configmapConfig:
+    ExternalSecure: true
+    ExternalDomain: identity.cluster.example
+
+gateway:
+  httpRoute:
+    hostnames:
+      - identity.cluster.example
+
+login:
+  gateway:
+    httpRoute:
+      hostnames:
+        - identity.cluster.example

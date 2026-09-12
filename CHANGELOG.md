@@ -46,6 +46,14 @@ tags (`vYYYY.M.PATCH`).
   Grafana PKCE and refresh tokens, strict roles and no OAuth server-admin
   assignment. Existing installations retain the former access model behind an
   explicit, stateful migration gate.
+- Fresh Valkey installations now require an external ACL Secret, enable
+  append-only persistence, retain their PVC and use a ReadWriteOnce-safe update
+  strategy. Legacy clusters retain unauthenticated access behind an explicit
+  cache migration gate.
+- ZITADEL and Infisical now have validated private instance layers, bounded
+  resources, replica spreading, PodDisruptionBudgets, restricted runtime
+  security and working Gateway API routes. Their required cryptographic keys,
+  database TLS and cache credentials are validated before installation.
 - The blackbox `http_reachable` module accepts 404 and 405: an API with
   nothing mapped at `/` answers that way and is up. The module now matches its
   own description, anything but a server error.

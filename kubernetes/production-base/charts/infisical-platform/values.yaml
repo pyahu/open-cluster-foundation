@@ -1,0 +1,8 @@
+platform:
+  hostname: infisical.example.com
+  gateway:
+    name: public-gateway
+    namespace: platform-system
+    sectionName: https-infisical
+  podDisruptionBudget:
+    minAvailable: 1

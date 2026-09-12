@@ -96,6 +96,7 @@ STATE_CONFIGMAP="open-cluster-foundation-installation"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "network-policies" }}')" == "enforced" ]] || die "unexpected installation NetworkPolicy state"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "observability-scope" }}')" == "trusted" ]] || die "unexpected installation observability scope"
 [[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "identity-access" }}')" == "sso" ]] || die "unexpected installation identity access mode"
+[[ "$(kubectl -n platform-system get configmap "$STATE_CONFIGMAP" -o go-template='{{ index .data "cache-access" }}')" == "acl" ]] || die "unexpected installation cache access mode"
 "${SCRIPT_DIR}/k8s-production-base.sh" check --mode upgrade
 if "${SCRIPT_DIR}/k8s-production-base.sh" check --mode fresh >/dev/null 2>&1; then
   die "fresh mode accepted an existing managed installation"
@@ -157,7 +158,10 @@ kubectl -n data wait --for=condition=Ready cluster/e2e-postgres --timeout=600s
 log "asserting Valkey answers PING"
 VALKEY_POD="$(kubectl -n cache get pod -l app.kubernetes.io/name=valkey -o name | head -1)"
 [[ -n "$VALKEY_POD" ]] || die "no valkey pod found"
-kubectl -n cache exec "$VALKEY_POD" -c valkey -- valkey-cli ping | grep -q PONG
+kubectl -n cache exec "$VALKEY_POD" -c valkey -- valkey-cli ping 2>&1 | grep -q NOAUTH
+VALKEY_PASSWORD="$(kubectl -n cache get secret valkey-acl -o go-template='{{ index .data "default" | base64decode }}')"
+kubectl -n cache exec "$VALKEY_POD" -c valkey -- env REDISCLI_AUTH="$VALKEY_PASSWORD" valkey-cli ping | grep -q PONG
+unset VALKEY_PASSWORD
 
 log "asserting monitoring resources exist"
 RULES="$(kubectl -n monitoring get prometheusrules -o name | wc -l)"

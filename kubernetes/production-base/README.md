@@ -120,7 +120,7 @@ Alertmanager, so silences can be set from there.
 Retention, alert receivers and anything else specific to one cluster go in
 `values/local/<release>.yaml` (gitignored), which helmfile layers on top of
 the base values for `argocd`, `kube-prometheus-stack`, `loki`, `tempo`,
-`alloy` and `grafana` when the file exists.
+`alloy`, `grafana`, `zitadel` and `infisical` when the file exists.
 
 Argo CD and Grafana contain public-domain and identity-provider settings that
 must never fall back to repository placeholders on a real cluster. Before a
@@ -163,6 +163,14 @@ cannot assign server administrator. Existing installations retain their former
 access behavior until the staged
 [identity access migration](../../docs/compatibility.md#identity-access-migration)
 is selected with `--identity-access sso`.
+
+Fresh installations that enable Valkey use ACL authentication, append-only
+persistence and a retained PVC. The installer creates a random ACL Secret for
+a fresh cache unless Infisical is enabled, in which case the shared credential
+must be prepared explicitly. Existing installations keep unauthenticated
+access until the staged
+[cache access migration](../../docs/compatibility.md#cache-access-migration)
+is selected with `--cache-access acl`.
 
 Select `production` to add database and messaging operators without creating
 application data. Select `production-data` only after reviewing Kafka and
@@ -507,7 +515,10 @@ kubectl -n messaging get kafkaconnect,kafkaconnector
 
 ## 9. Optional ZITADEL
 
-ZITADEL is disabled by default. It needs PostgreSQL and a 32-byte master key.
+ZITADEL is disabled by default. It needs PostgreSQL and an immutable 32-byte
+master key. The production defaults run three API pods and three login pods,
+spread them across nodes, reserve CPU and memory, enforce restricted container
+security and protect both Deployments with disruption budgets.
 
 Create a database:
 
@@ -526,8 +537,15 @@ kubectl -n identity create secret generic zitadel-postgres-dsn \
   --from-literal=dsn="postgres://zitadel:<password>@zitadel-postgres-rw.identity.svc.cluster.local:5432/zitadel?sslmode=require"
 ```
 
-Edit [`values/zitadel.yaml`](values/zitadel.yaml) and replace
-`auth.example.com` with your real domain, then enable the profile:
+Create the private instance layer and replace every placeholder:
+
+```sh
+cp values/local-examples/zitadel.yaml values/local/zitadel.yaml
+${EDITOR:-vi} values/local/zitadel.yaml
+```
+
+The instance Gateway must have an HTTPS listener named `https-auth` for this
+hostname. Then enable the profile:
 
 ```sh
 helmfile -e all-components apply --selector profile=identity
@@ -537,7 +555,9 @@ helmfile -e all-components apply --selector profile=identity
 
 Infisical is disabled by default. It uses a CloudNativePG database and the
 base Valkey service instead of the chart's hidden single-node Postgres and
-Redis subcharts.
+Redis subcharts. OCF runs two application replicas with resource bounds,
+anti-affinity, restricted containers, no service-account token and a
+disruption budget.
 
 Create a database:
 
@@ -546,25 +566,40 @@ kubectl apply -f resources/infisical/postgres.yaml
 kubectl -n secrets get clusters.postgresql.cnpg.io
 ```
 
-Create the application secret. The exact keys should match the Infisical
-self-hosting configuration you choose:
+Create one cache password and store it both in the Valkey ACL Secret and in
+the Infisical application Secret. Keeping the password outside `REDIS_URL`
+prevents it from appearing in diagnostic URLs:
 
 ```sh
+VALKEY_PASSWORD="$(openssl rand -base64 32)"
+kubectl -n cache create secret generic valkey-acl \
+  --from-literal=default="$VALKEY_PASSWORD"
+
 kubectl -n secrets create secret generic infisical-secrets \
   --from-literal=ENCRYPTION_KEY="$(openssl rand -hex 16)" \
   --from-literal=AUTH_SECRET="$(openssl rand -base64 32)" \
-  --from-literal=JWT_SIGNUP_SECRET="$(openssl rand -base64 32)" \
-  --from-literal=JWT_REFRESH_SECRET="$(openssl rand -base64 32)" \
-  --from-literal=JWT_AUTH_SECRET="$(openssl rand -base64 32)" \
   --from-literal=REDIS_URL="redis://valkey.cache.svc.cluster.local:6379" \
-  --from-literal=SITE_URL="https://infisical.example.com"
+  --from-literal=REDIS_USERNAME="default" \
+  --from-literal=REDIS_PASSWORD="$VALKEY_PASSWORD" \
+  --from-literal=SITE_URL="https://secrets.example.com" \
+  --from-literal=TRUSTED_PROXY_CIDRS="<cluster-pod-cidr>"
+
+unset VALKEY_PASSWORD
 
 kubectl -n secrets create secret generic infisical-postgres \
-  --from-literal=connectionString="postgresql://infisical:<password>@infisical-postgres-rw.secrets.svc.cluster.local:5432/infisical"
+  --from-literal=connectionString="postgresql://infisical:<password>@infisical-postgres-rw.secrets.svc.cluster.local:5432/infisical?sslmode=require"
 ```
 
-Edit [`values/infisical.yaml`](values/infisical.yaml) for your domain
-configuration, then enable the profile:
+`TRUSTED_PROXY_CIDRS` must cover the Envoy data-plane Pod addresses, not the
+whole internet. Create the private domain layer:
+
+```sh
+cp values/local-examples/infisical.yaml values/local/infisical.yaml
+${EDITOR:-vi} values/local/infisical.yaml
+```
+
+The instance Gateway must have an HTTPS listener named `https-infisical` for
+this hostname. Then enable the profile:
 
 ```sh
 helmfile -e all-components apply --selector profile=secrets
@@ -625,7 +660,9 @@ Also test:
 - Strimzi documentation: <https://strimzi.io/documentation/>
 - Debezium documentation: <https://debezium.io/documentation/>
 - ZITADEL Kubernetes deployment: <https://zitadel.com/docs/self-hosting/deploy/kubernetes>
+- ZITADEL configuration: <https://zitadel.com/docs/self-hosting/deploy/kubernetes/configuration>
 - Infisical Kubernetes deployment: <https://infisical.com/docs/self-hosting/deployment-options/kubernetes>
+- Infisical environment variables: <https://infisical.com/docs/self-hosting/configuration/envars>
 - kube-prometheus-stack: <https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>
 - Grafana Helm charts: <https://github.com/grafana-community/helm-charts>
 - Grafana Generic OAuth: <https://grafana.com/docs/grafana/latest/setup-grafana/configure-access/configure-authentication/generic-oauth/>

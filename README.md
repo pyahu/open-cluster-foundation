@@ -71,7 +71,7 @@ run at each step, from an empty OCI tenancy to a running production base:
 | 6 | Kubernetes production base | [production-base README](kubernetes/production-base/README.md) | `values/local/argocd.yaml`, `values/local/grafana.yaml` | `mise run k8s:base:check`, then `k8s:base:apply -- --yes` |
 | 7 | Network Load Balancer, DNS, HTTPS listeners and redirect | [production-base §7](kubernetes/production-base/README.md#7-install-the-selected-foundation) | `resources/oci/envoyproxy-nlb.yaml` (LB NSG OCID), `resources/cert-manager/gateway-https-listener.yaml` (your domains) | `kubectl apply -f ...` |
 | 8 | Backups, Debezium and other stateful add-ons | [production-base §8](kubernetes/production-base/README.md#8-apply-stateful-resources) | copies of `kubernetes/production-base/resources/*` | `kubectl apply -f ...` |
-| 9 | Optional ZITADEL and Infisical | [production-base §9–10](kubernetes/production-base/README.md#9-optional-zitadel) | `values/zitadel.yaml`, `values/infisical.yaml` (your domains) | `mise run k8s:base:apply -- --environment all-components --yes` |
+| 9 | Optional ZITADEL and Infisical | [production-base §9–10](kubernetes/production-base/README.md#9-optional-zitadel) | `values/local/zitadel.yaml`, `values/local/infisical.yaml` and Secrets | `mise run k8s:base:apply -- --environment all-components --yes` |
 
 The only files you ever edit are `~/.oci/config`, the two `terraform.tfvars`
 (copied from the committed `.example` files), the domain placeholders in the

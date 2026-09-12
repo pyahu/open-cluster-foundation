@@ -1,12 +1,21 @@
-# Standalone Valkey for cluster-internal caching and for components that need
-# a Redis-compatible store (for example Infisical via REDIS_URL).
-# There is no authentication by default; access control relies on the cluster
-# network boundary. Enable auth.enabled with ACL users before exposing it
-# beyond trusted namespaces.
-
 dataStorage:
   enabled: true
   requestedSize: 5Gi
+  keepPvc: true
+
+deploymentStrategy: Recreate
+
+valkeyConfig: |
+  appendonly yes
+  appendfsync everysec
+
+auth:
+  enabled: true
+  usersExistingSecret: valkey-acl
+  aclUsers:
+    default:
+      permissions: "~* &* +@all"
+      passwordKey: default
 
 resources:
   requests:

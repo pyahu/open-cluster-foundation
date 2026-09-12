@@ -23,6 +23,7 @@ environments:
 {{- $versions := readFile "versions.yaml" | fromYaml -}}
 {{- $observabilityScope := env "OCF_OBSERVABILITY_SCOPE" | default "trusted" -}}
 {{- $identityAccessMode := env "OCF_IDENTITY_ACCESS_MODE" | default "sso" -}}
+{{- $cacheAccessMode := env "OCF_CACHE_ACCESS_MODE" | default "acl" -}}
 # CRD ownership is singular by design: every chart installs and owns its own
 # CRDs (including the Gateway API CRDs, which ship with the Envoy Gateway
 # chart), except the Prometheus Operator CRDs, which the apply script installs
@@ -260,6 +261,9 @@ releases:
     version: {{ $versions.components.valkey.chartVersion | quote }}
     values:
       - values/valkey.yaml
+{{- if eq $cacheAccessMode "legacy" }}
+      - values/legacy/valkey.yaml
+{{- end }}
 
   - name: zitadel
     namespace: identity
@@ -268,8 +272,13 @@ releases:
     installed: {{ .Values.profiles.identity }}
     chart: zitadel/zitadel
     version: {{ $versions.components.zitadel.chartVersion | quote }}
+    missingFileHandler: Info
     values:
       - values/zitadel.yaml
+      - values/local/zitadel.yaml
+    strategicMergePatches:
+      - patches/zitadel.yaml
+      - patches/zitadel-login.yaml
 
   - name: infisical
     namespace: secrets
@@ -278,5 +287,22 @@ releases:
     installed: {{ .Values.profiles.secrets }}
     chart: infisical-helm-charts/infisical-standalone
     version: {{ $versions.components.infisical.chartVersion | quote }}
+    missingFileHandler: Info
     values:
       - values/infisical.yaml
+      - values/local/infisical.yaml
+    strategicMergePatches:
+      - patches/infisical.yaml
+
+  - name: infisical-platform
+    namespace: secrets
+    labels:
+      profile: secrets
+    installed: {{ .Values.profiles.secrets }}
+    chart: charts/infisical-platform
+    needs:
+      - secrets/infisical
+    missingFileHandler: Info
+    values:
+      - values/infisical-platform.yaml
+      - values/local/infisical.yaml

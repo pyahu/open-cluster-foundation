@@ -144,4 +144,29 @@ sed -i.bak "s/allow_assign_grafana_admin: false/allow_assign_grafana_admin: true
 rm "${BASE_DIR}/values/local/grafana.yaml.bak"
 assert_fails validate_instance_values
 
+cat >"${BASE_DIR}/values/local/zitadel.yaml" <<'EOF'
+zitadel:
+  configmapConfig:
+    ExternalSecure: true
+    ExternalDomain: identity.prod.internal
+gateway:
+  httpRoute:
+    hostnames:
+      - identity.prod.internal
+login:
+  gateway:
+    httpRoute:
+      hostnames:
+        - identity.prod.internal
+EOF
+assert_succeeds validate_zitadel_values "${BASE_DIR}/values/local/zitadel.yaml"
+sed -i.bak 's/identity.prod.internal/identity.cluster.example/' "${BASE_DIR}/values/local/zitadel.yaml"
+rm "${BASE_DIR}/values/local/zitadel.yaml.bak"
+assert_fails validate_zitadel_values "${BASE_DIR}/values/local/zitadel.yaml"
+
+printf '%s\n' 'platform:' '  hostname: secrets.prod.internal' >"${BASE_DIR}/values/local/infisical.yaml"
+assert_succeeds validate_infisical_values "${BASE_DIR}/values/local/infisical.yaml"
+printf '%s\n' 'platform:' '  hostname: secrets.cluster.example' >"${BASE_DIR}/values/local/infisical.yaml"
+assert_fails validate_infisical_values "${BASE_DIR}/values/local/infisical.yaml"
+
 printf '%s\n' "k8s production base unit tests passed"

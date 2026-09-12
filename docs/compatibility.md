@@ -25,8 +25,8 @@ After every successful apply, OCF writes
 `platform-system/open-cluster-foundation-installation`. The ConfigMap records
 the state schema, environment, resolved operation, installation origin, source
 revision, component-version digest, enabled profiles, NetworkPolicy state,
-observability scope, identity access mode and completion time. A failed or
-interrupted apply never updates this state.
+observability scope, identity access mode, cache access mode and completion
+time. A failed or interrupted apply never updates this state.
 
 The first successful apply to a legacy installation records `origin=adopted`.
 It does not change the selected environment or enable new components merely
@@ -271,3 +271,54 @@ mise run k8s:base:apply -- --mode upgrade --identity-access legacy --yes
 Direct Helmfile runs default to SSO because they cannot detect installation
 history. Set `OCF_IDENTITY_ACCESS_MODE=legacy` only for a reviewed manual
 upgrade that intentionally preserves the former access model.
+
+## Cache access migration
+
+Fresh installations use `cache-access=acl` whenever their selected profile
+enables Valkey. The default ACL password lives only in the existing Secret
+`cache/valkey-acl`; values files contain permissions and the Secret reference,
+never the credential. Valkey also enables an append-only log with one-second
+fsync, retains its PVC after a Helm uninstall and uses `Recreate` because the
+standalone volume is ReadWriteOnce.
+
+Legacy installations and managed installations without a cache access state
+retain `cache-access=legacy`. They continue accepting unauthenticated clients,
+so adoption cannot disconnect a running Kafka connector, application or
+Infisical instance.
+
+Inventory every Valkey client and schedule a coordinated cutover. Create the
+ACL Secret without placing the password in shell history:
+
+```sh
+VALKEY_PASSWORD="$(openssl rand -base64 32)"
+kubectl --context <context> -n cache create secret generic valkey-acl \
+  --from-literal=default="$VALKEY_PASSWORD"
+```
+
+Prepare each client to use username `default` and that password. Infisical
+loads them from `REDIS_USERNAME` and `REDIS_PASSWORD` keys in its own Secret;
+its `REDIS_URL` remains `redis://valkey.cache.svc.cluster.local:6379`. Use your
+secret-delivery system to copy the credential into application namespaces,
+then clear the local variable:
+
+```sh
+unset VALKEY_PASSWORD
+```
+
+During the maintenance window, enable ACL and roll out the prepared clients:
+
+```sh
+mise run k8s:base:apply -- --mode upgrade --cache-access acl --yes
+```
+
+Verify that unauthenticated `PING` returns `NOAUTH`, authenticated clients can
+read and write, and the exporter still exposes metrics. To restore the former
+access while fixing a missed client, run:
+
+```sh
+mise run k8s:base:apply -- --mode upgrade --cache-access legacy --yes
+```
+
+The rollback does not delete the ACL Secret or PVC. Direct Helmfile runs
+default to ACL because they cannot detect installation history; set
+`OCF_CACHE_ACCESS_MODE=legacy` only for a reviewed manual upgrade.

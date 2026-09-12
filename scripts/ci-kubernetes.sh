@@ -12,6 +12,7 @@ CRD_CATALOG='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Gro
 require_command helm
 require_command helmfile
 require_command kubeconform
+require_command kustomize
 require_command yq
 
 profile_enabled kafka starter && die "starter must not enable Kafka"
@@ -99,7 +100,7 @@ gateway_access_violations="$(yq ea '[
 [[ "$gateway_listener_count" -gt 0 ]] || die "no Gateway listeners found"
 [[ "$gateway_access_violations" -eq 0 ]] || die "Gateway listeners must restrict routes to labeled namespaces"
 
-for namespace in platform-system argocd monitoring identity; do
+for namespace in platform-system argocd monitoring identity secrets; do
   access="$(yq ea "select(.kind == \"Namespace\" and .metadata.name == \"${namespace}\") | .metadata.labels.\"open-cluster-foundation.io/gateway-access\"" "${BASE_DIR}/manifests/namespace-baseline.yaml")"
   [[ "$access" == "public" ]] || die "base route namespace ${namespace} must be allowed to attach public routes"
 done
@@ -134,6 +135,43 @@ legacy_grafana_config="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name =
 grep -q '^disable_login_form = false$' <<<"$legacy_grafana_config" || die "legacy Grafana mode must preserve the login form"
 grep -q "^role_attribute_path = 'GrafanaAdmin'$" <<<"$legacy_grafana_config" || die "legacy Grafana mode must preserve the former role mapping"
 grep -q '^allow_assign_grafana_admin = true$' <<<"$legacy_grafana_config" || die "legacy Grafana mode must preserve OAuth server-admin assignment"
+
+valkey_strategy="$(yq ea 'select(.kind == "Deployment" and .metadata.name == "valkey") | .spec.strategy.type' "$PROMETHEUS_RENDER")"
+valkey_pvc_retention="$(yq ea 'select(.kind == "PersistentVolumeClaim" and .metadata.name == "valkey") | .metadata.annotations."helm.sh/resource-policy"' "$PROMETHEUS_RENDER")"
+valkey_config="$(yq ea 'select(.kind == "ConfigMap" and .metadata.name == "valkey-config") | .data."valkey.conf"' "$PROMETHEUS_RENDER")"
+valkey_acl_mount_count="$(yq ea '[select(.kind == "Deployment" and .metadata.name == "valkey") | .spec.template.spec.volumes[] | select(.secret.secretName == "valkey-acl")] | length' "$PROMETHEUS_RENDER")"
+[[ "$valkey_strategy" == "Recreate" ]] || die "standalone Valkey must use Recreate with a ReadWriteOnce volume"
+[[ "$valkey_pvc_retention" == "keep" ]] || die "Valkey must retain its PVC on Helm uninstall"
+[[ "$valkey_acl_mount_count" -eq 1 ]] || die "fresh Valkey installations must mount the external ACL secret"
+grep -q '^appendonly yes$' <<<"$valkey_config" || die "Valkey must enable append-only persistence"
+grep -q '^appendfsync everysec$' <<<"$valkey_config" || die "Valkey must persist the append-only log every second"
+
+LEGACY_VALKEY_RENDER="${WORK_DIR}/legacy-valkey.yaml"
+(cd "$BASE_DIR" && OCF_CACHE_ACCESS_MODE=legacy helmfile -f helmfile.yaml.gotmpl -e ci template --selector name=valkey) >"$LEGACY_VALKEY_RENDER"
+legacy_valkey_acl_mount_count="$(yq ea '[select(.kind == "Deployment" and .metadata.name == "valkey") | .spec.template.spec.volumes[]? | select(.secret.secretName == "valkey-acl")] | length' "$LEGACY_VALKEY_RENDER")"
+[[ "$legacy_valkey_acl_mount_count" -eq 0 ]] || die "legacy Valkey mode must preserve unauthenticated access"
+
+OPTIONAL_COMPONENTS_RENDER="${WORK_DIR}/rendered-all-components.yaml"
+optional_deployment_violations="$(yq ea '[
+  select(.kind == "Deployment" and (.metadata.name == "zitadel" or .metadata.name == "zitadel-login" or .metadata.name == "infisical-infisical-standalone-infisical")) |
+  select(
+    .spec.replicas < 2 or
+    .spec.template.spec.automountServiceAccountToken != false or
+    .spec.template.spec.securityContext.runAsNonRoot != true or
+    .spec.template.spec.securityContext.seccompProfile.type != "RuntimeDefault" or
+    .spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation != false or
+    .spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem != true or
+    .spec.template.spec.containers[0].resources.requests.cpu == null or
+    .spec.template.spec.containers[0].resources.requests.memory == null or
+    .spec.template.spec.containers[0].resources.limits.cpu == null or
+    .spec.template.spec.containers[0].resources.limits.memory == null
+  )
+] | length' "$OPTIONAL_COMPONENTS_RENDER")"
+[[ "$optional_deployment_violations" -eq 0 ]] || die "ZITADEL and Infisical deployments must use hardened, resourced, replicated pods"
+optional_pdb_count="$(yq ea '[select(.kind == "PodDisruptionBudget" and (.metadata.name == "zitadel" or .metadata.name == "zitadel-login" or .metadata.name == "infisical"))] | length' "$OPTIONAL_COMPONENTS_RENDER")"
+[[ "$optional_pdb_count" -eq 3 ]] || die "ZITADEL and Infisical must render disruption budgets"
+optional_route_count="$(yq ea '[select(.kind == "HTTPRoute" and (.metadata.name == "zitadel" or .metadata.name == "zitadel-login" or .metadata.name == "infisical"))] | length' "$OPTIONAL_COMPONENTS_RENDER")"
+[[ "$optional_route_count" -eq 3 ]] || die "ZITADEL and Infisical must render Gateway API routes"
 
 for selector in serviceMonitorNamespaceSelector podMonitorNamespaceSelector ruleNamespaceSelector probeNamespaceSelector scrapeConfigNamespaceSelector; do
   selector_value="$(yq ea "select(.kind == \"Prometheus\") | .spec.${selector}.matchLabels.\"open-cluster-foundation.io/observability-access\"" "$PROMETHEUS_RENDER")"
@@ -172,6 +210,7 @@ fi
 
 NETWORK_POLICY_CHART="${BASE_DIR}/charts/network-policies"
 NETWORK_POLICY_RENDER="${WORK_DIR}/network-policies.yaml"
+helm lint "${BASE_DIR}/charts/infisical-platform"
 helm lint "$NETWORK_POLICY_CHART"
 helm template ocf-network-policies "$NETWORK_POLICY_CHART" \
   --namespace platform-system >"$NETWORK_POLICY_RENDER"

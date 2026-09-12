@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: infisical
+spec:
+  minAvailable: {{ .Values.platform.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      component: infisical
+      release: infisical

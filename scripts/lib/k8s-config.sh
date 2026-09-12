@@ -127,6 +127,28 @@ validate_grafana_sso_values() {
   [[ "$role_attribute_path" != *GrafanaAdmin* ]] || die "grafana.ini.auth.generic_oauth.role_attribute_path must not grant Grafana server administrator"
 }
 
+validate_zitadel_values() {
+  local values_file="$1"
+  local external_secure external_domain api_hostname login_hostname
+
+  external_secure="$(read_yaml_scalar "$values_file" '.zitadel.configmapConfig.ExternalSecure')"
+  external_domain="$(read_yaml_value "$values_file" '.zitadel.configmapConfig.ExternalDomain')"
+  api_hostname="$(read_yaml_value "$values_file" '.gateway.httpRoute.hostnames[0]')"
+  login_hostname="$(read_yaml_value "$values_file" '.login.gateway.httpRoute.hostnames[0]')"
+  require_true "$external_secure" "zitadel.configmapConfig.ExternalSecure"
+  reject_placeholder "$external_domain" "zitadel.configmapConfig.ExternalDomain in values/local/zitadel.yaml"
+  [[ "$api_hostname" == "$external_domain" ]] || die "gateway.httpRoute hostname must match ZITADEL ExternalDomain"
+  [[ "$login_hostname" == "$external_domain" ]] || die "login.gateway.httpRoute hostname must match ZITADEL ExternalDomain"
+}
+
+validate_infisical_values() {
+  local values_file="$1"
+  local hostname
+
+  hostname="$(read_yaml_value "$values_file" '.platform.hostname')"
+  reject_placeholder "$hostname" "platform.hostname in values/local/infisical.yaml"
+}
+
 validate_instance_values() {
   if [[ "$ENVIRONMENT" == "ci" ]]; then
     return
@@ -171,6 +193,16 @@ validate_instance_values() {
     if [[ "${OCF_RESOLVED_IDENTITY_ACCESS_MODE:-legacy}" == "sso" ]]; then
       validate_grafana_sso_values "$grafana_values"
     fi
+  fi
+
+  if profile_enabled identity "$ENVIRONMENT"; then
+    require_instance_values_file zitadel
+    validate_zitadel_values "${BASE_DIR}/values/local/zitadel.yaml"
+  fi
+
+  if profile_enabled secrets "$ENVIRONMENT"; then
+    require_instance_values_file infisical
+    validate_infisical_values "${BASE_DIR}/values/local/infisical.yaml"
   fi
 }
 

@@ -9,6 +9,8 @@ source "${SCRIPT_DIR}/lib/common.sh"
 source "${SCRIPT_DIR}/lib/k8s-config.sh"
 # shellcheck source=lib/k8s-installation.sh
 source "${SCRIPT_DIR}/lib/k8s-installation.sh"
+# shellcheck source=lib/k8s-secrets.sh
+source "${SCRIPT_DIR}/lib/k8s-secrets.sh"
 
 ACTION="${1:-check}"
 shift || true
@@ -20,13 +22,14 @@ ALLOW_ENVIRONMENT_CHANGE="${OCF_ALLOW_ENVIRONMENT_CHANGE:-false}"
 NETWORK_POLICY_MODE="${OCF_NETWORK_POLICY_MODE:-auto}"
 OBSERVABILITY_SCOPE="${OCF_OBSERVABILITY_SCOPE:-auto}"
 IDENTITY_ACCESS_MODE="${OCF_IDENTITY_ACCESS_MODE:-auto}"
+CACHE_ACCESS_MODE="${OCF_CACHE_ACCESS_MODE:-auto}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy]
-  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy]
-  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--allow-environment-change] [--yes]
+  scripts/k8s-production-base.sh check [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy]
+  scripts/k8s-production-base.sh render [--environment starter|production|production-data|default|all-components] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy]
+  scripts/k8s-production-base.sh apply [--environment starter|production|production-data|default|all-components] [--mode auto|fresh|upgrade] [--network-policies auto|enforce|preserve] [--observability-scope auto|trusted|legacy] [--identity-access auto|sso|legacy] [--cache-access auto|acl|legacy] [--allow-environment-change] [--yes]
 
 Environment:
   ACME_EMAIL              Optional. If set, Let's Encrypt issuers are created with this email.
@@ -36,6 +39,7 @@ Environment:
   OCF_NETWORK_POLICY_MODE Network policy mode. Defaults to "auto".
   OCF_OBSERVABILITY_SCOPE Observability discovery scope. Defaults to "auto".
   OCF_IDENTITY_ACCESS_MODE Identity access mode. Defaults to "auto".
+  OCF_CACHE_ACCESS_MODE   Cache access mode. Defaults to "auto".
   OCF_ALLOW_ENVIRONMENT_CHANGE=true
                           Allow a managed installation to change environment.
 EOF
@@ -71,6 +75,11 @@ while [[ $# -gt 0 ]]; do
       [[ -n "$IDENTITY_ACCESS_MODE" ]] || die "--identity-access requires a value"
       shift
       ;;
+    --cache-access)
+      CACHE_ACCESS_MODE="${2:-}"
+      [[ -n "$CACHE_ACCESS_MODE" ]] || die "--cache-access requires a value"
+      shift
+      ;;
     --allow-environment-change)
       ALLOW_ENVIRONMENT_CHANGE="true"
       ;;
@@ -95,6 +104,7 @@ require_k8s_tools() {
   require_command kubectl
   require_command helm
   require_command helmfile
+  require_command kustomize
   require_command openssl
   require_command yq
 
@@ -132,67 +142,6 @@ check_configuration() {
   prepare_installation
   validate_profile_contract
   validate_instance_values
-}
-
-ensure_secret_exists() {
-  local namespace="$1"
-  local name="$2"
-  local help_text="$3"
-
-  kubectl -n "$namespace" get secret "$name" >/dev/null 2>&1 || die "missing secret ${namespace}/${name}. ${help_text}"
-}
-
-ensure_secret_key_exists() {
-  local namespace="$1"
-  local name="$2"
-  local key="$3"
-  local help_text="$4"
-
-  local value
-  value="$(kubectl -n "$namespace" get secret "$name" -o jsonpath="{.data.${key}}" 2>/dev/null || true)"
-  [[ -n "$value" ]] || die "secret ${namespace}/${name} is missing key ${key}. ${help_text}"
-}
-
-ensure_secret_label_equals() {
-  local namespace="$1"
-  local name="$2"
-  local label="$3"
-  local expected="$4"
-  local help_text="$5"
-  local actual
-
-  actual="$(kubectl -n "$namespace" get secret "$name" -o json | yq -r ".metadata.labels.\"${label}\" // \"\"")"
-  [[ "$actual" == "$expected" ]] || die "secret ${namespace}/${name} must have label ${label}=${expected}. ${help_text}"
-}
-
-check_optional_profile_inputs() {
-  if [[ "$ENVIRONMENT" != "all-components" ]]; then
-    return
-  fi
-
-  ensure_secret_exists identity zitadel-masterkey "Create it before enabling the identity profile."
-  ensure_secret_exists identity zitadel-postgres-dsn "Create it before enabling the identity profile."
-  ensure_secret_exists secrets infisical-secrets "Create it before enabling the secrets profile."
-  ensure_secret_exists secrets infisical-postgres "Create it before enabling the secrets profile."
-  ensure_secret_key_exists secrets infisical-secrets REDIS_URL "Infisical requires a Redis-compatible store; point REDIS_URL at the base Valkey service (redis://valkey.cache.svc.cluster.local:6379)."
-}
-
-check_identity_inputs() {
-  if [[ "$ENVIRONMENT" == "ci" ]]; then
-    return
-  fi
-
-  if profile_enabled observability "$ENVIRONMENT"; then
-    ensure_secret_exists monitoring grafana-oidc-credentials "Create it with the identity provider application credentials: kubectl -n monitoring create secret generic grafana-oidc-credentials --from-literal=client_id=<id> --from-literal=client_secret=<secret>"
-    ensure_secret_key_exists monitoring grafana-oidc-credentials client_id "Grafana reads this key through envFromSecrets."
-    ensure_secret_key_exists monitoring grafana-oidc-credentials client_secret "Grafana reads this key through envFromSecrets."
-  fi
-
-  if [[ "$OCF_RESOLVED_IDENTITY_ACCESS_MODE" == "sso" ]] && profile_enabled gitops "$ENVIRONMENT"; then
-    ensure_secret_exists argocd argocd-oidc-credentials "Create it with the identity provider application secret: kubectl -n argocd create secret generic argocd-oidc-credentials --from-literal=clientSecret=<secret>"
-    ensure_secret_key_exists argocd argocd-oidc-credentials clientSecret "Argo CD reads this key from oidc.config."
-    ensure_secret_label_equals argocd argocd-oidc-credentials app.kubernetes.io/part-of argocd "Argo CD only allows secret references from labeled secrets."
-  fi
 }
 
 create_grafana_admin_secret() {
@@ -338,14 +287,17 @@ render() {
   local render_network_policy_mode
   local render_observability_scope
   local render_identity_access_mode
+  local render_cache_access_mode
   render_network_policy_mode="$(resolve_network_policy_mode "$NETWORK_POLICY_MODE" fresh)"
   render_observability_scope="$(resolve_observability_scope "$OBSERVABILITY_SCOPE" fresh)"
   render_identity_access_mode="$(resolve_identity_access_mode "$IDENTITY_ACCESS_MODE" fresh)"
+  render_cache_access_mode="$(resolve_cache_access_mode "$CACHE_ACCESS_MODE" fresh)"
   if [[ "$render_observability_scope" == "trusted" && "$render_network_policy_mode" != "enforce" ]]; then
     die "trusted observability requires enforced NetworkPolicies"
   fi
   export OCF_OBSERVABILITY_SCOPE="$render_observability_scope"
   export OCF_IDENTITY_ACCESS_MODE="$render_identity_access_mode"
+  export OCF_CACHE_ACCESS_MODE="$render_cache_access_mode"
   if [[ "$render_observability_scope" == "trusted" ]]; then
     export OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX="${OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX:-a^}"
   fi
@@ -407,6 +359,13 @@ wait_for_controllers() {
   if profile_enabled rabbitmqOperators "$ENVIRONMENT"; then
     kubectl -n rabbitmq-system wait --for=condition=Available deployment --all --timeout=300s
   fi
+  if profile_enabled identity "$ENVIRONMENT"; then
+    kubectl -n identity rollout status deploy/zitadel --timeout=300s
+    kubectl -n identity rollout status deploy/zitadel-login --timeout=300s
+  fi
+  if profile_enabled secrets "$ENVIRONMENT"; then
+    kubectl -n secrets rollout status deploy/infisical-infisical-standalone-infisical --timeout=300s
+  fi
   kubectl -n reloader wait --for=condition=Available deployment --all --timeout=180s
 }
 
@@ -457,6 +416,7 @@ apply_base() {
   log "applying namespaces and Pod Security labels"
   kubectl apply -f "${BASE_DIR}/manifests/namespace-baseline.yaml"
 
+  prepare_valkey_acl_secret
   check_optional_profile_inputs
   check_identity_inputs
   apply_prometheus_operator_crds
