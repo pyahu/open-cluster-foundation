@@ -32,7 +32,7 @@ jobs:
   kind:
     name: kind
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v5
       # ubuntu-latest leaves ~14 GB free on /, and the three-node kind cluster

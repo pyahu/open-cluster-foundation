@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-ingest-client
+  namespace: e2e-untrusted
+  labels:
+    app.kubernetes.io/name: e2e-ingest-client
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: curlimages/curl:8.17.0
+      command: ["/bin/sh", "-c", "sleep 3600"]
+      resources:
+        requests:
+          cpu: 5m
+          memory: 16Mi
+        limits:
+          memory: 32Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-query-client
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: e2e-query-client
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: curlimages/curl:8.17.0
+      command: ["/bin/sh", "-c", "sleep 3600"]
+      resources:
+        requests:
+          cpu: 5m
+          memory: 16Mi
+        limits:
+          memory: 32Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL

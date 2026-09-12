@@ -16,8 +16,10 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 CLUSTER_NAME="${OCF_E2E_CLUSTER:-ocf-e2e}"
 KEEP="${OCF_E2E_KEEP:-false}"
+CALICO_VERSION="${OCF_E2E_CALICO_VERSION:-3.32.2}"
 E2E_DIR="${OCF_ROOT}/test/e2e"
 GATEWAY_FORWARD_PID=""
+CALICO_MANIFEST="$(mktemp)"
 
 # The whole run lives in a private kubeconfig so the operator's real contexts
 # are never touched or repointed.
@@ -31,6 +33,7 @@ require_command helm
 require_command helmfile
 require_command curl
 require_command jq
+require_command yq
 
 # helmfile apply needs the helm-diff plugin; install it when missing.
 # helm 4 verifies plugin signatures by default, which git sources do not support.
@@ -73,12 +76,51 @@ cleanup() {
     kind delete cluster --name "$CLUSTER_NAME" >/dev/null 2>&1 || true
     rm -f "$KUBECONFIG"
   fi
+  rm -f "$CALICO_MANIFEST"
   exit "$code"
 }
 trap cleanup EXIT
 
 log "creating kind cluster ${CLUSTER_NAME}"
-kind create cluster --name "$CLUSTER_NAME" --config "${E2E_DIR}/kind-config.yaml" --wait 180s
+kind create cluster --name "$CLUSTER_NAME" --config "${E2E_DIR}/kind-config.yaml"
+
+log "installing Calico ${CALICO_VERSION} for NetworkPolicy enforcement"
+curl --fail --location --silent --show-error \
+  "https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/calico.yaml" \
+  --output "$CALICO_MANIFEST"
+yq -i '(
+  select(.kind == "DaemonSet" and .metadata.name == "calico-node") |
+  .spec.template.spec.containers[] |
+  select(.name == "calico-node") |
+  .env[] |
+  select(.name == "CALICO_IPV4POOL_IPIP") |
+  .value
+) = "Never" | (
+  select(.kind == "DaemonSet" and .metadata.name == "calico-node") |
+  .spec.template.spec.containers[] |
+  select(.name == "calico-node") |
+  .env[] |
+  select(.name == "CALICO_IPV4POOL_VXLAN") |
+  .value
+) = "Always" | (
+  select(.kind == "DaemonSet" and .metadata.name == "calico-node") |
+  .spec.template.spec.containers[] |
+  select(.name == "calico-node") |
+  .env[] |
+  select(.name == "CALICO_IPV4POOL_CIDR") |
+  .value
+) = "10.244.0.0/16"' "$CALICO_MANIFEST"
+kubectl create -f "$CALICO_MANIFEST"
+kubectl -n kube-system rollout status daemonset/calico-node --timeout=300s
+kubectl -n kube-system rollout status deployment/calico-kube-controllers --timeout=300s
+kubectl wait --for=condition=Ready nodes --all --timeout=300s
+kubectl run e2e-network-smoke \
+  --image=curlimages/curl:8.17.0 \
+  --restart=Never \
+  --command -- \
+  curl --insecure --fail --silent --output /dev/null https://kubernetes.default.svc/version
+kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/e2e-network-smoke --timeout=120s
+kubectl delete pod e2e-network-smoke --wait=true
 
 log "installing the Kubernetes production base (ci environment)"
 export OCF_K8S_ENVIRONMENT=ci
@@ -134,14 +176,32 @@ done
 
 log "asserting an unlabeled namespace cannot attach a public route"
 kubectl apply -f "${E2E_DIR}/untrusted-route.yaml"
-UNTRUSTED_REASON=""
-for _ in $(seq 1 30); do
-  UNTRUSTED_REASON="$(kubectl -n e2e-untrusted get httproute e2e-untrusted -o json |
-    jq -r '.status.parents[]?.conditions[]? | select(.type == "Accepted") | .reason' | head -1)"
-  [[ "$UNTRUSTED_REASON" == "NotAllowedByListeners" ]] && break
-  sleep 2
-done
-[[ "$UNTRUSTED_REASON" == "NotAllowedByListeners" ]] || die "untrusted HTTPRoute was not rejected: ${UNTRUSTED_REASON:-no status}"
+route_reason() {
+  kubectl -n e2e-untrusted get httproute e2e-untrusted -o json |
+    jq -r '.status.parents[]?.conditions[]? | select(.type == "Accepted") | .reason' |
+    head -1
+}
+
+wait_for_route_reason() {
+  local expected="$1"
+  local actual=""
+  for _ in $(seq 1 60); do
+    actual="$(route_reason)"
+    [[ "$actual" == "$expected" ]] && return
+    sleep 2
+  done
+  die "HTTPRoute reason is ${actual:-missing}; expected ${expected}"
+}
+
+wait_for_route_reason NotAllowedByListeners
+kubectl label namespace e2e-untrusted open-cluster-foundation.io/gateway-access=public
+kubectl -n e2e-untrusted delete httproute e2e-untrusted --wait=true
+kubectl apply -f "${E2E_DIR}/untrusted-route.yaml"
+wait_for_route_reason Accepted
+kubectl label namespace e2e-untrusted open-cluster-foundation.io/gateway-access-
+kubectl -n e2e-untrusted delete httproute e2e-untrusted --wait=true
+kubectl apply -f "${E2E_DIR}/untrusted-route.yaml"
+wait_for_route_reason NotAllowedByListeners
 
 log "asserting base namespace NetworkPolicies are installed"
 NETWORK_POLICY_COUNT="$(kubectl get networkpolicy --all-namespaces -l app.kubernetes.io/part-of=open-cluster-foundation --no-headers | wc -l | tr -d ' ')"
@@ -155,6 +215,27 @@ log "asserting CloudNativePG reconciles a cluster to Ready"
 kubectl apply -f "${E2E_DIR}/cnpg-cluster.yaml"
 kubectl -n data wait --for=condition=Ready cluster/e2e-postgres --timeout=600s
 
+log "asserting Kafka preserves an exact produced message"
+kubectl -n messaging wait --for=condition=Ready kafkatopic/e2e-events --timeout=300s
+KAFKA_POD="$(kubectl -n messaging get pods -l strimzi.io/cluster=foundation-kafka -o json |
+  jq -r '.items[] | select(any(.spec.containers[]; .name == "kafka")) | .metadata.name' |
+  head -1)"
+[[ -n "$KAFKA_POD" ]] || die "Kafka broker pod not found"
+KAFKA_MESSAGE="ocf-e2e-kafka-$(date +%s)"
+printf '%s\n' "$KAFKA_MESSAGE" |
+  kubectl -n messaging exec -i "$KAFKA_POD" -c kafka -- \
+    /opt/kafka/bin/kafka-console-producer.sh \
+    --bootstrap-server localhost:9092 \
+    --topic e2e-events
+KAFKA_CONSUMED="$(kubectl -n messaging exec "$KAFKA_POD" -c kafka -- \
+  /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic e2e-events \
+  --from-beginning \
+  --max-messages 1 \
+  --timeout-ms 60000)"
+[[ "$KAFKA_CONSUMED" == "$KAFKA_MESSAGE" ]] || die "Kafka consumed an unexpected message: ${KAFKA_CONSUMED}"
+
 log "asserting Valkey answers PING"
 VALKEY_POD="$(kubectl -n cache get pod -l app.kubernetes.io/name=valkey -o name | head -1)"
 [[ -n "$VALKEY_POD" ]] || die "no valkey pod found"
@@ -162,6 +243,97 @@ kubectl -n cache exec "$VALKEY_POD" -c valkey -- valkey-cli ping 2>&1 | grep -q 
 VALKEY_PASSWORD="$(kubectl -n cache get secret valkey-acl -o go-template='{{ index .data "default" | base64decode }}')"
 kubectl -n cache exec "$VALKEY_POD" -c valkey -- env REDISCLI_AUTH="$VALKEY_PASSWORD" valkey-cli ping | grep -q PONG
 unset VALKEY_PASSWORD
+
+log "asserting NetworkPolicy identity gates and observability data paths"
+kubectl apply -f "${E2E_DIR}/clients.yaml"
+kubectl -n e2e-untrusted wait --for=condition=Ready pod/e2e-ingest-client --timeout=180s
+kubectl -n monitoring wait --for=condition=Ready pod/e2e-query-client --timeout=180s
+
+ingest_curl() {
+  kubectl -n e2e-untrusted exec -i e2e-ingest-client -- curl "$@"
+}
+
+query_curl() {
+  kubectl -n monitoring exec e2e-query-client -- curl "$@"
+}
+
+if ingest_curl --fail --silent --show-error --connect-timeout 2 --max-time 4 \
+  http://loki.monitoring.svc.cluster.local:3100/ready >/dev/null 2>&1; then
+  die "untrusted workload reached Loki without observability identity"
+fi
+kubectl label namespace e2e-untrusted open-cluster-foundation.io/observability-access=true
+if ingest_curl --fail --silent --show-error --connect-timeout 2 --max-time 4 \
+  http://loki.monitoring.svc.cluster.local:3100/ready >/dev/null 2>&1; then
+  die "namespace identity alone bypassed the observability workload identity gate"
+fi
+kubectl -n e2e-untrusted label pod e2e-ingest-client open-cluster-foundation.io/telemetry-client=trusted
+
+for _ in $(seq 1 30); do
+  ingest_curl --fail --silent --show-error --connect-timeout 2 --max-time 4 \
+    http://loki.monitoring.svc.cluster.local:3100/ready >/dev/null 2>&1 && break
+  sleep 2
+done
+ingest_curl --fail --silent --show-error --connect-timeout 2 --max-time 4 \
+  http://loki.monitoring.svc.cluster.local:3100/ready >/dev/null ||
+  die "trusted telemetry workload could not reach Loki"
+
+LOKI_MARKER="ocf-e2e-loki-$(date +%s)"
+LOKI_PAYLOAD="$(jq -cn \
+  --arg timestamp "$(date +%s)000000000" \
+  --arg marker "$LOKI_MARKER" \
+  '{streams: [{stream: {job: "ocf-e2e"}, values: [[$timestamp, $marker]]}]}')"
+ingest_curl --fail --silent --show-error \
+  --header 'Content-Type: application/json' \
+  --data "$LOKI_PAYLOAD" \
+  http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push >/dev/null
+LOKI_RESULT=""
+for _ in $(seq 1 30); do
+  LOKI_RESULT="$(query_curl --fail --silent --show-error --get \
+    --data-urlencode 'query={job="ocf-e2e"}' \
+    --data-urlencode 'since=5m' \
+    http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/query_range)"
+  grep -q "$LOKI_MARKER" <<<"$LOKI_RESULT" && break
+  sleep 2
+done
+grep -q "$LOKI_MARKER" <<<"$LOKI_RESULT" || die "Loki did not return the ingested marker"
+
+TRACE_ID="$(openssl rand -hex 16)"
+SPAN_ID="$(openssl rand -hex 8)"
+TRACE_START="$(date +%s)000000000"
+TRACE_END="$((TRACE_START + 1000000))"
+TEMPO_PAYLOAD="$(jq -cn \
+  --arg trace_id "$TRACE_ID" \
+  --arg span_id "$SPAN_ID" \
+  --arg start "$TRACE_START" \
+  --arg end "$TRACE_END" \
+  '{resourceSpans: [{resource: {attributes: [{key: "service.name", value: {stringValue: "ocf-e2e"}}]}, scopeSpans: [{scope: {name: "ocf-e2e"}, spans: [{traceId: $trace_id, spanId: $span_id, name: "e2e-span", kind: 1, startTimeUnixNano: $start, endTimeUnixNano: $end, status: {code: 1}}]}]}]}')"
+ingest_curl --fail --silent --show-error \
+  --header 'Content-Type: application/json' \
+  --data "$TEMPO_PAYLOAD" \
+  http://tempo.monitoring.svc.cluster.local:4318/v1/traces >/dev/null
+TEMPO_RESULT=""
+for _ in $(seq 1 30); do
+  TEMPO_RESULT="$(query_curl --fail --silent --show-error \
+    "http://tempo.monitoring.svc.cluster.local:3200/api/traces/${TRACE_ID}" 2>/dev/null || true)"
+  grep -q 'e2e-span' <<<"$TEMPO_RESULT" && break
+  sleep 2
+done
+grep -q 'e2e-span' <<<"$TEMPO_RESULT" || die "Tempo did not return the ingested trace"
+
+if printf 'PING\r\nQUIT\r\n' | ingest_curl --silent --show-error --connect-timeout 2 --max-time 4 \
+  telnet://valkey.cache.svc.cluster.local:6379 >/dev/null 2>&1; then
+  die "untrusted workload reached Valkey without platform identity"
+fi
+kubectl label namespace e2e-untrusted open-cluster-foundation.io/platform-access=true
+CACHE_RESPONSE=""
+for _ in $(seq 1 30); do
+  CACHE_RESPONSE="$(printf 'PING\r\nQUIT\r\n' |
+    ingest_curl --silent --show-error --connect-timeout 2 --max-time 4 \
+      telnet://valkey.cache.svc.cluster.local:6379 2>/dev/null || true)"
+  grep -q NOAUTH <<<"$CACHE_RESPONSE" && break
+  sleep 2
+done
+grep -q NOAUTH <<<"$CACHE_RESPONSE" || die "platform workload did not reach authenticated Valkey"
 
 log "asserting monitoring resources exist"
 RULES="$(kubectl -n monitoring get prometheusrules -o name | wc -l)"
@@ -193,4 +365,4 @@ fi
 [[ "$(kubectl -n monitoring get configmap strimzi-kafka -o jsonpath='{.metadata.namespace}')" == "monitoring" ]] || die "Strimzi dashboards are not colocated with Grafana"
 kubectl -n monitoring get configmap alloy -o go-template='{{ index .data "config.alloy" }}' | grep -q 'open-cluster-foundation.io/telemetry-client=trusted' || die "Alloy is not filtering untrusted pod logs"
 
-log "e2e passed: edge, TLS issuance, Postgres, Kafka, cache and monitoring are functional"
+log "e2e passed: edge authorization, NetworkPolicy isolation, TLS, Postgres, Kafka, cache, logs and traces are functional"

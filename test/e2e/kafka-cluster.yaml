@@ -52,3 +52,15 @@ spec:
   entityOperator:
     topicOperator: {}
     userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: e2e-events
+  namespace: messaging
+  labels:
+    strimzi.io/cluster: foundation-kafka
+spec:
+  topicName: e2e-events
+  partitions: 1
+  replicas: 1
