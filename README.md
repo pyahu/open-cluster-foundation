@@ -66,6 +66,28 @@ are in [`docs/lifecycle.md`](docs/lifecycle.md).
 The rationale behind safety-sensitive defaults and ownership boundaries is in
 [`docs/implementation-decisions.md`](docs/implementation-decisions.md).
 
+## Use a tested release
+
+Production installations should use an immutable release instead of `main`.
+The current tested release is `v2026.9.0`:
+
+```sh
+git clone --branch v2026.9.0 --depth 1 \
+  https://github.com/pyahu/open-cluster-foundation.git
+cd open-cluster-foundation
+```
+
+Terraform callers can pin the OCI implementation from this repository:
+
+```hcl
+module "foundation" {
+  source = "github.com/pyahu/open-cluster-foundation//terraform/modules/oci-oke-foundation?ref=v2026.9.0"
+}
+```
+
+The standalone Terraform Registry module remains unpublished. Use only the Git
+source above until the provider contract lists a Registry release.
+
 ## Quickstart (OCI)
 
 The map below is the whole journey — what to read, what to edit and what to
@@ -231,9 +253,11 @@ references. Tool versions remain pinned in [`mise.toml`](mise.toml).
 - Cluster Autoscaler / Karpenter as foundation options.
 - Extraction of the OCI module into `terraform-oci-oke-foundation` and public Terraform Registry publication.
 
-Issues are open for bugs, questions and proposals. New providers are accepted
-only with the contract, validation and support evidence described in
-[`docs/provider-contract.md`](docs/provider-contract.md).
+[Discussions](https://github.com/pyahu/open-cluster-foundation/discussions) are
+open for usage questions and design proposals. Reproducible bugs belong in
+[Issues](https://github.com/pyahu/open-cluster-foundation/issues). New providers
+are accepted only with the contract, validation and support evidence described
+in [`docs/provider-contract.md`](docs/provider-contract.md).
 
 ## Repository layout
 

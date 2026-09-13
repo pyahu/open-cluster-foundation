@@ -108,3 +108,14 @@ publication requires a separate public repository named
 Releases use calver tags (`vYYYY.M.PATCH`, for example `v2026.7.0`) with notes
 in [`CHANGELOG.md`](CHANGELOG.md) summarizing component bumps and any breaking
 changes to variables, values or resource layouts.
+
+Before tagging a release:
+
+1. Move the accumulated changelog entries under the dated release heading and
+   update every pinned consumption example to the new tag.
+2. Run all local checks and the full E2E suite.
+3. Push the preparation commit and require the complete CI workflow to pass.
+4. Run the E2E workflow manually against that exact commit when path filters do
+   not start it automatically.
+5. Create an annotated tag on the tested commit, publish the GitHub release from
+   the matching changelog section and verify badges and links.

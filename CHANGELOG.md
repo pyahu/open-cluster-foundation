@@ -6,6 +6,8 @@ tags (`vYYYY.M.PATCH`).
 
 ## [Unreleased]
 
+## [2026.9.0] - 2026-09-13
+
 ### Added
 
 - A maintained implementation-decisions reference for safety-sensitive
@@ -105,3 +107,6 @@ tags (`vYYYY.M.PATCH`).
   data-plane Service and asserts HTTP through the gateway, certificate
   issuance, CNPG, Kafka, Valkey and the monitoring resources.
 - Renovate configuration keeping every pinned component fresh.
+
+[Unreleased]: https://github.com/pyahu/open-cluster-foundation/compare/v2026.9.0...HEAD
+[2026.9.0]: https://github.com/pyahu/open-cluster-foundation/releases/tag/v2026.9.0

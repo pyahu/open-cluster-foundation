@@ -12,12 +12,12 @@ When this template is copied outside this repository, update the module
 `source` in `main.tf` to a pinned Git reference, for example:
 
 ```hcl
-source = "github.com/<org>/open-cluster-foundation//terraform/modules/oci-oke-foundation?ref=<project-release-tag>"
+source = "github.com/pyahu/open-cluster-foundation//terraform/modules/oci-oke-foundation?ref=v2026.9.0"
 ```
 
-Replace the example ref with an existing project release tag. The intended
-Registry address `pyahu/oke-foundation/oci` is not published yet; public
-Registry use begins only after the module is moved to its required dedicated
+Update the ref only to an existing tested project release. The intended Registry
+address `pyahu/oke-foundation/oci` is not published yet; public Registry use
+begins only after the module is moved to its required dedicated
 `terraform-oci-oke-foundation` repository.
 
 ## Local Instance Flow

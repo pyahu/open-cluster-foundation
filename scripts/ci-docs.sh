@@ -9,9 +9,13 @@ GENERATED_ROOT="$(mktemp -d)"
 trap 'rm -rf "$GENERATED_ROOT"' EXIT
 
 require_command lychee
+require_command rg
 require_command yq
 
 VERSIONS_FILE="${OCF_ROOT}/kubernetes/production-base/versions.yaml"
+CHANGELOG_FILE="${OCF_ROOT}/CHANGELOG.md"
+LATEST_RELEASE="$(sed -nE 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$/\1/p' "$CHANGELOG_FILE" | head -n 1)"
+LATEST_RELEASE_TAG="v${LATEST_RELEASE}"
 E2E_KUBERNETES_VERSION="$(yq -er '.e2e.kubernetesVersion' "$VERSIONS_FILE")"
 KIND_NODE_IMAGE="$(yq -er '.e2e.kindNodeImage' "$VERSIONS_FILE")"
 KIND_NODE_DIGEST="${KIND_NODE_IMAGE##*@sha256:}"
@@ -20,6 +24,11 @@ KIND_NODE_DIGEST="${KIND_NODE_IMAGE##*@sha256:}"
 [[ "$KIND_NODE_IMAGE" == "kindest/node:v${E2E_KUBERNETES_VERSION}@sha256:${KIND_NODE_DIGEST}" && "$KIND_NODE_DIGEST" =~ ^[0-9a-f]{64}$ ]] || die "E2E node image must pin the documented Kubernetes version by digest"
 [[ "$(yq -r '[.components[] | select(.displayName == null or .displayName == "")] | length' "$VERSIONS_FILE")" == "0" ]] || die "every component must have a displayName"
 [[ "$(yq -r '[.components[].displayName | select((contains("|")) or (contains("\n")))] | length' "$VERSIONS_FILE")" == "0" ]] || die "component display names must be valid Markdown table cells"
+[[ -n "$LATEST_RELEASE" ]] || die "changelog must contain a dated release"
+rg -Fq "$LATEST_RELEASE_TAG" "${OCF_ROOT}/README.md" || die "README consumption example must use ${LATEST_RELEASE_TAG}"
+rg -Fq "$LATEST_RELEASE_TAG" "${OCF_ROOT}/templates/oci-foundation-instance/README.md" || die "instance template consumption example must use ${LATEST_RELEASE_TAG}"
+rg -Fq "[Unreleased]: https://github.com/pyahu/open-cluster-foundation/compare/${LATEST_RELEASE_TAG}...HEAD" "$CHANGELOG_FILE" || die "changelog Unreleased comparison must start at ${LATEST_RELEASE_TAG}"
+rg -Fq "[${LATEST_RELEASE}]: https://github.com/pyahu/open-cluster-foundation/releases/tag/${LATEST_RELEASE_TAG}" "$CHANGELOG_FILE" || die "changelog release link must target ${LATEST_RELEASE_TAG}"
 for environment_file in "${OCF_ROOT}"/kubernetes/production-base/environments/*.yaml; do
   [[ "$(yq -r '.description // ""' "$environment_file")" != "" ]] || die "${environment_file#"${OCF_ROOT}"/} needs a description"
   [[ "$(yq -r '(.description | contains("|")) or (.description | contains("\n"))' "$environment_file")" == "false" ]] || die "${environment_file#"${OCF_ROOT}"/} description must be a valid Markdown table cell"

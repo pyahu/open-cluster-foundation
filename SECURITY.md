@@ -8,6 +8,10 @@ Use GitHub private vulnerability reporting: **Security → Report a
 vulnerability** on this repository. We will acknowledge the report within a
 few business days and keep you informed of the fix progress.
 
+The repository enables dependency alerts and security updates, secret scanning
+with push protection and validity checks, non-provider secret detection, private
+vulnerability reporting and CodeQL analysis for GitHub Actions.
+
 ## Scope
 
 This repository ships infrastructure blueprints, not a hosted service.
