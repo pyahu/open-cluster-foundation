@@ -130,13 +130,13 @@ description = "Validate the static OCF landing page and documentation site."
 run = "scripts/ci-site.sh"
 
 [tasks."site:build"]
-description = "Validate the static assets with the Cloudflare Pages build command."
+description = "Validate the static assets with the Cloudflare build command."
 run = "scripts/cloudflare-build.sh"
 
 [tasks."site:dev"]
-description = "Run the OCF site with the local Cloudflare Pages runtime."
-run = "scripts/cloudflare-pages.sh dev"
+description = "Run the OCF site with the local Cloudflare runtime."
+run = "scripts/cloudflare-site.sh dev"
 
 [tasks."site:deploy"]
-description = "Deploy main to the existing Cloudflare Pages project."
-run = "scripts/cloudflare-pages.sh deploy"
+description = "Deploy main with Cloudflare Workers Static Assets."
+run = "scripts/cloudflare-site.sh deploy"

@@ -106,8 +106,8 @@ mise run site:build
 mise run site:dev
 ```
 
-The [website deployment guide](site.md) documents Cloudflare Pages Git
-integration and the protected manual deploy task.
+The [website deployment guide](site.md) documents Cloudflare Workers Builds and
+the protected manual deploy task.
 
 ## Direct script help
 

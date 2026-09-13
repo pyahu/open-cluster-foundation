@@ -17,24 +17,34 @@ for required_file in \
   _headers \
   robots.txt; do
   test -f "${SITE_ROOT}/${required_file}" || {
-    printf 'missing Cloudflare Pages asset: dist/%s\n' "$required_file" >&2
+    printf 'missing Cloudflare static asset: dist/%s\n' "$required_file" >&2
     exit 1
   }
 done
 
 test -f "${PROJECT_ROOT}/wrangler.toml" || {
-  printf 'missing Cloudflare Pages configuration: wrangler.toml\n' >&2
+  printf 'missing Cloudflare configuration: wrangler.toml\n' >&2
   exit 1
 }
 
 grep -Fq 'name = "open-cluster-foundation"' "${PROJECT_ROOT}/wrangler.toml" || {
-  printf 'Cloudflare Pages project name must be open-cluster-foundation\n' >&2
+  printf 'Cloudflare Worker name must be open-cluster-foundation\n' >&2
   exit 1
 }
 
-grep -Fq 'pages_build_output_dir = "./dist"' "${PROJECT_ROOT}/wrangler.toml" || {
-  printf 'Cloudflare Pages build output must be ./dist\n' >&2
+grep -Fq '[assets]' "${PROJECT_ROOT}/wrangler.toml" || {
+  printf 'Cloudflare static assets configuration is required\n' >&2
   exit 1
 }
 
-printf 'Cloudflare Pages assets are ready in dist\n'
+grep -Fq 'directory = "./dist"' "${PROJECT_ROOT}/wrangler.toml" || {
+  printf 'Cloudflare static assets directory must be ./dist\n' >&2
+  exit 1
+}
+
+grep -Fq 'not_found_handling = "404-page"' "${PROJECT_ROOT}/wrangler.toml" || {
+  printf 'Cloudflare static assets must use the custom 404 page\n' >&2
+  exit 1
+}
+
+printf 'Cloudflare static assets are ready in dist\n'
