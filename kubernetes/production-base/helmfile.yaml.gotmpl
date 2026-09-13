@@ -27,11 +27,6 @@ environments:
 {{- $observabilityScope := env "OCF_OBSERVABILITY_SCOPE" | default "trusted" -}}
 {{- $identityAccessMode := env "OCF_IDENTITY_ACCESS_MODE" | default "sso" -}}
 {{- $cacheAccessMode := env "OCF_CACHE_ACCESS_MODE" | default "acl" -}}
-# CRD ownership is singular by design: every chart installs and owns its own
-# CRDs (including the Gateway API CRDs, which ship with the Envoy Gateway
-# chart), except the Prometheus Operator CRDs, which the apply script installs
-# from versions.yaml BEFORE any release because several charts ship
-# ServiceMonitors (kube-prometheus-stack disables its copy via crds.enabled).
 helmDefaults:
   atomic: true
   cleanupOnFail: true
@@ -89,8 +84,6 @@ releases:
     installed: {{ .Values.profiles.certificates }}
     chart: jetstack/cert-manager
     version: {{ $versions.components.certManager.chartVersion | quote }}
-    # cert-manager's Gateway API integration requires the Gateway CRDs at
-    # startup, and those ship with the Envoy Gateway chart.
     needs:
       - envoy-gateway-system/envoy-gateway
     values:
@@ -159,8 +152,6 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: prometheus-community/kube-prometheus-stack
     version: {{ $versions.components.kubePrometheusStack.chartVersion | quote }}
-    # values/local/kube-prometheus-stack.yaml (gitignored) carries instance settings such as
-    # retention and alert receivers; helmfile skips it when absent.
     missingFileHandler: Info
     values:
       - values/kube-prometheus-stack.yaml
@@ -175,9 +166,6 @@ releases:
       - values/ci/kube-prometheus-stack.yaml
 {{- end }}
 
-  # Serves metrics.k8s.io for kubectl top and HPA. Installed here instead of
-  # the OKE managed addon: the addon now depends on the CertManager addon,
-  # which would fight the cert-manager release above for the same CRDs.
   - name: metrics-server
     namespace: kube-system
     labels:
@@ -194,8 +182,6 @@ releases:
       - values/ci/metrics-server.yaml
 {{- end }}
 
-  # Synthetic probes: Probe resources point Prometheus at this exporter to check
-  # public endpoints from inside the cluster (availability, latency, TLS expiry).
   - name: blackbox-exporter
     namespace: monitoring
     labels:
@@ -216,8 +202,6 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: grafana-community/loki
     version: {{ $versions.components.loki.chartVersion | quote }}
-    # values/local/loki.yaml (gitignored) carries instance settings such as
-    # retention and alert receivers; helmfile skips it when absent.
     missingFileHandler: Info
     values:
       - values/loki.yaml
@@ -233,8 +217,6 @@ releases:
     installed: {{ and .Values.profiles.observability (not .Values.profiles.durableObservability) }}
     chart: grafana-community/tempo
     version: {{ $versions.components.tempo.chartVersion | quote }}
-    # values/local/tempo.yaml (gitignored) carries instance settings such as
-    # retention and alert receivers; helmfile skips it when absent.
     missingFileHandler: Info
     values:
       - values/tempo.yaml
@@ -259,8 +241,6 @@ releases:
     installed: {{ .Values.profiles.observability }}
     chart: grafana/alloy
     version: {{ $versions.components.alloy.chartVersion | quote }}
-    # values/local/alloy.yaml (gitignored) carries instance settings such as
-    # retention and alert receivers; helmfile skips it when absent.
     missingFileHandler: Info
     values:
       - values/alloy.yaml.gotmpl
@@ -282,8 +262,6 @@ releases:
 {{- else }}
       - monitoring/tempo
 {{- end }}
-    # values/local/*.yaml carries instance-specific settings (public URL, OIDC
-    # issuer) and is gitignored; helmfile skips it when absent.
     missingFileHandler: Info
     values:
       - values/grafana.yaml

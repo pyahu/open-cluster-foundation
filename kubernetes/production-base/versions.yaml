@@ -36,8 +36,6 @@ components:
     # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
     chartVersion: v1.8.1
     appVersion: v1.8.1
-    # The chart ships and owns the Gateway API CRDs (experimental channel),
-    # so they upgrade in lockstep with the Envoy Gateway release.
     gatewayApiVersion: v1.5.1
   certManager:
     displayName: cert-manager
@@ -96,15 +94,11 @@ components:
     # renovate: datasource=helm depName=strimzi-kafka-operator registryUrl=https://strimzi.io/charts/
     chartVersion: 1.0.1
     appVersion: 1.0.1
-    # kafkaVersion is coupled with resources/kafka/*.yaml (spec.version and the
-    # Kafka Connect build image tag). Update them together, manually.
     kafkaVersion: 4.2.0
     kafkaConnectVersion: 4.2.0
   debezium:
     displayName: Debezium PostgreSQL connector
     installMethod: strimzi-kafkaconnect-plugin
-    # Manual update: bumping the version requires recomputing postgresPluginSha512
-    # and updating resources/kafka/kafka-connect-debezium-postgres.yaml.
     version: 3.5.2.Final
     postgresPluginUrl: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.5.2.Final/debezium-connector-postgres-3.5.2.Final-plugin.tar.gz
     postgresPluginSha512: 7ee20a5106d11068677dd81d06fad7ee1c2fa09ba31658ecfed5dc9611e8fd73417251b9a5661e5425d8cfac1f868afb83dec56027639f54394e8f4d1f7f4c4e
@@ -125,10 +119,6 @@ components:
     chartVersion: 1.9.0
     # renovate: datasource=docker depName=infisical/infisical
     imageTag: v0.161.8
-  # Applied before any chart that ships ServiceMonitors (cert-manager, Argo CD,
-  # ...), so installs work on a fresh cluster regardless of release order. Keep
-  # the version aligned with kubePrometheusStack.appVersion (the operator
-  # version the chart ships).
   prometheusOperatorCrds:
     displayName: Prometheus Operator CRDs
     installMethod: upstream-release-manifest

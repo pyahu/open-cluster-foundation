@@ -2,9 +2,6 @@ deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
-  # At `info` Loki logs a line per query and per flushed stream, and in a quiet
-  # cluster that is most of what it stores. `warn` keeps errors and slow-query
-  # warnings.
   server:
     log_level: warn
   commonConfig:
@@ -20,9 +17,6 @@ loki:
         index:
           prefix: loki_index_
           period: 24h
-  # Without compactor retention Loki keeps every chunk forever and fills the
-  # persistent volume. For production log volumes move chunks to object
-  # storage first: see values/loki-oci-object-storage.example.yaml.
   compactor:
     retention_enabled: true
     delete_request_store: filesystem
@@ -31,7 +25,6 @@ loki:
 
 singleBinary:
   replicas: 1
-  # Uso medido: ~447Mi.
   resources:
     requests:
       cpu: 100m
@@ -67,9 +60,6 @@ gateway:
     limits:
       memory: 128Mi
 
-# Chart-native observability for Loki itself: scrape config, the upstream
-# loki-alerts PrometheusRule, its recording rules and the operational
-# dashboards picked up by the Grafana sidecar.
 monitoring:
   serviceMonitor:
     enabled: true

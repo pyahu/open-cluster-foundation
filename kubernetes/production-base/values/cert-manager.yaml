@@ -11,7 +11,6 @@ prometheus:
 
 replicaCount: 2
 
-# Uso medido: controller ~79Mi, cainjector ~82Mi, webhook ~28Mi.
 resources:
   requests:
     cpu: 25m

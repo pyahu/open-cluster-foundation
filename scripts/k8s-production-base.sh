@@ -3,13 +3,9 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
-# shellcheck source=lib/k8s-config.sh
 source "${SCRIPT_DIR}/lib/k8s-config.sh"
-# shellcheck source=lib/k8s-installation.sh
 source "${SCRIPT_DIR}/lib/k8s-installation.sh"
-# shellcheck source=lib/k8s-secrets.sh
 source "${SCRIPT_DIR}/lib/k8s-secrets.sh"
 
 ACTION="${1:-check}"
@@ -103,7 +99,6 @@ if [[ "${OCF_HELMFILE_SUPPRESS_DIFF:-false}" == "true" ]]; then
   HELMFILE_APPLY_ARGS+=(--suppress-diff)
 fi
 
-# The e2e suite swaps the production Kafka resources for CI-sized ones.
 KAFKA_CLUSTER_FILE="${OCF_KAFKA_CLUSTER_FILE:-${BASE_DIR}/resources/kafka/kafka-cluster.yaml}"
 KAFKA_CONNECT_FILE="${OCF_KAFKA_CONNECT_FILE:-${BASE_DIR}/resources/kafka/kafka-connect.yaml}"
 
@@ -235,18 +230,6 @@ apply_base_gateway() {
     return
   fi
 
-  # manifests/gateway.yaml is a bootstrap placeholder: a GatewayClass without
-  # parametersRef and a single HTTP listener. Real instances customise both
-  # (HTTPS listeners per hostname and an EnvoyProxy carrying the provider's
-  # load balancer annotations), and re-applying the placeholder on top undoes
-  # that: the data plane Service loses its annotations, the cloud controller
-  # creates a new load balancer (with a new IP!) and every HTTPS host goes
-  # down because DNS still points at the old one. That happened on a
-  # production cluster on 2026-08-10.
-  #
-  # So the gateway is only created when missing. To re-apply the placeholder
-  # on purpose, set OCF_FORCE_BASE_GATEWAY=true, then re-apply the instance
-  # customisation.
   if [[ "${OCF_FORCE_BASE_GATEWAY:-false}" == "true" ]]; then
     log "applying base Gateway (forced; instance customisations will be overwritten)"
     kubectl apply -f "${BASE_DIR}/manifests/gateway.yaml"
@@ -482,9 +465,6 @@ apply_base() {
   prepare_valkey_acl_secret
   apply_prometheus_operator_crds
 
-  # Envoy Gateway ships (and owns) the Gateway API CRDs, which cert-manager's
-  # Gateway integration requires at startup; cert-manager must exist before
-  # the RabbitMQ topology operator, which uses its webhook certificates.
   apply_bootstrap_releases
 
   apply_cluster_issuers_if_configured
@@ -492,9 +472,6 @@ apply_base() {
   apply_plugin_barman_cloud
   create_grafana_admin_secret
 
-  # Concurrency is bounded so a fresh cluster is not saturated by a dozen
-  # simultaneous installs: unbounded concurrency starves operator liveness
-  # probes on small nodes and helm rolls healthy releases back.
   log "applying helmfile environment ${ENVIRONMENT}"
   helmfile_apply --concurrency 4
 

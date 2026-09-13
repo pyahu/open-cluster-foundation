@@ -1,10 +1,3 @@
-# Edge rules: request rate, errors and latency per HTTPRoute, read from the
-# Envoy proxies, and the synthetic checks from the blackbox exporter.
-#
-# Envoy names the upstream cluster of a route `httproute/<namespace>/<route>/rule/<n>`.
-# The recording rules turn that into `namespace` and `route` labels, so a route
-# is addressed the way Kubernetes names it. Thresholds are starting points:
-# calibrate every `for:` against a week of your own series before paging on it.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

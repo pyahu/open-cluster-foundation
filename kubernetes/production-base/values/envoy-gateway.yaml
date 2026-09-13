@@ -1,6 +1,5 @@
 deployment:
   replicas: 2
-  # Uso medido: ~107Mi.
   envoyGateway:
     resources:
       requests:

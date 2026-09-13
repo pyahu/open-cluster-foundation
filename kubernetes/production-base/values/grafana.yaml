@@ -1,4 +1,3 @@
-# Measured usage: ~348Mi.
 resources:
   requests:
     cpu: 50m
@@ -14,31 +13,14 @@ admin:
 service:
   type: ClusterIP
 
-# The data volume is ReadWriteOnce. With the default RollingUpdate the new pod
-# waits for a volume the old pod still holds, never becomes ready, and an atomic
-# helm upgrade times out and rolls back. Recreate trades a few seconds of
-# Grafana for an upgrade that completes.
-#
-# Switching a release that already runs RollingUpdate: Helm 4 upgrades with
-# server-side apply, which keeps the live `rollingUpdate` block and is refused
-# with "may not be specified when strategy type is 'Recreate'". Run that one
-# upgrade with `helmfile ... sync --args "--server-side=false"` (client-side
-# patch, which drops the block); later upgrades work either way.
 deploymentStrategy:
   type: Recreate
 
-# The chart rejects grafana.ini with a client_secret key even when the value
-# is an env expansion (${...}); the real credentials come from the secret via
-# envFromSecrets.
 assertNoLeakedSecrets: false
 
 envFromSecrets:
   - name: grafana-oidc-credentials
 
-# Instance-specific settings (public URL, OIDC issuer, org scope) belong in
-# values/local/grafana.yaml, which is gitignored and layered on top of this
-# file by helmfile when present. The values below are placeholders that keep
-# the release installable; override them there, not here.
 grafana.ini:
   server:
     root_url: https://grafana.example.com
@@ -48,9 +30,6 @@ grafana.ini:
     enabled: true
     name: OIDC
     allow_sign_up: true
-    # Append a tenant scope when the issuer supports it, for example
-    # "urn:zitadel:iam:org:id:<org-id>" on ZITADEL, to restrict sign-in to one
-    # organization.
     scopes: openid profile email groups offline_access
     auth_url: https://idp.example.com/oauth/v2/authorize
     token_url: https://idp.example.com/oauth/v2/token
@@ -63,10 +42,6 @@ grafana.ini:
     role_attribute_path: contains(groups[*], 'grafana-admin') && 'Admin' || contains(groups[*], 'grafana-editor') && 'Editor' || contains(groups[*], 'grafana-viewer') && 'Viewer' || 'None'
     allow_assign_grafana_admin: false
 
-# Provisioned datasources are read-only, and Grafana fails to boot with
-# "data source not found" when the uid of an existing one changes.
-# deleteDatasources removes the old (random-uid) copy before recreating it
-# with the fixed uid.
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -86,7 +61,6 @@ datasources:
         isDefault: true
         jsonData:
           timeInterval: 30s
-          # A histogram sample carrying a trace_id exemplar links to that trace.
           exemplarTraceIdDestinations:
             - name: trace_id
               datasourceUid: tempo
@@ -98,14 +72,12 @@ datasources:
         jsonData:
           maxLines: 1000
           derivedFields:
-            # The trace_id Alloy stores as structured metadata (JSON logs).
             - name: TraceID
               matcherType: label
               matcherRegex: trace_id
               url: $${__value.raw}
               datasourceUid: tempo
               urlDisplayLabel: View trace
-            # An ECS line whose trace id was not lifted into metadata.
             - name: TraceIDInLine
               matcherRegex: '"trace\.id":"([a-f0-9]+)"'
               url: $${__value.raw}
@@ -117,8 +89,6 @@ datasources:
         access: proxy
         url: http://tempo.monitoring.svc.cluster.local:3200
         jsonData:
-          # `$$` keeps provisioning from reading the template tokens as
-          # environment variables.
           tracesToLogsV2:
             datasourceUid: loki
             spanStartTimeShift: -5m
@@ -135,7 +105,6 @@ datasources:
             enabled: true
           lokiSearch:
             datasourceUid: loki
-      # Lets Grafana's Alerting page show and silence what Alertmanager holds.
       - name: Alertmanager
         uid: alertmanager
         type: alertmanager
@@ -155,8 +124,6 @@ sidecar:
   dashboards:
     enabled: true
     searchNamespace: ALL
-    # A dashboard ConfigMap chooses its folder with this annotation
-    # (resources/monitoring/dashboards-platform.yaml uses "Platform").
     folderAnnotation: grafana_folder
     provider:
       foldersFromFilesStructure: true
@@ -184,8 +151,6 @@ dashboardProviders:
         options:
           path: /var/lib/grafana/dashboards/platform
 
-# Community Kubernetes dashboards from dotdc/grafana-dashboards-kubernetes,
-# pinned by grafana.com dashboard id and revision.
 dashboards:
   kubernetes-views:
     k8s-views-global:
@@ -208,8 +173,6 @@ dashboards:
       gnetId: 15761
       revision: 21
       datasource: Prometheus
-  # Edge and synthetic checks. Envoy Gateway's own overview dashboard, and the
-  # HTTP view of the blackbox exporter (fed by Probe resources).
   platform:
     envoy-gateway-overview:
       gnetId: 24460

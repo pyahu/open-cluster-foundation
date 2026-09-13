@@ -1,10 +1,8 @@
 [tools]
-# Infrastructure as Code.
 terraform = "1.15.7"
 tflint = "0.63.1"
 terraform-docs = "0.24.0"
 
-# Kubernetes operations.
 kubectl = "1.36.2"
 helm = "4.2.2"
 helmfile = "1.6.0"
@@ -15,12 +13,10 @@ kubeconform = "0.8.0"
 k9s = "0.51.0"
 stern = "1.34.0"
 
-# Cloud provider CLIs.
 "pipx:oci-cli" = "3.88.0"
 doctl = "1.163.0"
 "github:MagaluCloud/mgccli" = "0.61.2"
 
-# Script helpers.
 jq = "1.8.2"
 yq = "4.53.3"
 shellcheck = "0.11.0"
@@ -28,7 +24,6 @@ trivy = "0.74.0"
 ripgrep = "15.2.0"
 lychee = "0.24.2"
 
-# End-to-end testing.
 kind = "0.32.0"
 
 [tasks.doctor]
@@ -104,8 +99,12 @@ description = "Run the Kubernetes CI checks: helmfile render and kubeconform sch
 run = "scripts/ci-kubernetes.sh"
 
 [tasks."ci:scripts"]
-description = "Run shellcheck on the repository scripts."
+description = "Enforce source policy, run shellcheck and execute shell unit tests."
 run = "scripts/ci-scripts.sh"
+
+[tasks."ci:comments"]
+description = "Reject source comments that belong in documentation."
+run = "scripts/ci-source-comments.sh"
 
 [tasks."ci:e2e"]
 description = "Install the full Kubernetes base on a disposable kind cluster and assert it works."

@@ -1,4 +1,3 @@
-# Curated from the cert-manager mixin (monitoring.mixins.dev/cert-manager).
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

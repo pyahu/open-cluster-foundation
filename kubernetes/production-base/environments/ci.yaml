@@ -1,7 +1,4 @@
 description: Disposable end-to-end integration test profile
-# End-to-end test environment: the default profiles, with CI-sized values
-# overlaid by helmfile (values/ci/*). ZITADEL and Infisical stay off because
-# they require externally created secrets.
 profiles:
   edge: true
   certificates: true

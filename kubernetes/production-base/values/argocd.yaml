@@ -107,7 +107,6 @@ redis-ha:
       limits:
         memory: 256Mi
 
-# The chart also brings up an argocd-redis alongside redis-ha.
 redis:
   resources:
     requests:

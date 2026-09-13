@@ -1,6 +1,3 @@
-# Platform dashboards authored for this base (the community ones are pulled by
-# gnetId in values/grafana.yaml). Picked up by the Grafana sidecar from any
-# namespace; the grafana_folder annotation files them under "Platform".
 apiVersion: v1
 kind: ConfigMap
 metadata:

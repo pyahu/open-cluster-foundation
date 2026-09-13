@@ -1,6 +1,3 @@
-# Restores a new cluster from the object store written by
-# postgres-with-backup.yaml, using the Barman Cloud plugin.
-# serverName must match the name of the cluster that produced the backup.
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:

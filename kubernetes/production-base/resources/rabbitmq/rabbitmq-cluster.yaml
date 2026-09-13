@@ -23,8 +23,6 @@ spec:
       spec:
         template:
           spec:
-            # Empty list satisfies the embedded PodSpec schema; the operator
-            # merges this override with the generated containers.
             containers: []
             topologySpreadConstraints:
               - maxSkew: 1

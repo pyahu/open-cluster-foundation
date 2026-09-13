@@ -63,6 +63,8 @@ New OCI foundations use the hardened defaults and migration contract in
 [`docs/oci-hardening.md`](docs/oci-hardening.md).
 Operational procedures for upgrades, rollback, uninstall and disaster recovery
 are in [`docs/lifecycle.md`](docs/lifecycle.md).
+The rationale behind safety-sensitive defaults and ownership boundaries is in
+[`docs/implementation-decisions.md`](docs/implementation-decisions.md).
 
 ## Quickstart (OCI)
 
@@ -268,6 +270,7 @@ be inspected and run without mise.
 | `mise run k8s:base:apply -- --yes` | Apply the Kubernetes base to the current context. |
 | `mise run k8s:nodes:taint-database -- --yes` | Retrofit labels/taints on pre-existing database nodes. |
 | `mise run docs:generate` / `ci:docs` | Generate and validate documentation references and links. |
+| `mise run ci:comments` | Enforce the source-comment policy. |
 | `mise run ci:scripts` / `ci:terraform` / `ci:kubernetes` / `ci:supply-chain` | Run the fast CI checks locally. |
 
 Apply tasks ask for interactive confirmation unless `--yes` is passed after

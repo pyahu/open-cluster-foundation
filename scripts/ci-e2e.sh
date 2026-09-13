@@ -3,16 +3,8 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
 
-# End-to-end test: installs the full Kubernetes production base on a
-# disposable kind cluster and asserts it actually works — the integration
-# test the render/schema checks cannot provide.
-#
-# Environment:
-#   OCF_E2E_CLUSTER   kind cluster name. Defaults to "ocf-e2e".
-#   OCF_E2E_KEEP=true Keep the kind cluster after the run (local debugging).
 
 CLUSTER_NAME="${OCF_E2E_CLUSTER:-ocf-e2e}"
 KEEP="${OCF_E2E_KEEP:-false}"
@@ -21,8 +13,6 @@ VERSIONS_FILE="${OCF_ROOT}/kubernetes/production-base/versions.yaml"
 GATEWAY_FORWARD_PID=""
 CALICO_MANIFEST="$(mktemp)"
 
-# The whole run lives in a private kubeconfig so the operator's real contexts
-# are never touched or repointed.
 KUBECONFIG="$(mktemp)"
 export KUBECONFIG
 
@@ -90,13 +80,9 @@ dump_diagnostics() {
   kubectl -n data get clusters.postgresql.cnpg.io,backups.postgresql.cnpg.io,objectstores.barmancloud.cnpg.io || true
   kubectl -n data get jobs || true
 
-  # Logs of every pod that is not fully ready, so crash causes survive the
-  # cluster teardown.
   kubectl get pods -A --no-headers 2>/dev/null |
     awk '{ split($3, ready, "/"); if (ready[1] != ready[2] || ($4 != "Running" && $4 != "Completed")) print $1, $2 }' |
     while read -r ns pod; do
-      # The event tail of describe carries the failures that never reach a log:
-      # image pulls, scheduling, missing secrets.
       warn "events for ${ns}/${pod}"
       kubectl -n "$ns" describe pod "$pod" 2>/dev/null | tail -20 || true
       warn "logs for ${ns}/${pod}"

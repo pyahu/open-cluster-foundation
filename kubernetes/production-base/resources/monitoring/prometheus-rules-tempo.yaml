@@ -1,6 +1,3 @@
-# Tempo has no upstream rules shipped with its chart. These cover the two
-# failures that lose traces without anyone noticing: Tempo down, and Tempo
-# refusing spans (rate or size limits, a tenant without ingestion).
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

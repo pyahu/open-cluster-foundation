@@ -23,9 +23,6 @@ spec:
     status.storage.replication.factor: 3
     config.providers: file
     config.providers.file.class: org.apache.kafka.common.config.provider.FileConfigProvider
-  # Strimzi v1 API: credentials are mounted with template volumes instead of
-  # the removed externalConfiguration block. Additional volume mounts must
-  # live under /mnt.
   template:
     pod:
       volumes:

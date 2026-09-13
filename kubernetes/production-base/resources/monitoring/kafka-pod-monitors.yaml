@@ -1,7 +1,3 @@
-# Vendored from strimzi-kafka-operator 1.0.1 (Apache License 2.0,
-# https://github.com/strimzi/strimzi-kafka-operator)
-# examples/metrics/prometheus-install/pod-monitors, with namespaceSelector
-# adjusted to the namespaces used by this foundation.
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:

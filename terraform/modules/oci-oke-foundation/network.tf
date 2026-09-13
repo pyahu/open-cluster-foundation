@@ -164,18 +164,6 @@ resource "oci_core_security_list" "public" {
     destination = "0.0.0.0/0"
   }
 
-  # The OCI cloud controller manager writes into this list too, and there is no way to split
-  # ownership: when a Service of type LoadBalancer is created it adds an egress rule from the
-  # load balancer subnet to each node's NodePort. Those rules are not in this file, so Terraform
-  # reads them as drift and removes them, which cuts the path from the load balancer to the
-  # ingress data plane. Ignoring egress here leaves the CCM alone while ingress stays declared,
-  # so `ingress_allowed_cidrs` and `api_endpoint_allowed_cidrs` keep working as documented.
-  #
-  # Ingress stays managed on purpose, and it is the one place the two owners can still collide:
-  # with `loadBalancerSourceRanges` set on a Service, the CCM narrows the listener rules and
-  # Terraform would want them back. That surfaces as a plan diff, which is visible, instead of
-  # silent drift. The alternative is to hand the CCM its own list with
-  # `oci.oraclecloud.com/security-list-management-mode`, which is a change on the cluster.
   lifecycle {
     ignore_changes = [egress_security_rules]
   }
@@ -217,11 +205,6 @@ resource "oci_core_security_list" "private" {
     destination = "0.0.0.0/0"
   }
 
-  # Same two owners as the public list, opposite direction: here the CCM adds an ingress rule
-  # per NodePort, from the load balancer subnet to the nodes. The rules above already allow the
-  # whole VCN, so removing the CCM's copies changes nothing about reachability, but Terraform
-  # removing them is still what breaks a running cluster the moment the CCM has not rewritten
-  # them yet. Egress stays managed because nothing else writes it.
   lifecycle {
     ignore_changes = [ingress_security_rules]
   }

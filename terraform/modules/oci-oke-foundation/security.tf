@@ -44,10 +44,6 @@ resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress" 
   }
 }
 
-# OKE requires the API endpoint to accept 6443 and 12250 from worker nodes and
-# pods, plus ICMP path discovery from workers; without these, kubelets never
-# register ("node register timeout"). See
-# https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengnetworkconfig.htm
 resource "oci_core_network_security_group_security_rule" "api_endpoint_ingress_nodes_api" {
   network_security_group_id = oci_core_network_security_group.api_endpoint.id
   direction                 = "INGRESS"
@@ -237,11 +233,6 @@ resource "oci_core_network_security_group_security_rule" "nodes_ingress_nodeport
   }
 }
 
-# A source-preserving Network Load Balancer delivers packets to NodePorts with
-# the ORIGINAL client IP as the source, so the load-balancer subnet rule above
-# is not enough for client traffic. The nodes stay unreachable from the
-# internet directly: they live in a private subnet with no public IPs, so
-# these CIDRs only ever arrive through the NLB.
 resource "oci_core_network_security_group_security_rule" "nodes_ingress_nodeports_client_source" {
   count = length(var.ingress_allowed_cidrs)
 

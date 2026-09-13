@@ -1,11 +1,3 @@
-# Physical backup and WAL archiving through the Barman Cloud plugin
-# (CNPG-I). The in-tree barmanObjectStore backup is deprecated since
-# CloudNativePG 1.26; the plugin is the supported path for new clusters.
-#
-# The endpointURL below uses the OCI Object Storage S3 Compatibility API:
-#   https://<object-storage-namespace>.compat.objectstorage.<region>.oraclecloud.com
-# The cnpg-object-store secret must hold an OCI Customer Secret Key
-# (ACCESS_KEY_ID / SECRET_ACCESS_KEY).
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:

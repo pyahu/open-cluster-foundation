@@ -1,5 +1,3 @@
-# The Service is addressed by Probe resources as blackbox-exporter.monitoring:9115,
-# so the name is fixed instead of derived from the release.
 fullnameOverride: blackbox-exporter
 
 resources:
@@ -19,7 +17,6 @@ securityContext:
 
 config:
   modules:
-    # A public endpoint answering 2xx, redirects followed. What a user sees.
     http_2xx:
       prober: http
       timeout: 10s
@@ -27,10 +24,6 @@ config:
         preferred_ip_protocol: ip4
         follow_redirects: true
         valid_status_codes: []
-    # Reachable at all: the service answered with anything but a server error.
-    # For endpoints behind a login (401/302 to an anonymous probe) and for APIs
-    # with nothing mapped at the probed path (404/405), which are up even though
-    # the path has no page.
     http_reachable:
       prober: http
       timeout: 10s
@@ -38,7 +31,6 @@ config:
         preferred_ip_protocol: ip4
         follow_redirects: false
         valid_status_codes: [200, 201, 202, 204, 301, 302, 303, 307, 308, 401, 403, 404, 405]
-    # TLS handshake only, for certificate expiry on non-HTTP listeners.
     tls_connect:
       prober: tcp
       timeout: 10s
@@ -46,7 +38,5 @@ config:
         preferred_ip_protocol: ip4
         tls: true
 
-# Probe resources carry the targets; the chart's own ServiceMonitor would
-# duplicate them.
 serviceMonitor:
   enabled: false

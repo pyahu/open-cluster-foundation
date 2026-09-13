@@ -1,14 +1,3 @@
-# Example instance layer for kube-prometheus-stack. Copy it to
-# values/local/kube-prometheus-stack.yaml (gitignored) and adapt.
-#
-# Receivers read their credentials from files of a Secret mounted into
-# Alertmanager, never from values:
-#
-#   kubectl -n monitoring create secret generic alertmanager-receivers \
-#     --from-literal=slack-webhook-url=<https://hooks.slack.com/...> \
-#     --from-literal=telegram-bot-token=<token>
-#
-# Alertmanager mounts it at /etc/alertmanager/secrets/alertmanager-receivers/.
 prometheus:
   prometheusSpec:
     retention: 30d
@@ -17,8 +6,6 @@ alertmanager:
   alertmanagerSpec:
     secrets:
       - alertmanager-receivers
-  # Replaces the chart's config as a whole: keep the inhibit rules and the
-  # "null" receiver, which Watchdog and InfoInhibitor are routed to.
   config:
     global:
       resolve_timeout: 5m
@@ -42,12 +29,10 @@ alertmanager:
       routes:
         - receiver: 'null'
           matchers: ['alertname =~ "Watchdog|InfoInhibitor"']
-        # Application namespaces go to the team that owns the applications.
         - receiver: apps
           matchers:
             - namespace =~ "my-app-namespace-.*"
             - severity =~ "warning|critical"
-        # Everything else that pages is the platform's.
         - receiver: platform
           matchers: ['severity =~ "warning|critical"']
     receivers:

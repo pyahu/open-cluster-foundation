@@ -27,8 +27,6 @@ resources:
 metrics:
   enabled: true
   exporter:
-    # The cache namespace enforces the restricted Pod Security Standard, so the
-    # exporter sidecar needs an explicit hardened security context.
     securityContext:
       allowPrivilegeEscalation: false
       capabilities:

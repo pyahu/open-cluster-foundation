@@ -50,7 +50,6 @@ metadata:
 spec:
   version: 4.2.0
   replicas: 2
-  # Uso medido: ~450Mi por worker sem conectores pesados.
   resources:
     requests:
       cpu: 100m

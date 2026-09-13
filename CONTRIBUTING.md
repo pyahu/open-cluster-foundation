@@ -21,11 +21,16 @@ on every PR; run them locally before opening one:
 
 ```sh
 mise run ci:docs         # generated references + Markdown links
-mise run ci:scripts      # shellcheck
+mise run ci:scripts      # source policy + shellcheck + unit tests
 mise run ci:terraform    # fmt, validate and tflint for every stack
 mise run ci:kubernetes   # helmfile render + kubeconform schema validation
 mise run ci:supply-chain # immutable dependencies + vulnerability/IaC scans
 ```
+
+Operational reasoning belongs in
+[`docs/implementation-decisions.md`](docs/implementation-decisions.md), not in
+source comments. `mise run ci:comments` enforces the narrow exceptions needed
+by interpreters, Terraform, ShellCheck and Renovate.
 
 PRs that touch `kubernetes/`, `scripts/` or `test/e2e/` also trigger the
 end-to-end suite: it installs the full base on a disposable kind cluster

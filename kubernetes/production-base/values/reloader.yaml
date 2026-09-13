@@ -6,7 +6,6 @@ reloader:
   enableHA: true
   deployment:
     replicas: 2
-    # Uso medido: ~44Mi.
     resources:
       requests:
         cpu: 10m

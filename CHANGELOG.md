@@ -8,6 +8,9 @@ tags (`vYYYY.M.PATCH`).
 
 ### Added
 
+- A maintained implementation-decisions reference for safety-sensitive
+  defaults, ownership boundaries, sizing assumptions and third-party
+  configuration provenance.
 - Generated component, Kubernetes, provider and environment compatibility
   references, with CI checks that reject stale output, invalid compatibility
   metadata and broken local Markdown links.
@@ -47,6 +50,9 @@ tags (`vYYYY.M.PATCH`).
 
 ### Changed
 
+- Operational explanations now live in documentation instead of source
+  comments; CI rejects comments other than required interpreter, generated-file,
+  static-analysis and dependency-update directives.
 - The end-to-end cluster now pins its Kind node image by digest and asserts the
   documented Kubernetes server version before installation.
 - Component and support claims now come from generated references instead of

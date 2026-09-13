@@ -1,5 +1,3 @@
-# CI sizing: single replicas and short retention so the stack fits a
-# single-node kind cluster. Everything else stays identical to production.
 alertmanager:
   alertmanagerSpec:
     replicas: 1

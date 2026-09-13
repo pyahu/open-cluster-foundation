@@ -3,7 +3,6 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
 
 BASE_DIR="${OCF_ROOT}/kubernetes/production-base"
@@ -114,9 +113,6 @@ fi
 grep -q 'kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local:10901' <<<"$thanos_query_endpoints" || die "Thanos Query must discover Prometheus sidecars"
 grep -q 'thanos-store.monitoring.svc.cluster.local:10901' <<<"$thanos_query_endpoints" || die "Thanos Query must discover object-store gateways"
 
-# Static manifests and custom resources are validated without
-# -ignore-missing-schemas: every kind used here must have a schema in the
-# upstream CRDs catalog, so typos in CRs fail the build.
 log "validating static manifests and resources against CRD schemas"
 find "${BASE_DIR}/manifests" "${BASE_DIR}/resources" -name '*.yaml' -print0 |
   xargs -0 kubeconform -strict -summary \

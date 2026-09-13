@@ -1,6 +1,3 @@
-# The kafka-metrics ConfigMap is vendored from strimzi-kafka-operator 1.0.1
-# examples/metrics/kafka-metrics.yaml (Apache License 2.0,
-# https://github.com/strimzi/strimzi-kafka-operator).
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -10,10 +7,8 @@ metadata:
     app: strimzi
 data:
   kafka-metrics-config.yml: |
-    # See https://github.com/prometheus/jmx_exporter for more info about JMX Prometheus Exporter metrics
     lowercaseOutputName: true
     rules:
-    # Special cases and very specific rules
     - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
       name: kafka_server_$1_$2
       type: GAUGE
@@ -67,12 +62,9 @@ data:
       labels:
         listener: "$2"
         networkProcessor: "$3"
-    # Some percent metrics use MeanRate attribute
-    # Ex) kafka.server<type=(KafkaRequestHandlerPool), name=(RequestHandlerAvgIdlePercent)><>MeanRate
     - pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*><>MeanRate
       name: kafka_$1_$2_$3_percent
       type: GAUGE
-    # Generic gauges for percents
     - pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*><>Value
       name: kafka_$1_$2_$3_percent
       type: GAUGE
@@ -81,7 +73,6 @@ data:
       type: GAUGE
       labels:
         "$4": "$5"
-    # Generic per-second counters with 0-2 key/value pairs
     - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+), (.+)=(.+)><>Count
       name: kafka_$1_$2_$3_total
       type: COUNTER
@@ -96,7 +87,6 @@ data:
     - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*><>Count
       name: kafka_$1_$2_$3_total
       type: COUNTER
-    # Generic gauges with 0-2 key/value pairs
     - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Value
       name: kafka_$1_$2_$3
       type: GAUGE
@@ -111,8 +101,6 @@ data:
     - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Value
       name: kafka_$1_$2_$3
       type: GAUGE
-    # Emulate Prometheus 'Summary' metrics for the exported 'Histogram's.
-    # Note that these are missing the '_sum' metric!
     - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Count
       name: kafka_$1_$2_$3_count
       type: COUNTER
@@ -145,8 +133,6 @@ data:
       type: GAUGE
       labels:
         quantile: "0.$4"
-    # KRaft overall related metrics
-    # distinguish between always increasing COUNTER (total and max) and variable GAUGE (all others) metrics
     - pattern: "kafka.server<type=raft-metrics><>(.+-total|.+-max):"
       name: kafka_server_raftmetrics_$1
       type: COUNTER
@@ -159,15 +145,12 @@ data:
     - pattern: "kafka.server<type=raft-metrics><>(.+):"
       name: kafka_server_raftmetrics_$1
       type: GAUGE
-    # KRaft "low level" channels related metrics
-    # distinguish between always increasing COUNTER (total and max) and variable GAUGE (all others) metrics
     - pattern: "kafka.server<type=raft-channel-metrics><>(.+-total|.+-max):"
       name: kafka_server_raftchannelmetrics_$1
       type: COUNTER
     - pattern: "kafka.server<type=raft-channel-metrics><>(.+):"
       name: kafka_server_raftchannelmetrics_$1
       type: GAUGE
-    # Broker metrics related to fetching metadata topic records in KRaft mode
     - pattern: "kafka.server<type=broker-metadata-metrics><>(.+):"
       name: kafka_server_brokermetadatametrics_$1
       type: GAUGE
@@ -183,11 +166,6 @@ spec:
   replicas: 3
   roles:
     - controller
-  # Without limits Strimzi leaves -Xmx unset and the JVM grows until it takes
-  # the node down; with limits it derives the heap as 50% of the limit. The
-  # request also lets the scheduler see real consumption instead of stacking
-  # replicas on a single node. Request sized from measured usage (0.4-1.0 GiB);
-  # the limit is what contains a runaway and defines the heap.
   resources:
     requests:
       memory: 1Gi
@@ -224,10 +202,6 @@ spec:
   replicas: 3
   roles:
     - broker
-  # Same as the controller: the limit doubles as the heap ceiling (50% of it),
-  # and the other half is left to the page cache Kafka depends on. Request
-  # sized from measured usage (1.5-2.3 GiB during a snapshot); the 4Gi limit
-  # covers the peak.
   resources:
     requests:
       memory: 2Gi
@@ -235,8 +209,6 @@ spec:
     limits:
       memory: 4Gi
       cpu: "2"
-  # RF=3 only protects anything if the replicas sit on distinct nodes: on
-  # 2026-08-10 all three brokers shared one node and two died together.
   template:
     pod:
       affinity:
@@ -247,18 +219,6 @@ spec:
                   strimzi.io/cluster: foundation-kafka
                   strimzi.io/pool-name: broker
               topologyKey: kubernetes.io/hostname
-  # 100Gi was enough before a Debezium CDC migration landed on this cluster.
-  # CDC topics run with retention.ms -1 (the sink can be rebuilt without a new
-  # snapshot of the source), so the disk only grows: the first three tables
-  # alone cost 32Gi, and every Gi lands on all three brokers because every
-  # topic is RF=3 on a 3-node cluster. Measured: ~0.38Gi per million rows plus
-  # ~0.9Mi per byte of row width; the Debezium envelope dominates on narrow
-  # tables (557Mi in the source database became 6.5Gi of topic). With ~437M
-  # rows still to stream the projection was ~296Gi; 400Gi leaves headroom.
-  #
-  # With retention -1 this postpones the problem rather than solving it: the
-  # disk fills again once steady-state CDC accumulates. The real fix is a
-  # retention policy, not more disk.
   storage:
     type: jbod
     volumes:
@@ -294,8 +254,6 @@ spec:
       offsets.topic.replication.factor: 3
       transaction.state.log.min.isr: 2
       transaction.state.log.replication.factor: 3
-    # JMX metrics feed the vendored Strimzi PrometheusRules and Grafana
-    # dashboards; the kafka-exporter below only covers topic/consumer lag.
     metricsConfig:
       type: jmxPrometheusExporter
       valueFrom:

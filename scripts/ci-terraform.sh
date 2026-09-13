@@ -3,7 +3,6 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
 
 TERRAFORM_DIRS=(
@@ -31,9 +30,6 @@ terraform -chdir="${OCF_ROOT}/terraform/modules/oci-oke-foundation" test
 log "testing terraform/oci/foundation"
 terraform -chdir="${OCF_ROOT}/terraform/oci/foundation" test
 
-# The instance template references the module through a path that only
-# resolves from .local/instances/<name>/terraform, so validation and linting
-# run against a simulated copy of that layout.
 log "validating templates/oci-foundation-instance"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT

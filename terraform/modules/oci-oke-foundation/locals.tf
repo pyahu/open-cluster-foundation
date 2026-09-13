@@ -28,19 +28,12 @@ locals {
     { left = "nodes", right = "pods" },
   ]
 
-  # The same operators that reach the API endpoint reach the bastion, unless a
-  # dedicated allowlist is provided.
   bastion_allowed_cidrs = length(var.bastion_allowed_cidrs) > 0 ? var.bastion_allowed_cidrs : var.api_endpoint_allowed_cidrs
 
   node_metadata = var.ssh_public_key == null ? {} : {
     ssh_authorized_keys = var.ssh_public_key
   }
 
-  # Taints must be registered by kubelet at node startup so that nodes created
-  # by scaling or node cycling come up tainted. Overriding user_data replaces
-  # the OKE default cloud-init, so the script must first download oke-init.sh
-  # from the instance metadata endpoint — it does not exist on the image — and
-  # then call it, mirroring the default script the override discards.
   node_pool_taint_args = {
     for pool_name, pool in var.node_pools :
     pool_name => join(",", [

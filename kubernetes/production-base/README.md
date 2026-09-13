@@ -37,6 +37,9 @@ already running.
 
 The generated [compatibility reference](../../docs/reference/compatibility.md)
 lists every environment and its exact enabled profiles.
+Safety-sensitive ordering, defaults, sizing assumptions and third-party
+configuration provenance are recorded in the
+[implementation decisions](../../docs/implementation-decisions.md).
 
 The starter environment enables:
 

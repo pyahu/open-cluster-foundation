@@ -1,7 +1,6 @@
 {{- $observabilityScope := env "OCF_OBSERVABILITY_SCOPE" | default "trusted" -}}
 {{- $applicationNamespaceRegex := env "OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX" | default "a^" -}}
 alloy:
-  # Uso medido: 213-356Mi por no.
   resources:
     requests:
       cpu: 50m
@@ -76,11 +75,6 @@ alloy:
           target_label  = "app"
         }
 
-        // Opt-in parsing. A pod annotated
-        // logging.open-cluster-foundation.io/format=java|json gets the matching
-        // pipeline below; every other pod is stored as it prints. Parsing is not
-        // applied by default because a multiline rule glues the lines of any
-        // other log format onto the previous entry.
         rule {
           source_labels = ["__meta_kubernetes_pod_annotation_logging_open_cluster_foundation_io_format"]
           target_label  = "log_format"
@@ -93,9 +87,6 @@ alloy:
       }
 
       loki.process "pods" {
-        // Java text logs (the Spring Boot and Logback default layout): a stack
-        // trace stays one entry with the line that raised it, and the level
-        // becomes a label so `{app="x", level="ERROR"}` works.
         stage.match {
           selector = "{log_format=\"java\"}"
 
@@ -114,9 +105,6 @@ alloy:
           }
         }
 
-        // JSON logs (ECS and the common logfmt-in-JSON shapes): level as a
-        // label, and the trace and span ids as structured metadata, which is
-        // what the Loki datasource links to Tempo.
         stage.match {
           selector = "{log_format=\"json\"}"
 

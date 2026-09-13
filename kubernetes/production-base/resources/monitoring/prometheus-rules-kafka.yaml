@@ -1,14 +1,3 @@
-# Vendored from strimzi-kafka-operator 1.0.1 (Apache License 2.0,
-# https://github.com/strimzi/strimzi-kafka-operator)
-# examples/metrics/prometheus-install/prometheus-rules, merged into a single
-# PrometheusRule. The upstream NoMessageForTooLong alert is intentionally
-# excluded: it fires permanently on low-traffic topics such as the Kafka
-# Connect internal topics that this foundation creates.
-#
-# The upstream pod/PVC regexes assume the pre-KafkaNodePools layout
-# (<cluster>-kafka-<id>). With node pools the pods are named
-# <cluster>-<pool>-<id>, so the alternation below also matches broker- and
-# controller- pools; without it KafkaBrokerContainersDown fires permanently.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

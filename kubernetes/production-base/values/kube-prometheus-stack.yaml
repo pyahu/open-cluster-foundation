@@ -1,14 +1,8 @@
-# The foundation applies the Prometheus Operator CRDs before any chart
-# installs (see versions.yaml prometheusOperatorCrds), so the chart must not
-# fight over their field ownership.
 crds:
   enabled: false
 
 grafana:
   enabled: false
-  # Grafana itself is installed by the separate grafana release, but the
-  # kube-prometheus-stack dashboards are still deployed as ConfigMaps so the
-  # Grafana sidecar can pick them up.
   forceDeployDashboards: true
 
 defaultRules:
@@ -41,7 +35,6 @@ prometheus:
     scrapeInterval: 30s
     evaluationInterval: 30s
     walCompression: true
-    # Measured usage: ~1.15Gi per replica with 15d retention.
     resources:
       requests:
         cpu: 200m
@@ -49,12 +42,7 @@ prometheus:
       limits:
         memory: 3Gi
     enableAdminAPI: false
-    # Tempo's metrics generator writes span metrics and the service graph here.
-    # The receiver accepts writes from any pod that reaches port 9090, so keep
-    # the monitoring namespace off the tenant network paths.
     enableRemoteWriteReceiver: true
-    # Exemplars carry a trace_id next to a histogram sample, which is what lets
-    # Grafana jump from a latency spike to the trace behind it.
     enableFeatures:
       - exemplar-storage
     exemplars:
@@ -62,8 +50,6 @@ prometheus:
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
-    # Without these, Probe and ScrapeConfig resources need the chart's release
-    # label to be picked up, unlike every other monitoring resource here.
     probeSelectorNilUsesHelmValues: false
     scrapeConfigSelectorNilUsesHelmValues: false
     storageSpec:

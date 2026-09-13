@@ -3,10 +3,11 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
 
 require_command shellcheck
+
+"${SCRIPT_DIR}/ci-source-comments.sh"
 
 log "running shellcheck"
 shellcheck -x --source-path="${OCF_ROOT}/scripts" \
