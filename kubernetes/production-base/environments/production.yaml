@@ -1,3 +1,4 @@
+description: Production control plane with database and messaging operators
 profiles:
   edge: true
   certificates: true

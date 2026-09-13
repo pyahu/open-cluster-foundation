@@ -1,0 +1,30 @@
+name: Question
+description: Ask for help using or operating Open Cluster Foundation
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private keys, customer names, public IP addresses, domains or complete OCIDs.
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Layer
+      options:
+        - Terraform OCI foundation
+        - Kubernetes production base
+        - Upgrade, rollback or recovery
+        - Contribution and development
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Explain the goal, what you already tried and the exact point that is unclear.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the OCF revision, Kubernetes server version, provider and selected environment when relevant.

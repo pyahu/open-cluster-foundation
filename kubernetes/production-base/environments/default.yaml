@@ -1,3 +1,4 @@
+description: Compatibility profile for existing OCF installations
 profiles:
   edge: true
   certificates: true

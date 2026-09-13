@@ -8,6 +8,12 @@ tags (`vYYYY.M.PATCH`).
 
 ### Added
 
+- Generated component, Kubernetes, provider and environment compatibility
+  references, with CI checks that reject stale output, invalid compatibility
+  metadata and broken local Markdown links.
+- A lifecycle runbook covering evidence collection, safe upgrades, partial
+  operation recovery, rollback limits, ordered uninstall and disaster recovery.
+- A GitHub question form for usage and operational support.
 - Edge monitoring: PodMonitor for every Envoy proxy and ServiceMonitor for the
   Envoy Gateway controller, recording rules for request rate and p95 latency
   per HTTPRoute (`namespace`/`route` labels), and alerts for route error rate,
@@ -41,6 +47,10 @@ tags (`vYYYY.M.PATCH`).
 
 ### Changed
 
+- The end-to-end cluster now pins its Kind node image by digest and asserts the
+  documented Kubernetes server version before installation.
+- Component and support claims now come from generated references instead of
+  manually copied README tables; the unavailable Discussions link was removed.
 - Fresh installations now use group-mapped SSO-only access for Argo CD and
   Grafana, with Argo CD local admin disabled, no implicit application access,
   Grafana PKCE and refresh tokens, strict roles and no OAuth server-admin

@@ -1,3 +1,4 @@
+description: Production platform with Kafka, Kafka Connect and Valkey
 profiles:
   edge: true
   certificates: true

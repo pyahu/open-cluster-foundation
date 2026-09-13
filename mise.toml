@@ -26,6 +26,7 @@ yq = "4.53.3"
 shellcheck = "0.11.0"
 trivy = "0.74.0"
 ripgrep = "15.2.0"
+lychee = "0.24.2"
 
 # End-to-end testing.
 kind = "0.32.0"
@@ -113,3 +114,11 @@ run = "scripts/ci-e2e.sh"
 [tasks."ci:supply-chain"]
 description = "Validate immutable dependencies, image policy and vulnerability/IaC scans."
 run = "scripts/ci-supply-chain.sh"
+
+[tasks."docs:generate"]
+description = "Generate compatibility and component references from machine-readable sources."
+run = "scripts/generate-docs.sh"
+
+[tasks."ci:docs"]
+description = "Verify generated references and Markdown links."
+run = "scripts/ci-docs.sh"

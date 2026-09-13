@@ -1,3 +1,4 @@
+description: Failure-tolerant control plane with durable observability
 profiles:
   edge: true
   certificates: true

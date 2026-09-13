@@ -28,7 +28,7 @@ body:
       description: Provider/region, Kubernetes version, tool versions (mise ls), helmfile environment.
       placeholder: |
         provider: OCI sa-saopaulo-1
-        kubernetes: v1.35.2
+        kubernetes: <server-version>
         environment: starter
     validations:
       required: true

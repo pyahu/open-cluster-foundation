@@ -39,6 +39,11 @@ providers:
     moduleVersion: 0.1.0
     registryAddress: pyahu/oke-foundation/oci
     registryRepository: terraform-oci-oke-foundation
+    evidence:
+      scope: Existing OCF installation API readiness and compatibility classification
+      kubernetesVersion: "1.36.1"
+      observedAt: "2026-09-13"
+      mode: read-only
   - name: magalu
     status: planned
   - name: digitalocean

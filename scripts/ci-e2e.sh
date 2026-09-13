@@ -17,6 +17,7 @@ source "${SCRIPT_DIR}/lib/common.sh"
 CLUSTER_NAME="${OCF_E2E_CLUSTER:-ocf-e2e}"
 KEEP="${OCF_E2E_KEEP:-false}"
 E2E_DIR="${OCF_ROOT}/test/e2e"
+VERSIONS_FILE="${OCF_ROOT}/kubernetes/production-base/versions.yaml"
 GATEWAY_FORWARD_PID=""
 CALICO_MANIFEST="$(mktemp)"
 
@@ -122,8 +123,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-log "creating kind cluster ${CLUSTER_NAME}"
-kind create cluster --name "$CLUSTER_NAME" --config "${E2E_DIR}/kind-config.yaml"
+KIND_NODE_IMAGE="$(yq -er '.e2e.kindNodeImage' "$VERSIONS_FILE")"
+EXPECTED_KUBERNETES_VERSION="$(yq -er '.e2e.kubernetesVersion' "$VERSIONS_FILE")"
+log "creating kind cluster ${CLUSTER_NAME} with Kubernetes ${EXPECTED_KUBERNETES_VERSION}"
+kind create cluster --name "$CLUSTER_NAME" --image "$KIND_NODE_IMAGE" --config "${E2E_DIR}/kind-config.yaml"
+[[ "$(kubectl version -o json | jq -r '.serverVersion.gitVersion')" == "v${EXPECTED_KUBERNETES_VERSION}" ]] || die "kind server version does not match the compatibility catalog"
 
 CALICO_VERSION="$(component_value calico version)"
 log "installing Calico ${CALICO_VERSION} for NetworkPolicy enforcement"

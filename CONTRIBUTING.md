@@ -16,12 +16,15 @@ are on your PATH.
 
 ## Checks
 
-CI runs three fast jobs on every PR; run them locally before opening one:
+CI runs fast documentation, script, Terraform, Kubernetes and supply-chain jobs
+on every PR; run them locally before opening one:
 
 ```sh
+mise run ci:docs         # generated references + Markdown links
 mise run ci:scripts      # shellcheck
 mise run ci:terraform    # fmt, validate and tflint for every stack
 mise run ci:kubernetes   # helmfile render + kubeconform schema validation
+mise run ci:supply-chain # immutable dependencies + vulnerability/IaC scans
 ```
 
 PRs that touch `kubernetes/`, `scripts/` or `test/e2e/` also trigger the
@@ -69,8 +72,8 @@ Manual updates (Renovate does not cover these):
    `manifests/namespace-baseline.yaml`.
 5. Add PrometheusRules/dashboards under `resources/monitoring/` when the
    upstream project provides them.
-6. Document the component in `kubernetes/production-base/README.md`
-   (component matrix, secrets, smoke tests).
+6. Add its `displayName`, regenerate references with `mise run docs:generate`,
+   and document secrets, operational constraints and smoke tests.
 
 ## Adding a cloud provider
 

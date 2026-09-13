@@ -12,41 +12,14 @@ This is a starting point, not a production guarantee. Review every value file
 against your cloud provider, security model, budget, backup policy and on-call
 capacity before using it for critical systems.
 
-## Component Matrix
+## Component versions
 
-Versions were checked against upstream releases and Helm indexes on
-`2026-06-26` and are pinned in [`versions.yaml`](versions.yaml).
-For Helm-based components, the pinned app version is the version supported by
-the latest non-deprecated chart. This blueprint does not override chart images
-to force a newer binary outside the chart's tested path.
-
-| Component | Install method | Pinned version | Fresh starter |
-| --- | --- | --- | --- |
-| Gateway API | Bundled with the Envoy Gateway chart | `v1.5.1` | Yes |
-| Prometheus Operator CRDs | Upstream release manifest | `v0.92.0` | Yes |
-| Envoy Gateway | OCI Helm chart | chart/app `v1.8.1` | Yes |
-| cert-manager | Helm chart | chart/app `v1.20.3` | Yes |
-| Argo CD | Helm chart | chart `9.7.1`, app `v3.4.4` | Yes |
-| CloudNativePG | Helm chart | chart `0.28.3`, app `1.29.1` | Production preset |
-| RabbitMQ Cluster Operator | Upstream release manifest | `v2.21.1` | Optional |
-| RabbitMQ Messaging Topology Operator | Upstream release manifest | `v1.19.3` | Optional |
-| Strimzi Kafka Operator | Helm chart | chart/app `1.0.1` | Production preset |
-| Kafka | Strimzi custom resource | `4.2.0` | Opt-in |
-| Kafka Connect | Strimzi custom resource | `4.2.0` | Opt-in |
-| Debezium Postgres connector | Strimzi plugin artifact | `3.5.2.Final` | Add-on resource |
-| ZITADEL | Helm chart | chart `10.0.4`, app `v4.15.3` | Optional |
-| Infisical | Helm chart | chart `1.9.0`, image `v0.161.8` | Optional |
-| kube-prometheus-stack | Helm chart | chart `87.2.1`, Prometheus `v3.12.0` | Yes |
-| Loki | Helm chart | chart `18.1.1`, app `3.7.3` | Yes |
-| Tempo | Helm chart | chart `2.2.3`, app `2.10.7` | Yes |
-| Tempo distributed | Helm chart | chart `2.26.2`, app `2.10.7` | HA profile |
-| Thanos | Local Helm chart | app `v0.42.4` | HA profile |
-| Grafana | Helm chart | chart `12.7.1`, app `13.1.0` | Yes |
-| Grafana Alloy | Helm chart | chart `1.10.0`, app `v1.17.0` | Yes |
-| Blackbox exporter | Helm chart | chart `11.18.0`, app `v0.28.0` | Yes |
-| Stakater Reloader | Helm chart | chart `2.2.12`, app `v1.4.17` | Yes |
-| Valkey | Helm chart | chart `0.10.0`, app `9.1.0` | Opt-in |
-| CNPG Barman Cloud plugin | Upstream release manifest | `v0.13.0` | Production preset |
+Versions are pinned in [`versions.yaml`](versions.yaml). The complete
+[component reference](../../docs/reference/components.md) is generated from
+that catalog and local chart metadata; CI rejects manual drift. For Helm-based
+components, the application version is the version shipped by the pinned chart.
+This blueprint does not override chart images merely to force a newer binary
+outside the chart's tested path.
 
 Prometheus is installed by kube-prometheus-stack. Do not install a second
 Prometheus instance unless you intentionally want a separate monitoring plane.
@@ -62,15 +35,8 @@ that predate installation state select the compatibility-only `default`
 environment, so an upgrade does not remove or disable services that are
 already running.
 
-| Environment | Intended use | Operators and platform services | Application data services |
-| --- | --- | --- | --- |
-| `starter` | Small first installation | Edge, certificates, GitOps and observability | None |
-| `production` | Production control plane | Starter plus CloudNativePG and Strimzi operators | None |
-| `production-ha` | Failure-tolerant production control plane | Production with replicated services and durable observability | None |
-| `production-data` | Explicit data-services installation | Production platform | Kafka, Kafka Connect and Valkey |
-| `default` | Compatibility for existing OCF installs | Previous default set | Kafka, Kafka Connect and Valkey |
-| `all-components` | Explicit full installation | All operators, ZITADEL and Infisical | Kafka, Kafka Connect and Valkey |
-| `ci` | Disposable integration tests | Full tested base | CI-sized Kafka, Kafka Connect and Valkey |
+The generated [compatibility reference](../../docs/reference/compatibility.md)
+lists every environment and its exact enabled profiles.
 
 The starter environment enables:
 
@@ -208,15 +174,15 @@ Other stateful resources are available, but are not automatic defaults:
 kubectl version --client
 helm version
 helmfile --version
-
-# helmfile apply diffs releases through the helm-diff plugin
-# (helm 4 verifies plugin signatures by default; git sources need --verify=false):
-helm plugin install https://github.com/databus23/helm-diff --verify=false
+HELM_DIFF_REPOSITORY="$(yq -r '.components.helmDiff.repository' versions.yaml)"
+HELM_DIFF_COMMIT="$(yq -r '.components.helmDiff.commit' versions.yaml)"
+helm plugin install "$HELM_DIFF_REPOSITORY" --version "$HELM_DIFF_COMMIT" --verify=false
 ```
 
 Cluster requirements:
 
-- Kubernetes `v1.30+`.
+- A Kubernetes version allowed by the generated
+  [compatibility reference](../../docs/reference/compatibility.md).
 - At least one default StorageClass.
 - A CNI that supports NetworkPolicy.
 - Nodes spread across failure domains if you plan to run replicated stateful
@@ -256,8 +222,14 @@ Several charts in this base (cert-manager, Argo CD, ...) ship ServiceMonitors
 and fail to install on a fresh cluster before these CRDs exist:
 
 ```sh
-kubectl apply --server-side \
-  -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.92.0/stripped-down-crds.yaml
+source ../../scripts/lib/common.sh
+PROMETHEUS_CRDS="$(mktemp)"
+download_verified \
+  "$(component_value prometheusOperatorCrds manifest)" \
+  "$(component_value prometheusOperatorCrds manifestSha256)" \
+  "$PROMETHEUS_CRDS"
+kubectl apply --server-side -f "$PROMETHEUS_CRDS"
+rm -f "$PROMETHEUS_CRDS"
 ```
 
 The Gateway API CRDs are NOT installed here: they ship with the Envoy Gateway
@@ -294,11 +266,16 @@ Start with `letsencrypt-staging`. Switch production routes to
 RabbitMQ publishes versioned release manifests for its Kubernetes operators.
 
 ```sh
-kubectl apply --server-side \
-  -f https://github.com/rabbitmq/cluster-operator/releases/download/v2.21.1/cluster-operator.yml
-
-kubectl apply --server-side \
-  -f https://github.com/rabbitmq/messaging-topology-operator/releases/download/v1.19.3/messaging-topology-operator-with-certmanager.yaml
+source ../../scripts/lib/common.sh
+for COMPONENT in rabbitmqClusterOperator rabbitmqMessagingTopologyOperator; do
+  MANIFEST="$(mktemp)"
+  download_verified \
+    "$(component_value "$COMPONENT" manifest)" \
+    "$(component_value "$COMPONENT" manifestSha256)" \
+    "$MANIFEST"
+  kubectl apply --server-side -f "$MANIFEST"
+  rm -f "$MANIFEST"
+done
 
 kubectl -n rabbitmq-system get deploy
 ```
@@ -660,7 +637,7 @@ Also test:
 
 ## Official References
 
-- Gateway API: <https://gateway-api.sigs.k8s.io/guides/>
+- Gateway API: <https://gateway-api.sigs.k8s.io/guides/getting-started/introduction/>
 - Envoy Gateway Helm install: <https://gateway.envoyproxy.io/docs/install/install-helm/>
 - cert-manager Helm install: <https://cert-manager.io/docs/installation/helm/>
 - Argo CD Helm chart: <https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd>
@@ -671,7 +648,7 @@ Also test:
 - Debezium documentation: <https://debezium.io/documentation/>
 - ZITADEL Kubernetes deployment: <https://zitadel.com/docs/self-hosting/deploy/kubernetes>
 - ZITADEL configuration: <https://zitadel.com/docs/self-hosting/deploy/kubernetes/configuration>
-- Infisical Kubernetes deployment: <https://infisical.com/docs/self-hosting/deployment-options/kubernetes>
+- Infisical Kubernetes deployment: <https://infisical.com/docs/self-hosting/deployment-options/kubernetes-helm>
 - Infisical environment variables: <https://infisical.com/docs/self-hosting/configuration/envars>
 - kube-prometheus-stack: <https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>
 - Grafana Helm charts: <https://github.com/grafana-community/helm-charts>

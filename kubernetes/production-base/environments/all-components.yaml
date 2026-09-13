@@ -1,3 +1,4 @@
+description: Explicit installation of every optional component
 profiles:
   edge: true
   certificates: true

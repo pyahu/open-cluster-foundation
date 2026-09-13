@@ -1,5 +1,7 @@
-generatedAt: "2026-06-26"
 minimumKubernetesVersion: "1.30"
+e2e:
+  kubernetesVersion: "1.36.1"
+  kindNodeImage: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
 notes:
   - Chart versions are pinned. App versions document the upstream application version exposed by the chart when available.
   - Release manifests are pinned to immutable upstream release tags.
@@ -7,8 +9,13 @@ notes:
   - Fields annotated with "# renovate:" are updated automatically by Renovate. Unannotated versions (kafkaVersion, debezium, appVersion documentation fields) are updated manually.
 components:
   crdCatalog:
+    displayName: CRD catalog
+    installMethod: ci-schema-source
+    repository: https://github.com/datreeio/CRDs-catalog
     commit: ad3b08c5045129d7bb1eeffd8e61719b2c8dd1e2
   helmDiff:
+    displayName: Helm Diff
+    installMethod: development-tool
     version: v3.15.10
     repository: https://github.com/databus23/helm-diff
     commit: 5873f8d94712f014dc2bb329acae63b8ffbf569b
@@ -17,10 +24,13 @@ components:
     macosAmd64Sha256: 5d1ae1d4cfdc138612ec99faac5ffa1251306e8c66dfad2cdeb7c4457f3dd875
     macosArm64Sha256: a53fc7515226e071c748a19cd6d3f7b490e2cfd7301cb6e1ce02e6fee19d54cf
   calico:
+    displayName: Calico
+    installMethod: e2e-cni-manifest
     version: v3.32.2
     manifest: https://raw.githubusercontent.com/projectcalico/calico/v3.32.2/manifests/calico.yaml
     manifestSha256: a8c828a06a87c629a282ebbc424895b77f3a030251993e41ea400a743675bb02
   envoyGateway:
+    displayName: Envoy Gateway
     installMethod: oci-helm-chart
     chart: oci://docker.io/envoyproxy/gateway-helm
     # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
@@ -30,6 +40,7 @@ components:
     # so they upgrade in lockstep with the Envoy Gateway release.
     gatewayApiVersion: v1.5.1
   certManager:
+    displayName: cert-manager
     installMethod: helm-chart
     repository: https://charts.jetstack.io
     chart: jetstack/cert-manager
@@ -37,6 +48,7 @@ components:
     chartVersion: v1.20.3
     appVersion: v1.20.3
   argoCd:
+    displayName: Argo CD
     installMethod: helm-chart
     repository: https://argoproj.github.io/argo-helm
     chart: argo/argo-cd
@@ -44,6 +56,7 @@ components:
     chartVersion: 9.7.1
     appVersion: v3.4.4
   cloudNativePg:
+    displayName: CloudNativePG
     installMethod: helm-chart
     repository: https://cloudnative-pg.github.io/charts
     chart: cnpg/cloudnative-pg
@@ -51,26 +64,32 @@ components:
     chartVersion: 0.28.3
     appVersion: 1.29.1
   pluginBarmanCloud:
+    displayName: CNPG Barman Cloud plugin
     installMethod: upstream-release-manifest
     # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
     version: v0.13.0
     manifest: https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.13.0/manifest.yaml
     manifestSha256: d2e71e7b06822448f1a421f05781846cfdb9cc621e7ef32eef5e20c5133213b0
   postgresql:
+    displayName: CloudNativePG PostgreSQL example
+    installMethod: example-container-image
     exampleImage: ghcr.io/cloudnative-pg/postgresql:18.4-standard-bookworm@sha256:702a5fd1e2de98afc72965149e90a633082df964087697b9cf89a81f21e343a7
   rabbitmqClusterOperator:
+    displayName: RabbitMQ Cluster Operator
     installMethod: upstream-release-manifest
     # renovate: datasource=github-releases depName=rabbitmq/cluster-operator
     version: v2.21.1
     manifest: https://github.com/rabbitmq/cluster-operator/releases/download/v2.21.1/cluster-operator.yml
     manifestSha256: d859369dc044d765f316fe50dbc45368ef99a99bc4d1268ae6187d7a98b319bd
   rabbitmqMessagingTopologyOperator:
+    displayName: RabbitMQ Messaging Topology Operator
     installMethod: upstream-release-manifest
     # renovate: datasource=github-releases depName=rabbitmq/messaging-topology-operator
     version: v1.19.3
     manifest: https://github.com/rabbitmq/messaging-topology-operator/releases/download/v1.19.3/messaging-topology-operator-with-certmanager.yaml
     manifestSha256: 9711dd3f4b1634b9ad097432acd332868a95b280450fe420329ab9a502e67c0c
   strimzi:
+    displayName: Strimzi Kafka Operator
     installMethod: helm-chart
     repository: https://strimzi.io/charts/
     chart: strimzi/strimzi-kafka-operator
@@ -82,6 +101,7 @@ components:
     kafkaVersion: 4.2.0
     kafkaConnectVersion: 4.2.0
   debezium:
+    displayName: Debezium PostgreSQL connector
     installMethod: strimzi-kafkaconnect-plugin
     # Manual update: bumping the version requires recomputing postgresPluginSha512
     # and updating resources/kafka/kafka-connect-debezium-postgres.yaml.
@@ -89,6 +109,7 @@ components:
     postgresPluginUrl: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.5.2.Final/debezium-connector-postgres-3.5.2.Final-plugin.tar.gz
     postgresPluginSha512: 7ee20a5106d11068677dd81d06fad7ee1c2fa09ba31658ecfed5dc9611e8fd73417251b9a5661e5425d8cfac1f868afb83dec56027639f54394e8f4d1f7f4c4e
   zitadel:
+    displayName: ZITADEL
     installMethod: helm-chart
     repository: https://charts.zitadel.com
     chart: zitadel/zitadel
@@ -96,6 +117,7 @@ components:
     chartVersion: 10.0.4
     appVersion: v4.15.3
   infisical:
+    displayName: Infisical
     installMethod: helm-chart
     repository: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
     chart: infisical-helm-charts/infisical-standalone
@@ -108,28 +130,32 @@ components:
   # the version aligned with kubePrometheusStack.appVersion (the operator
   # version the chart ships).
   prometheusOperatorCrds:
+    displayName: Prometheus Operator CRDs
     installMethod: upstream-release-manifest
     # renovate: datasource=github-releases depName=prometheus-operator/prometheus-operator
     version: v0.92.0
     manifest: https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.92.0/stripped-down-crds.yaml
     manifestSha256: e87ffbdd1a85b427eb62dab0527a7eb20368695b18f52618a570a332ffdd88ff
   kubePrometheusStack:
+    displayName: kube-prometheus-stack
     installMethod: helm-chart
     repository: https://prometheus-community.github.io/helm-charts
     chart: prometheus-community/kube-prometheus-stack
     # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
     chartVersion: 87.2.1
     appVersion: v0.92.0
+    prometheusVersion: v3.12.0
+    alertmanagerVersion: v0.33.0
   metricsServer:
+    displayName: Metrics Server
     installMethod: helm-chart
     repository: https://kubernetes-sigs.github.io/metrics-server/
     chart: metrics-server/metrics-server
     # renovate: datasource=helm depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
     chartVersion: 3.13.1
     appVersion: 0.8.1
-    prometheusVersion: v3.12.0
-    alertmanagerVersion: v0.33.0
   blackboxExporter:
+    displayName: Prometheus Blackbox Exporter
     installMethod: helm-chart
     repository: https://prometheus-community.github.io/helm-charts
     chart: prometheus-community/prometheus-blackbox-exporter
@@ -137,6 +163,7 @@ components:
     chartVersion: 11.18.0
     appVersion: v0.28.0
   loki:
+    displayName: Loki
     installMethod: helm-chart
     repository: https://grafana-community.github.io/helm-charts
     chart: grafana-community/loki
@@ -144,6 +171,7 @@ components:
     chartVersion: 18.1.1
     appVersion: 3.7.3
   tempo:
+    displayName: Tempo
     installMethod: helm-chart
     repository: https://grafana-community.github.io/helm-charts
     chart: grafana-community/tempo
@@ -151,12 +179,14 @@ components:
     chartVersion: 2.2.3
     appVersion: 2.10.7
   tempoDistributed:
+    displayName: Tempo distributed
     installMethod: helm-chart
     repository: https://grafana-community.github.io/helm-charts
     chart: grafana-community/tempo-distributed
     chartVersion: 2.26.2
     appVersion: 2.10.7
   grafana:
+    displayName: Grafana
     installMethod: helm-chart
     repository: https://grafana-community.github.io/helm-charts
     chart: grafana-community/grafana
@@ -164,6 +194,7 @@ components:
     chartVersion: 12.7.1
     appVersion: 13.1.0
   alloy:
+    displayName: Grafana Alloy
     installMethod: helm-chart
     repository: https://grafana.github.io/helm-charts
     chart: grafana/alloy
@@ -171,6 +202,7 @@ components:
     chartVersion: 1.10.0
     appVersion: v1.17.0
   reloader:
+    displayName: Stakater Reloader
     installMethod: helm-chart
     repository: https://stakater.github.io/stakater-charts
     chart: stakater/reloader
@@ -178,6 +210,7 @@ components:
     chartVersion: 2.2.12
     appVersion: v1.4.17
   valkey:
+    displayName: Valkey
     installMethod: helm-chart
     repository: https://valkey-io.github.io/valkey-helm/
     chart: valkey-io/valkey

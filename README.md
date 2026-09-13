@@ -3,7 +3,7 @@
 [![CI](https://github.com/pyahu/open-cluster-foundation/actions/workflows/ci.yaml/badge.svg)](https://github.com/pyahu/open-cluster-foundation/actions/workflows/ci.yaml)
 [![Release](https://img.shields.io/github/v/release/pyahu/open-cluster-foundation?sort=semver)](https://github.com/pyahu/open-cluster-foundation/releases)
 [![License](https://img.shields.io/github/license/pyahu/open-cluster-foundation)](LICENSE)
-[![Kubernetes](https://img.shields.io/badge/kubernetes-%E2%89%A51.30-326CE5?logo=kubernetes&logoColor=white)](kubernetes/production-base/versions.yaml)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-tested-326CE5?logo=kubernetes&logoColor=white)](docs/reference/compatibility.md)
 
 **Production-grade Kubernetes from zero:** cloud network, managed cluster,
 ingress with TLS, full observability with dashboards and alerts, Kafka,
@@ -44,9 +44,10 @@ Renovate and verified by CI: Terraform is validated and linted for every
 stack, the entire Helmfile render plus every custom resource is
 schema-checked with kubeconform against upstream CRD schemas, and an
 end-to-end suite installs the full base on a disposable kind cluster and
-asserts real traffic flows through the edge. The full
-component matrix lives in the
-[Kubernetes base README](kubernetes/production-base/README.md#component-matrix).
+asserts real traffic flows through the edge. The exact component and support
+matrices are generated from the same machine-readable sources used by the
+installer: [components](docs/reference/components.md) and
+[compatibility](docs/reference/compatibility.md).
 
 These modules are starting points, not a production guarantee. Review them for
 your compliance, security, networking, backup and cost requirements before
@@ -60,6 +61,8 @@ Failure-tolerant deployments use the opt-in
 [capacity and cost review](docs/capacity-planning.md).
 New OCI foundations use the hardened defaults and migration contract in
 [`docs/oci-hardening.md`](docs/oci-hardening.md).
+Operational procedures for upgrades, rollback, uninstall and disaster recovery
+are in [`docs/lifecycle.md`](docs/lifecycle.md).
 
 ## Quickstart (OCI)
 
@@ -197,15 +200,14 @@ registration. The CloudNativePG examples use this contract and prefer spreading
 replicas across hosts without making a three-instance database unschedulable on
 the two-node default pool.
 
-## Support matrix
+## Support evidence
 
-| What | Status |
-| --- | --- |
-| Kubernetes (base layer) | Designed for conformant `v1.30+` clusters with a default StorageClass; E2E tested on Kind `v1.36.1` |
-| OKE (foundation) | `ENHANCED_CLUSTER`, VCN-native pod networking, live compatibility checked with `v1.36.1` |
-| Other cloud foundations | Not implemented; Magalu Cloud and DigitalOcean are roadmap only |
-| Component versions | Pinned in [`versions.yaml`](kubernetes/production-base/versions.yaml), checked `2026-06-26`, kept current by Renovate |
-| Toolchain | Pinned in [`mise.toml`](mise.toml) |
+The generated [compatibility reference](docs/reference/compatibility.md)
+separates design compatibility, E2E-tested Kubernetes, live read-only provider
+observations and roadmap-only providers. The generated
+[component reference](docs/reference/components.md) lists every pinned chart,
+manifest, image and related application version. CI rejects stale generated
+references. Tool versions remain pinned in [`mise.toml`](mise.toml).
 
 ## Why not ...?
 
@@ -227,8 +229,8 @@ the two-node default pool.
 - Cluster Autoscaler / Karpenter as foundation options.
 - Extraction of the OCI module into `terraform-oci-oke-foundation` and public Terraform Registry publication.
 
-Issues and discussions are open. New providers are accepted only with the
-contract, validation and support evidence described in
+Issues are open for bugs, questions and proposals. New providers are accepted
+only with the contract, validation and support evidence described in
 [`docs/provider-contract.md`](docs/provider-contract.md).
 
 ## Repository layout
@@ -265,7 +267,8 @@ be inspected and run without mise.
 | `mise run k8s:base:render` | Render the Kubernetes base with Helmfile. |
 | `mise run k8s:base:apply -- --yes` | Apply the Kubernetes base to the current context. |
 | `mise run k8s:nodes:taint-database -- --yes` | Retrofit labels/taints on pre-existing database nodes. |
-| `mise run ci:scripts` / `ci:terraform` / `ci:kubernetes` | Run the CI checks locally. |
+| `mise run docs:generate` / `ci:docs` | Generate and validate documentation references and links. |
+| `mise run ci:scripts` / `ci:terraform` / `ci:kubernetes` / `ci:supply-chain` | Run the fast CI checks locally. |
 
 Apply tasks ask for interactive confirmation unless `--yes` is passed after
 `--`, or `OCF_AUTO_APPROVE=true` is exported. The tasks never create real

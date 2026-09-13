@@ -45,6 +45,12 @@ while IFS=$'\t' read -r provider module_path module_version registry_address reg
   [[ "$(yq -r '.spec.registry.publication' "$module_manifest")" == "dedicated-repository-required" ]] || die "${module_name} must not claim direct public Registry publication from the monorepo"
   [[ "$registry_repository" == terraform-"$provider"-* ]] || die "${module_name} registry repository violates the public Registry naming contract"
   [[ "$registry_address" == */"$provider" ]] || die "${module_name} registry address must end with its provider system"
+  evidence_mode="$(PROVIDER="$provider" yq -er '.providers[] | select(.name == strenv(PROVIDER)) | .evidence.mode' "$CONTRACT_FILE")"
+  evidence_kubernetes_version="$(PROVIDER="$provider" yq -er '.providers[] | select(.name == strenv(PROVIDER)) | .evidence.kubernetesVersion' "$CONTRACT_FILE")"
+  evidence_observed_at="$(PROVIDER="$provider" yq -er '.providers[] | select(.name == strenv(PROVIDER)) | .evidence.observedAt' "$CONTRACT_FILE")"
+  [[ "$evidence_mode" == "read-only" || "$evidence_mode" == "integration" ]] || die "${module_name} evidence mode must be read-only or integration"
+  [[ "$evidence_kubernetes_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "${module_name} evidence Kubernetes version must use major.minor.patch"
+  [[ "$evidence_observed_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "${module_name} evidence observation date must use YYYY-MM-DD"
   rg -q "^## ${module_version}$" "${module_directory}/CHANGELOG.md" || die "${module_name} changelog does not contain its current version"
   rg -q "source[[:space:]]*=[[:space:]]*\"${registry_address}\"" "${module_directory}/examples" -g '*.tf' || die "${module_name} example does not use its intended Registry address"
 

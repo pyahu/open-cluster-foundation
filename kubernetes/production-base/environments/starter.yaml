@@ -1,3 +1,4 @@
+description: Small first installation with stateless platform services
 profiles:
   edge: true
   certificates: true
