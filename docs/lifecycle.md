@@ -40,7 +40,7 @@ release history are metadata, not data backups.
 ## Upgrade
 
 1. Select an immutable project release and read its changelog, the generated
-   [compatibility reference](reference/compatibility.md), and every applicable
+   [compatibility reference](reference/compatibility.md) and every applicable
    migration in [installation compatibility](compatibility.md).
 2. Install the tool versions from that revision with `mise install`.
 3. Run the Terraform plan and save it. An empty or reviewed additive plan is
@@ -135,7 +135,7 @@ possible.
 
 If state is lost or corrupt, suspend applies, make an independent copy of the
 current and prior Object Storage object versions, identify the last valid
-state, and compare it with live OCI resources. Restore or import resources only
+state and compare it with live OCI resources. Restore or import resources only
 through a peer-reviewed recovery plan. Always run `terraform plan` afterward;
 any unexplained create, destroy or replacement means recovery is incomplete.
 

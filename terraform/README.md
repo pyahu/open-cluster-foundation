@@ -17,7 +17,7 @@ Current providers:
 
 Every implemented module must satisfy
 [`provider-contract.yaml`](provider-contract.yaml), carry its own SemVer and
-metadata, and build as a standalone package. See
+metadata and build as a standalone package. See
 [`docs/provider-contract.md`](../docs/provider-contract.md) for the support and
 Registry publication rules.
 

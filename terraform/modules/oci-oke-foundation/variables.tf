@@ -34,7 +34,7 @@ variable "cluster_name" {
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{2,40}$", var.cluster_name))
-    error_message = "cluster_name must be 3-41 chars, lowercase alphanumeric or hyphen, and start with a letter."
+    error_message = "cluster_name must contain 3-41 lowercase alphanumeric or hyphen characters and start with a letter."
   }
 }
 

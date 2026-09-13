@@ -18,8 +18,8 @@ The minimum is a design contract. The pinned E2E row is the version installed an
 | Provider | Status | Module version | Live Kubernetes observation | Observed | Evidence mode |
 | --- | --- | --- | --- | --- | --- |
 | `oci` | `implemented` | `0.1.0` | `1.36.1` | `2026-09-13` | `read-only` |
-| `magalu` | `planned` | `—` | `—` | `—` | `—` |
-| `digitalocean` | `planned` | `—` | `—` | `—` | `—` |
+| `magalu` | `planned` | `Not applicable` | `Not applicable` | `Not applicable` | `Not applicable` |
+| `digitalocean` | `planned` | `Not applicable` | `Not applicable` | `Not applicable` | `Not applicable` |
 
 A read-only live observation proves API reachability and compatibility classification of an existing installation. It is not a destructive Terraform integration test or a guarantee for every OCI tenancy configuration.
 

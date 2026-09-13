@@ -68,7 +68,7 @@ The template starts with two node pools:
 
 Labels and taints declared in `node_pools` are registered by kubelet at node
 startup, so nodes created by scaling or node cycling come up already tainted.
-For nodes created before taints were configured, and to add the
+For nodes created before taints were configured and to add the
 `node-role.kubernetes.io/postgres` label (which kubelet cannot self-apply),
 run:
 

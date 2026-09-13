@@ -6,7 +6,7 @@ or `ci`. Existing installations therefore keep their current topology until an
 operator explicitly changes the managed environment.
 
 The profile runs three replicas of user-facing and reconciliation services,
-uses hard anti-affinity between hosts and best-effort spread between zones, and
+uses hard anti-affinity between hosts and best-effort spread between zones and
 adds disruption budgets that preserve quorum or two serving replicas. It also
 changes the observability data path:
 
@@ -129,7 +129,7 @@ OCF_GRAFANA_DATABASE_CIDRS='10.20.30.40/32' \
 ```
 
 After installation, verify that all replicas are Ready, PodDisruptionBudgets
-allow one disruption, Prometheus sees both sidecars through Thanos Query, and
+allow one disruption, Prometheus sees both sidecars through Thanos Query and
 new Loki and Tempo data remains queryable after deleting one pod. A change to
 `production-ha` is not complete until Grafana database restore and each object
 store's recovery procedure have also been tested.

@@ -100,7 +100,7 @@ oci ce cluster-options get \
 
 Worker image for `node_image_id`. Use an OKE image (pre-baked for worker
 nodes, recommended by Oracle over plain platform images) matching your
-Kubernetes version and node shape architecture — the tfvars example uses
+Kubernetes version and node shape architecture. The tfvars example uses
 `VM.Standard.E5.Flex`, which is x86_64:
 
 ```sh
@@ -181,7 +181,7 @@ taints = [
 ]
 ```
 
-For nodes created before taints were configured, and to add the
+For nodes created before taints were configured and to add the
 `node-role.kubernetes.io/postgres` label (which kubelet cannot self-apply), use
 `mise run k8s:nodes:taint-database -- --yes`.
 
@@ -219,7 +219,7 @@ oci bastion session create-port-forwarding \
 ```
 
 Then follow the SSH command printed by the session to tunnel
-`localhost:6443`, and point the kubeconfig server at `https://127.0.0.1:6443`.
+`localhost:6443` and point the kubeconfig server at `https://127.0.0.1:6443`.
 The bastion also serves SSH sessions to the private nodes.
 
 Existing public endpoints require a staged migration. Follow

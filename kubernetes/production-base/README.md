@@ -48,13 +48,13 @@ The starter environment enables:
   curated Grafana dashboards and PrometheusRules for Kafka, CloudNativePG,
   Loki and cert-manager.
 - Edge and synthetic monitoring: Envoy proxy and Envoy Gateway scrape
-  targets, per-route request, error and latency rules, and the blackbox
+  targets, per-route request, error and latency rules and the blackbox
   exporter for Probe resources (availability, latency and certificate expiry
   of your public endpoints). Start from
   [`resources/monitoring/probes.yaml.example`](resources/monitoring/probes.yaml.example).
 - Correlated signals: Tempo's metrics generator writes span metrics and the
-  service graph to Prometheus, Prometheus keeps exemplars, and the Grafana
-  datasources link logs to traces, traces to logs and metrics, and metric
+  service graph to Prometheus. Prometheus keeps exemplars. The Grafana
+  datasources link logs to traces, traces to logs and metrics and metric
   exemplars to traces.
 
 ### Log parsing is opt-in per pod
@@ -67,7 +67,7 @@ Pod to have its output parsed:
 
 | Annotation `logging.open-cluster-foundation.io/format` | What Alloy does |
 | --- | --- |
-| `java` | Keeps a stack trace in one entry with the line that raised it, and turns the level of the Spring Boot / Logback default layout into a `level` label. |
+| `java` | Keeps a stack trace in one entry with the line that raised it and turns the level of the Spring Boot / Logback default layout into a `level` label. |
 | `json` | Reads `log.level` into a `level` label and `trace.id` / `span.id` into structured metadata, which the Loki datasource links to Tempo. |
 
 Parsing is not applied by default because a multiline rule glues the lines of
@@ -129,9 +129,9 @@ is selected with `--observability-scope trusted`. The installation state keeps
 the chosen scope across later automatic upgrades.
 
 Fresh installations use SSO-only access for Argo CD and Grafana. Argo CD's
-local administrator and Grafana's login form are disabled, identities without
-an explicit group mapping receive no application access, and Grafana OAuth
-cannot assign server administrator. Existing installations retain their former
+local administrator and Grafana's login form are disabled. Identities without
+an explicit group mapping receive no application access. Grafana OAuth cannot
+assign server administrator. Existing installations retain their former
 access behavior until the staged
 [identity access migration](../../docs/compatibility.md#identity-access-migration)
 is selected with `--identity-access sso`.
@@ -417,7 +417,7 @@ kubectl -n messaging wait --for=condition=Ready kafkaconnect/foundation-connect 
 ```
 
 On OCI, front Envoy Gateway with a Network Load Balancer (layer-4, free,
-source-IP preserving) BEFORE pointing DNS — switching load balancer type later
+source-IP preserving) BEFORE pointing DNS. Switching load balancer type later
 replaces the load balancer and its public IP. Fill in the load balancer NSG
 OCID from the foundation outputs, then:
 

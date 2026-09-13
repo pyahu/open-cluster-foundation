@@ -15,7 +15,7 @@ variable "name_prefix" {
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{1,30}$", var.name_prefix))
-    error_message = "name_prefix must be 2-31 chars, lowercase alphanumeric or hyphen, and start with a letter."
+    error_message = "name_prefix must contain 2-31 lowercase alphanumeric or hyphen characters and start with a letter."
   }
 }
 
@@ -58,4 +58,3 @@ variable "tags" {
     managed_by = "terraform"
   }
 }
-

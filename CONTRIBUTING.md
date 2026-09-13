@@ -58,11 +58,11 @@ resources.
 
 Manual updates (Renovate does not cover these):
 
-- `strimzi.kafkaVersion` / `kafkaConnectVersion` — coupled with `spec.version`
+- `strimzi.kafkaVersion` / `kafkaConnectVersion`: coupled with `spec.version`
   and the Connect build image tag in `resources/kafka/*.yaml`; bump together.
-- `debezium` — bumping requires recomputing `postgresPluginSha512` and
+- `debezium`: bumping requires recomputing `postgresPluginSha512` and
   updating `resources/kafka/kafka-connect-debezium-postgres.yaml`.
-- `appVersion` fields — documentation of what the pinned chart ships; refresh
+- `appVersion` fields: documentation of what the pinned chart ships; refresh
   them when merging chart bumps.
 - Grafana dashboard `gnetId` revisions in `values/grafana.yaml`.
 

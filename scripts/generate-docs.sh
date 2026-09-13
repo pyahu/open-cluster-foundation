@@ -29,9 +29,9 @@ COMPONENTS_FILE="${REFERENCE_DIRECTORY}/components.md"
   printf '| Component | Install method | Artifact | Pinned version | Related application versions |\n'
   printf '| --- | --- | --- | --- | --- |\n'
   while IFS=$'\t' read -r component_key display_name install_method artifact pinned_version application_versions; do
-    [[ -n "$application_versions" ]] || application_versions='—'
+    [[ -n "$application_versions" ]] || application_versions='Not applicable'
     printf '| %s (%s) | %s | %s | %s | %s |\n' "$display_name" "$(markdown_code "$component_key")" "$(markdown_code "$install_method")" "$(markdown_code "$artifact")" "$(markdown_code "$pinned_version")" "$(markdown_code "$application_versions")"
-  done < <(yq -r '.components | to_entries[] | [.key, .value.displayName, (.value.installMethod // "support-data"), (.value.chart // .value.repository // .value.manifest // .value.postgresPluginUrl // .value.exampleImage // "metadata"), (.value.chartVersion // .value.version // .value.commit // .value.imageTag // (.value.exampleImage | select(. != null) | split("@") | .[0] | split(":") | .[-1]) // "—"), ([.value.appVersion | select(. != null) | "application=" + ., .value.imageTag | select(. != null) | "image=" + ., .value.gatewayApiVersion | select(. != null) | "Gateway API=" + ., .value.kafkaVersion | select(. != null) | "Kafka=" + ., .value.kafkaConnectVersion | select(. != null) | "Kafka Connect=" + ., .value.prometheusVersion | select(. != null) | "Prometheus=" + ., .value.alertmanagerVersion | select(. != null) | "Alertmanager=" + .] | join(", "))] | @tsv' "$VERSIONS_FILE")
+  done < <(yq -r '.components | to_entries[] | [.key, .value.displayName, (.value.installMethod // "support-data"), (.value.chart // .value.repository // .value.manifest // .value.postgresPluginUrl // .value.exampleImage // "metadata"), (.value.chartVersion // .value.version // .value.commit // .value.imageTag // (.value.exampleImage | select(. != null) | split("@") | .[0] | split(":") | .[-1]) // "Not applicable"), ([.value.appVersion | select(. != null) | "application=" + ., .value.imageTag | select(. != null) | "image=" + ., .value.gatewayApiVersion | select(. != null) | "Gateway API=" + ., .value.kafkaVersion | select(. != null) | "Kafka=" + ., .value.kafkaConnectVersion | select(. != null) | "Kafka Connect=" + ., .value.prometheusVersion | select(. != null) | "Prometheus=" + ., .value.alertmanagerVersion | select(. != null) | "Alertmanager=" + .] | join(", "))] | @tsv' "$VERSIONS_FILE")
   for chart_file in "${OCF_ROOT}"/kubernetes/production-base/charts/*/Chart.yaml; do
     description="$(yq -r '.description' "$chart_file")"
     chart_version="$(yq -r '.version' "$chart_file")"
@@ -64,7 +64,7 @@ kind_version="$(yq -p=toml -o=json -er '.tools.kind' "$MISE_FILE")"
   printf '| --- | --- | --- | --- | --- | --- |\n'
   while IFS=$'\t' read -r provider status module_version live_version observed_at evidence_mode; do
     printf '| %s | %s | %s | %s | %s | %s |\n' "$(markdown_code "$provider")" "$(markdown_code "$status")" "$(markdown_code "$module_version")" "$(markdown_code "$live_version")" "$(markdown_code "$observed_at")" "$(markdown_code "$evidence_mode")"
-  done < <(yq -r '.providers[] | [.name, .status, (.moduleVersion // "—"), (.evidence.kubernetesVersion // "—"), (.evidence.observedAt // "—"), (.evidence.mode // "—")] | @tsv' "$PROVIDER_CONTRACT_FILE")
+  done < <(yq -r '.providers[] | [.name, .status, (.moduleVersion // "Not applicable"), (.evidence.kubernetesVersion // "Not applicable"), (.evidence.observedAt // "Not applicable"), (.evidence.mode // "Not applicable")] | @tsv' "$PROVIDER_CONTRACT_FILE")
   printf '\n%s\n\n' 'A read-only live observation proves API reachability and compatibility classification of an existing installation. It is not a destructive Terraform integration test or a guarantee for every OCI tenancy configuration.'
   printf '%s\n\n' '## Installation environments'
   printf '| Environment | Intended use | Enabled profiles |\n'

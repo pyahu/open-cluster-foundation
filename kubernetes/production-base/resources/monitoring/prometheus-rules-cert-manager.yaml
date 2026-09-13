@@ -16,7 +16,7 @@ spec:
             severity: critical
           annotations:
             summary: 'Cert Manager has disappeared from Prometheus service discovery'
-            description: 'New certificates will not be able to be minted, and existing ones cannot be renewed.'
+            description: 'New certificates cannot be minted. Existing certificates cannot be renewed.'
             runbook_url: https://gitlab.com/uneeq-oss/cert-manager-mixin/-/blob/master/RUNBOOK.md#certmanagerabsent
         - alert: CertManagerCertExpirySoon
           expr: |

@@ -44,7 +44,7 @@ The release commit `80471583a8bbcd3c8e2a2283f76acc7a9d1f9594` passed:
   GitHub Actions analysis.
 
 The release was then consumed independently in two ways: a shallow clone by
-the annotated tag resolved to the tested commit, and Terraform successfully ran
+the annotated tag resolved to the tested commit and Terraform successfully ran
 `init -from-module` plus `validate` against the documented Git source and tag.
 All 147 Markdown links and all README badges returned successful responses.
 

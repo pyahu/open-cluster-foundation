@@ -35,6 +35,10 @@ for environment_file in "${OCF_ROOT}"/kubernetes/production-base/environments/*.
   [[ "$(yq -r '[.profiles[] | select(type != "!!bool")] | length' "$environment_file")" == "0" ]] || die "${environment_file#"${OCF_ROOT}"/} profile values must be booleans"
 done
 
+if rg -n '[\x{2013}\x{2014}]|,[[:space:]]+[Aa]nd\b' "$OCF_ROOT" --glob '*.{md,mdx,yaml,yml,toml}'; then
+  die "documentation must use plain punctuation and omit the comma before and"
+fi
+
 "${SCRIPT_DIR}/generate-docs.sh" "$GENERATED_ROOT"
 for document_name in components.md compatibility.md; do
   expected="${OCF_ROOT}/docs/reference/${document_name}"

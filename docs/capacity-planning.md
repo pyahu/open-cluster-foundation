@@ -76,5 +76,5 @@ monthly total = compute + block + object + database + network + support
 ```
 
 Track forecast and actual cost per cluster. Alert at 70%, 85% and 100% of the
-monthly budget, and review retention whenever object growth differs from the
+monthly budget and review retention whenever object growth differs from the
 forecast by more than 20% for seven days.

@@ -17,7 +17,7 @@ the deployment. A fresh operation refuses a cluster with known OCF workloads,
 and an upgrade refuses an empty cluster.
 
 When no environment is specified, a fresh cluster selects `starter`, a legacy
-cluster selects the compatibility-only `default`, and a managed cluster reuses
+cluster selects the compatibility-only `default` and a managed cluster reuses
 the environment recorded by its last successful apply. This keeps stateful
 application services out of new installations while preserving existing Kafka,
 Kafka Connect and Valkey installations during upgrades.
@@ -100,7 +100,7 @@ allowedRoutes:
 ```
 
 Apply the private Gateway manifest, verify that all expected HTTPRoutes still
-have `Accepted=True`, and test each public hostname. To roll back, restore
+have `Accepted=True` and test each public hostname. To roll back, restore
 `from: All` in the same private manifest and apply it again.
 
 ## NetworkPolicy migration
@@ -164,7 +164,7 @@ apply with `--network-policies enforce` after correcting and testing the chart.
 Fresh installations use `observability-scope=trusted`. Prometheus discovers
 ServiceMonitors, PodMonitors, PrometheusRules, Probes and ScrapeConfigs only in
 namespaces labeled `open-cluster-foundation.io/observability-access=true`.
-Probes additionally require `open-cluster-foundation.io/probe=trusted`, and
+Probes additionally require `open-cluster-foundation.io/probe=trusted` and
 ScrapeConfigs require `open-cluster-foundation.io/scrape-config=trusted`.
 Grafana watches dashboard ConfigMaps only in `monitoring` with namespaced RBAC;
 the Strimzi dashboards are created there. Alloy reads logs from OCF-managed
@@ -201,7 +201,7 @@ spec:
 The combined namespace and Pod labels permit log collection and network access
 to Loki, Tempo OTLP and the Prometheus remote-write receiver. The namespace
 label alone permits metrics discovery but not telemetry ingestion. Move custom
-Grafana dashboard ConfigMaps into `monitoring`, and label each custom Probe or
+Grafana dashboard ConfigMaps into `monitoring` and label each custom Probe or
 ScrapeConfig with its corresponding trusted resource label.
 
 Run the preflight and apply again whenever a namespace is newly labeled. The
@@ -323,9 +323,9 @@ During the maintenance window, enable ACL and roll out the prepared clients:
 mise run k8s:base:apply -- --mode upgrade --cache-access acl --yes
 ```
 
-Verify that unauthenticated `PING` returns `NOAUTH`, authenticated clients can
-read and write, and the exporter still exposes metrics. To restore the former
-access while fixing a missed client, run:
+Verify that unauthenticated `PING` returns `NOAUTH`. Confirm authenticated reads
+and writes. Confirm that the exporter still exposes metrics. To restore the
+former access while fixing a missed client, run:
 
 ```sh
 mise run k8s:base:apply -- --mode upgrade --cache-access legacy --yes

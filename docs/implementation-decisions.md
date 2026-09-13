@@ -91,10 +91,10 @@ profiles because they consume resources without value until a RabbitmqCluster
 exists. `all-components` enables every optional product only after its external
 secrets and databases are prepared.
 
-CI overlays reduce replicas and retention while keeping production behavior:
-Argo CD uses one Redis instance, monitoring uses short retention, Grafana uses
-its built-in administrator because no external identity client exists, and
-Metrics Server accepts Kind's self-signed kubelet certificate. The Kind cluster
+CI overlays reduce replicas and retention while keeping production behavior.
+Argo CD uses one Redis instance. Monitoring uses short retention. Grafana uses
+its built-in administrator because no external identity client exists. Metrics
+Server accepts Kind's self-signed kubelet certificate. The Kind cluster
 uses three workers so the aggregate requests fit and scheduling still exercises
 a multi-node topology.
 
@@ -131,7 +131,7 @@ and restore procedures live beside the examples in
 [`logical-dump-restore.md`](../kubernetes/production-base/resources/cnpg/logical-dump-restore.md).
 
 Valkey runs under the restricted Pod Security Standard, including its exporter
-sidecar, and uses ACL authentication plus retained persistence for fresh
+sidecar and uses ACL authentication plus retained persistence for fresh
 installations. Grafana uses `Recreate` because its default data volume is
 ReadWriteOnce; the first migration from a live RollingUpdate deployment may
 need the client-side Helm procedure documented in [Lifecycle](lifecycle.md).

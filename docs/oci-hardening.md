@@ -48,7 +48,7 @@ bastion_enabled             = true
 ```
 
 Inspect the saved plan, apply it during a maintenance window, generate a
-separate kubeconfig, and verify `/readyz` plus node connectivity. Keep the old
+separate kubeconfig and verify `/readyz` plus node connectivity. Keep the old
 kubeconfig until the new path is proven. To roll back, restore
 `api_endpoint_public_enabled = true` with the original tight
 `api_endpoint_allowed_cidrs` and apply a reviewed plan.

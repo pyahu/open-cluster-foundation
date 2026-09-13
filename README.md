@@ -7,7 +7,7 @@
 
 **Production-grade Kubernetes from zero:** cloud network, managed cluster,
 ingress with TLS, full observability with dashboards and alerts, Kafka,
-PostgreSQL with PITR backups, cache — every version pinned, every manifest
+PostgreSQL with PITR backups and cache. Every version is pinned, every manifest
 validated against real CRD schemas in CI.
 
 OCI/OKE is the only implemented cloud foundation today. The project is not yet
@@ -16,7 +16,7 @@ contract is designed so Magalu Cloud, DigitalOcean and other foundations can
 be added without changing that base.
 
 Maintained by [Pyahu](https://github.com/pyahu) for the community. It does not
-install the Pyahu platform — these are reusable building blocks for anyone who
+install the Pyahu platform. These are reusable building blocks for anyone who
 needs an operable cluster, not a starting point for vendor lock-in.
 
 ## Architecture
@@ -42,7 +42,7 @@ Every component version is pinned in
 [`versions.yaml`](kubernetes/production-base/versions.yaml), updated by
 Renovate and verified by CI: Terraform is validated and linted for every
 stack, the entire Helmfile render plus every custom resource is
-schema-checked with kubeconform against upstream CRD schemas, and an
+schema-checked with kubeconform against upstream CRD schemas and an
 end-to-end suite installs the full base on a disposable kind cluster and
 asserts real traffic flows through the edge. The exact component and support
 matrices are generated from the same machine-readable sources used by the
@@ -92,21 +92,21 @@ source above until the provider contract lists a Registry release.
 
 ## Quickstart (OCI)
 
-The map below is the whole journey — what to read, what to edit and what to
+The map below is the whole journey: what to read, what to edit and what to
 run at each step, from an empty OCI tenancy to a running production base:
 
 | # | Step | Read | Edit | Run |
 | --- | --- | --- | --- | --- |
-| 0 | Toolchain | this README | — | `mise trust && mise install && mise run doctor` |
-| 1 | OCI API key, profile, compartment, IAM | [bootstrap-state §1–2](terraform/oci/bootstrap-state/README.md#1-oci-credentials) | `~/.oci/config` | `oci os ns get --profile <profile>` |
+| 0 | Toolchain | this README | Not applicable | `mise trust && mise install && mise run doctor` |
+| 1 | OCI API key, profile, compartment, IAM | [bootstrap-state §1 and 2](terraform/oci/bootstrap-state/README.md#1-oci-credentials) | `~/.oci/config` | `oci os ns get --profile <profile>` |
 | 2 | Remote Terraform state | [bootstrap-state §3](terraform/oci/bootstrap-state/README.md#3-create-the-state-bucket) | `terraform/oci/bootstrap-state/terraform.tfvars` | `mise run oci:state:plan`, then `oci:state:apply -- --yes` |
-| 3 | Discover cluster inputs (OKE version, node image, your IP) | [foundation §3](terraform/oci/foundation/README.md#3-discover-oci-values) | — | `oci ce cluster-options get ...` |
+| 3 | Discover cluster inputs (OKE version, node image, your IP) | [foundation §3](terraform/oci/foundation/README.md#3-discover-oci-values) | Not applicable | `oci ce cluster-options get ...` |
 | 4 | Provision the OKE foundation | [foundation §5](terraform/oci/foundation/README.md#5-configure-variables) | `terraform/oci/foundation/terraform.tfvars` | `mise run oci:cluster:plan`, then `oci:cluster:apply -- --yes` |
-| 5 | Kubeconfig | [foundation §7](terraform/oci/foundation/README.md#7-generate-kubeconfig) | — | `mise run oci:kubeconfig` |
+| 5 | Kubeconfig | [foundation §7](terraform/oci/foundation/README.md#7-generate-kubeconfig) | Not applicable | `mise run oci:kubeconfig` |
 | 6 | Kubernetes production base | [production-base README](kubernetes/production-base/README.md) | `values/local/argocd.yaml`, `values/local/grafana.yaml` | `mise run k8s:base:check`, then `k8s:base:apply -- --yes` |
 | 7 | Network Load Balancer, DNS, HTTPS listeners and redirect | [production-base §7](kubernetes/production-base/README.md#7-install-the-selected-foundation) | `resources/oci/envoyproxy-nlb.yaml` (LB NSG OCID), `resources/cert-manager/gateway-https-listener.yaml` (your domains) | `kubectl apply -f ...` |
 | 8 | Backups, Debezium and other stateful add-ons | [production-base §8](kubernetes/production-base/README.md#8-apply-stateful-resources) | copies of `kubernetes/production-base/resources/*` | `kubectl apply -f ...` |
-| 9 | Optional ZITADEL and Infisical | [production-base §9–10](kubernetes/production-base/README.md#9-optional-zitadel) | `values/local/zitadel.yaml`, `values/local/infisical.yaml` and Secrets | `mise run k8s:base:apply -- --environment all-components --yes` |
+| 9 | Optional ZITADEL and Infisical | [production-base §9 and 10](kubernetes/production-base/README.md#9-optional-zitadel) | `values/local/zitadel.yaml`, `values/local/infisical.yaml` and Secrets | `mise run k8s:base:apply -- --environment all-components --yes` |
 
 The only files you ever edit are `~/.oci/config`, the two `terraform.tfvars`
 (copied from the committed `.example` files), the domain placeholders in the
@@ -240,7 +240,7 @@ references. Tool versions remain pinned in [`mise.toml`](mise.toml).
 - **[terraform-oci-oke](https://github.com/oracle-terraform-modules/terraform-oci-oke)**:
   excellent and far more featureful, but large and opinionated about owning
   your network. This module is intentionally small enough to read in one
-  sitting — and the cluster is only half the problem; the service layer on top
+  sitting. The cluster is only half the problem; the service layer on top
   is where most of this repository lives.
 - **Homelab cluster templates** (Talos/Flux ecosystems): great for self-hosted
   bare metal. This project targets managed clouds, cloud-native storage and

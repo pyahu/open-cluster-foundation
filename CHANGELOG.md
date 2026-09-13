@@ -14,8 +14,11 @@ tags (`vYYYY.M.PATCH`).
 ### Fixed
 
 - The packaged OCI module example now resolves its local module instead of the
-  unpublished Registry address, and supply-chain CI fails on Trivy scanner
-  errors instead of accepting an incomplete scan.
+  unpublished Registry address.
+- Supply-chain CI now fails on Trivy scanner errors instead of accepting an
+  incomplete scan.
+- Editorial punctuation is consistent across the README, guides and generated
+  references, with a documentation check that prevents regressions.
 
 ## [2026.9.0] - 2026-09-13
 
@@ -32,30 +35,30 @@ tags (`vYYYY.M.PATCH`).
 - A GitHub question form for usage and operational support.
 - Edge monitoring: PodMonitor for every Envoy proxy and ServiceMonitor for the
   Envoy Gateway controller, recording rules for request rate and p95 latency
-  per HTTPRoute (`namespace`/`route` labels), and alerts for route error rate,
+  per HTTPRoute (`namespace`/`route` labels) and alerts for route error rate,
   route latency and proxy or controller down. Envoy Gateway overview
   dashboard in a new "Platform" Grafana folder.
 - Synthetic probes: blackbox exporter release with `http_2xx`,
   `http_reachable` and `tls_connect` modules, an example Probe, alerts for
-  failing, slow and certificate-expiring endpoints, and the blackbox HTTP
+  failing, slow and certificate-expiring endpoints and the blackbox HTTP
   dashboard. Prometheus now selects Probe and ScrapeConfig resources from
   any namespace, like the other monitoring resources.
 - Correlated observability: Tempo metrics generator (span metrics and service
   graph) writing to Prometheus through the remote-write receiver, exemplar
-  storage, and Grafana datasource links between logs, traces and metrics.
+  storage and Grafana datasource links between logs, traces and metrics.
 - Opt-in log parsing in Alloy through the
   `logging.open-cluster-foundation.io/format` pod annotation (`java`: multiline
   stack traces and a `level` label; `json`: `level` label and trace/span ids as
   structured metadata).
 - Tempo alerts (down, discarding spans), an Alertmanager datasource in
-  Grafana, and Capacity and Alerts dashboards in the Platform folder (dashboard
+  Grafana and Capacity and Alerts dashboards in the Platform folder (dashboard
   ConfigMaps choose their folder with the `grafana_folder` annotation).
 - `values/local-examples/kube-prometheus-stack.yaml`: routing application
   namespaces and platform alerts to separate receivers, with credentials read
   from a mounted Secret.
 - Platform dashboards: a home Platform overview (alerts, targets, probes, node
   memory, routes, CDC and consumer lag, queues, databases, caches, error logs),
-  CDC / Debezium by namespace, a Logs explorer, and Traces with the Tempo
+  CDC / Debezium by namespace, a Logs explorer and Traces with the Tempo
   service map. Community dashboards pinned by revision for RabbitMQ, the Redis
   exporter (Valkey), cert-manager and Argo CD.
 - `values/local/<release>.yaml` instance layer for kube-prometheus-stack,
@@ -87,8 +90,8 @@ tags (`vYYYY.M.PATCH`).
   nothing mapped at `/` answers that way and is up. The module now matches its
   own description, anything but a server error.
 
-- Grafana deploys with the `Recreate` strategy: its data volume is
-  ReadWriteOnce, and a rolling update left the new pod waiting for the volume
+- Grafana deploys with the `Recreate` strategy because its data volume is
+  ReadWriteOnce. A rolling update left the new pod waiting for the volume
   until an atomic upgrade timed out and rolled back. On an existing release,
   run the first upgrade after this change with `--server-side=false`: Helm 4's
   server-side apply keeps the live `rollingUpdate` block and the API refuses
@@ -100,7 +103,7 @@ tags (`vYYYY.M.PATCH`).
   IP)/Service Gateway, ENHANCED OKE cluster with VCN-native pod networking,
   per-layer NSGs, node pools with kubelet-registered labels and taints,
   managed Metrics Server addon, optional managed Bastion for private API
-  endpoints, and a private-instance template workflow.
+  endpoints and a private-instance template workflow.
 - Layer-4 ingress on OCI through a source-IP-preserving Network Load
   Balancer, wired to Envoy Gateway via an EnvoyProxy resource.
 - Kubernetes production base via Helmfile: Envoy Gateway (Gateway API),
