@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Open Cluster Foundation provides tested building blocks for creating and operating Kubernetes on OCI.">
+    <title>Open Cluster Foundation</title>
+    <link rel="canonical" href="https://ocf-by-pyahu.pyahu.chatgpt.site/">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Open Cluster Foundation home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Open Cluster Foundation</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#foundation">Foundation</a>
+        <a href="/docs/">Docs</a>
+        <a href="https://github.com/pyahu/open-cluster-foundation">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span>OCI is implemented today</p>
+          <h1>A Kubernetes foundation you can inspect before you run it.</h1>
+          <p class="lede">OCF combines Terraform, Helmfile and a small set of mise tasks. It creates an OKE foundation and installs the cluster services teams usually assemble by hand.</p>
+          <div class="actions">
+            <a class="button primary" href="/docs/">Start with the docs</a>
+            <a class="button secondary" href="https://github.com/pyahu/open-cluster-foundation/releases">Use a tested release</a>
+          </div>
+        </div>
+
+        <div class="terminal" aria-label="Open Cluster Foundation command workflow">
+          <div class="terminal-bar">
+            <span class="terminal-title">ocf / first plan</span>
+            <span class="terminal-state">read before apply</span>
+          </div>
+          <div class="terminal-body">
+            <div><span class="prompt">$</span> mise trust</div>
+            <div><span class="prompt">$</span> mise install</div>
+            <div><span class="prompt">$</span> mise run doctor</div>
+            <p class="terminal-result">Toolchain ready</p>
+            <div><span class="prompt">$</span> mise run oci:cluster:plan</div>
+            <p class="terminal-result">Review the Terraform plan</p>
+            <div><span class="prompt">$</span> mise run k8s:base:check</div>
+            <p class="terminal-result">Check the current context before any change</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="facts" aria-label="Current project support">
+        <article>
+          <span>Cloud foundation</span>
+          <strong>OCI OKE</strong>
+          <p>Implemented. Other providers remain planned.</p>
+        </article>
+        <article>
+          <span>Tested Kubernetes</span>
+          <strong>1.36.1</strong>
+          <p>Installed on Kind by the end to end pipeline.</p>
+        </article>
+        <article>
+          <span>Change model</span>
+          <strong>Plan first</strong>
+          <p>Apply tasks require explicit confirmation.</p>
+        </article>
+      </section>
+
+      <section class="section split" id="foundation">
+        <div class="section-intro">
+          <p class="section-label">One repository, two clear boundaries</p>
+          <h2>Own the cloud foundation. Choose the cluster services.</h2>
+          <p>OCF keeps infrastructure and Kubernetes concerns separate. You can understand what Terraform owns, what Helmfile installs and where your application configuration begins.</p>
+        </div>
+        <div class="layer-grid">
+          <article class="layer-card">
+            <span class="layer-number">01</span>
+            <h3>OCI foundation</h3>
+            <p>Terraform creates the network, private OKE control plane, Bastion path, node pools and security boundaries.</p>
+            <ul>
+              <li>Remote state with versioning</li>
+              <li>Private workers and API endpoint</li>
+              <li>Node labels and taints at startup</li>
+              <li>Reviewed plan before apply</li>
+            </ul>
+          </article>
+          <article class="layer-card">
+            <span class="layer-number">02</span>
+            <h3>Kubernetes foundation</h3>
+            <p>Helmfile profiles install only the services selected for that cluster and preserve compatible upgrades.</p>
+            <ul>
+              <li>Envoy Gateway and cert manager</li>
+              <li>Argo CD</li>
+              <li>Prometheus, Grafana, Loki and Tempo</li>
+              <li>Optional data service operators</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section workflow-section">
+        <div class="section-intro compact">
+          <p class="section-label">The working loop</p>
+          <h2>Inspect, plan, then apply.</h2>
+          <p>The task names describe the action. Commands that only inspect stay separate from commands that change infrastructure.</p>
+        </div>
+        <ol class="workflow">
+          <li><span>1</span><div><strong>Check the workstation</strong><code>mise run doctor</code></div></li>
+          <li><span>2</span><div><strong>Review the cloud plan</strong><code>mise run oci:cluster:plan</code></div></li>
+          <li><span>3</span><div><strong>Inspect the cluster target</strong><code>mise run k8s:base:check</code></div></li>
+          <li><span>4</span><div><strong>Render the selected profile</strong><code>mise run k8s:base:render</code></div></li>
+        </ol>
+      </section>
+
+      <section class="section profiles-section">
+        <div class="section-intro compact">
+          <p class="section-label">Profiles with a purpose</p>
+          <h2>Start small. Add stateful services deliberately.</h2>
+        </div>
+        <div class="profile-list">
+          <article><code>starter</code><p>Edge, TLS, GitOps and observability for a first installation.</p></article>
+          <article><code>production</code><p>Adds database and messaging operators without creating application data.</p></article>
+          <article><code>production-ha</code><p>Adds failure tolerant services and durable observability. Capacity planning is required.</p></article>
+          <article><code>production-data</code><p>Adds Kafka, Kafka Connect and Valkey support for teams that need them.</p></article>
+        </div>
+      </section>
+
+      <section class="section limits">
+        <div>
+          <p class="section-label">Clear limits</p>
+          <h2>Useful today, honest about what comes next.</h2>
+        </div>
+        <div class="limits-copy">
+          <p><strong>OCI is the implemented cloud.</strong> Magalu Cloud and DigitalOcean are plans, not support claims.</p>
+          <p><strong>Examples need local decisions.</strong> Capacity, credentials, retention and recovery objectives remain the operator's responsibility.</p>
+          <p><strong>Tests are evidence, not a guarantee.</strong> Every release still needs review against the target tenancy and workload.</p>
+        </div>
+      </section>
+
+      <section class="section final-cta">
+        <p class="section-label">Ready to evaluate it?</p>
+        <h2>Reach a reviewed plan before changing anything.</h2>
+        <p>The getting started guide begins with a tested release, installs the pinned tools and stops at inspection steps before showing apply commands.</p>
+        <div class="actions centered">
+          <a class="button primary" href="/docs/">Read the getting started guide</a>
+          <a class="button secondary" href="https://github.com/pyahu/open-cluster-foundation">Inspect the repository</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Open source building blocks maintained by Pyahu.</span>
+      <a href="https://github.com/pyahu/open-cluster-foundation/blob/main/LICENSE">MIT License</a>
+    </footer>
+  </body>
+</html>

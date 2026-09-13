@@ -119,5 +119,13 @@ description = "Generate compatibility and component references from machine-read
 run = "scripts/generate-docs.sh"
 
 [tasks."ci:docs"]
-description = "Verify generated references and Markdown links."
+description = "Verify generated references, Markdown links and the documentation site."
 run = "scripts/ci-docs.sh"
+
+[tasks."ci:site"]
+description = "Validate the static OCF landing page and documentation site."
+run = "scripts/ci-site.sh"
+
+[tasks."site:serve"]
+description = "Serve the OCF landing page and documentation locally."
+run = "python3 -m http.server 4173 --directory site/dist"

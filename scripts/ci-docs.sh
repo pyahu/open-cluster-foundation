@@ -48,4 +48,5 @@ for document_name in components.md compatibility.md; do
 done
 
 lychee --offline --no-progress --root-dir "$OCF_ROOT" "${OCF_ROOT}/**/*.md"
+"${SCRIPT_DIR}/ci-site.sh"
 log "documentation checks passed"

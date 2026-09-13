@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Open Cluster Foundation CLI and mise task reference.">
+    <title>CLI and toolchain | Open Cluster Foundation</title>
+    <link rel="canonical" href="https://ocf-by-pyahu.pyahu.chatgpt.site/docs/cli/">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/styles.css">
+    <link rel="stylesheet" href="/assets/docs.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Open Cluster Foundation home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Open Cluster Foundation</span></a>
+      <nav aria-label="Main navigation"><a aria-current="page" href="/docs/">Docs</a><a href="https://github.com/pyahu/open-cluster-foundation">GitHub</a></nav>
+    </header>
+    <main class="docs-shell">
+      <aside class="docs-nav" aria-label="Documentation navigation">
+        <p>Documentation</p><a href="/docs/">Getting started</a><a class="active" href="/docs/cli/">CLI and toolchain</a><a href="/docs/architecture/">Architecture</a>
+        <span>Operations</span><a href="https://github.com/pyahu/open-cluster-foundation/blob/main/docs/compatibility.md">Compatibility</a><a href="https://github.com/pyahu/open-cluster-foundation/blob/main/docs/lifecycle.md">Lifecycle</a>
+      </aside>
+      <article class="docs-content" id="content">
+        <p class="doc-kicker">CLI and toolchain</p>
+        <h1>A small command surface over familiar tools.</h1>
+        <p class="doc-lede">OCF uses <code>mise</code> to pin tool versions and name common workflows. Terraform, Helmfile and kubectl remain visible underneath.</p>
+        <pre><code>mise tasks</code></pre>
+
+        <h2>Workstation</h2>
+        <div class="command-table"><div><code>mise run doctor</code><span>Check required tools and report optional helpers.</span></div></div>
+
+        <h2>OCI state</h2>
+        <div class="command-table">
+          <div><code>mise run oci:state:plan</code><span>Validate and plan the remote state bucket.</span></div>
+          <div><code>mise run oci:state:apply -- --yes</code><span>Apply the bucket and write the foundation backend.</span></div>
+          <div><code>mise run oci:state:backend</code><span>Recreate the backend file from Terraform output.</span></div>
+        </div>
+
+        <h2>OKE foundation</h2>
+        <div class="command-table">
+          <div><code>mise run oci:cluster:plan</code><span>Validate and plan the OKE foundation.</span></div>
+          <div><code>mise run oci:cluster:apply -- --yes</code><span>Apply a reviewed foundation plan.</span></div>
+          <div><code>mise run oci:kubeconfig</code><span>Generate kubeconfig from Terraform output.</span></div>
+        </div>
+
+        <h2>Kubernetes base</h2>
+        <div class="command-table">
+          <div><code>mise run k8s:base:check</code><span>Detect state and check the current context.</span></div>
+          <div><code>mise run k8s:base:render</code><span>Render the selected Helmfile environment.</span></div>
+          <div><code>mise run k8s:base:apply -- --yes</code><span>Apply the selected environment.</span></div>
+        </div>
+
+        <h2>Profiles</h2>
+        <p>New clusters select <code>starter</code> by default. Use an explicit environment when you need a different service set.</p>
+        <pre><code>mise run k8s:base:render -- --environment production
+mise run k8s:base:apply -- --environment production --mode fresh --yes</code></pre>
+        <p>Available environments are <code>starter</code>, <code>production</code>, <code>production-ha</code>, <code>production-data</code>, <code>default</code> and <code>all-components</code>. The <code>default</code> environment exists for older OCF installations.</p>
+
+        <h2>Validation</h2>
+        <div class="command-table">
+          <div><code>mise run ci:docs</code><span>Check references, writing rules and links.</span></div>
+          <div><code>mise run ci:terraform</code><span>Validate, lint and test every Terraform stack.</span></div>
+          <div><code>mise run ci:kubernetes</code><span>Render profiles and validate resource schemas.</span></div>
+          <div><code>mise run ci:e2e</code><span>Install the base on a disposable Kind cluster.</span></div>
+        </div>
+
+        <div class="notice"><strong>Before apply</strong><span>Verify the OCI profile, Terraform plan, kubeconfig and current Kubernetes context. <code>--yes</code> removes the prompt, not the responsibility to review.</span></div>
+      </article>
+    </main>
+    <footer><span>Open Cluster Foundation documentation.</span><a href="https://github.com/pyahu/open-cluster-foundation/blob/main/docs/cli.md">Full CLI reference</a></footer>
+  </body>
+</html>

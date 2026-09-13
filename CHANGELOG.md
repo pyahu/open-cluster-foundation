@@ -10,6 +10,9 @@ tags (`vYYYY.M.PATCH`).
 
 - A final remediation report with validation evidence, a read-only production
   compatibility snapshot, a task record and candid remaining limitations.
+- A public landing page with getting started, CLI and architecture guides based
+  on the repository's real `mise` task surface.
+- A concise documentation home and CLI guide organized around operator goals.
 
 ### Fixed
 
@@ -19,6 +22,8 @@ tags (`vYYYY.M.PATCH`).
   incomplete scan.
 - Editorial punctuation is consistent across the README, guides and generated
   references, with a documentation check that prevents regressions.
+- The main README now presents scope, workflow, safety boundaries and next steps
+  without duplicating the detailed operational guides.
 
 ## [2026.9.0] - 2026-09-13
 

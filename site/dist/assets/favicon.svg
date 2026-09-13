@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img">
+  <title>Open Cluster Foundation</title>
+  <rect width="64" height="64" rx="12" fill="#edf7f6"/>
+  <rect x="15" y="25" width="8" height="20" rx="2" fill="#071017"/>
+  <rect x="28" y="16" width="8" height="29" rx="2" fill="#071017"/>
+  <rect x="41" y="25" width="8" height="20" rx="2" fill="#071017"/>
+</svg>

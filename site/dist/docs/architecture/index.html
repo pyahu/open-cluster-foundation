@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Understand Open Cluster Foundation ownership and installation layers.">
+    <title>Architecture | Open Cluster Foundation</title>
+    <link rel="canonical" href="https://ocf-by-pyahu.pyahu.chatgpt.site/docs/architecture/">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/styles.css">
+    <link rel="stylesheet" href="/assets/docs.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Open Cluster Foundation home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Open Cluster Foundation</span></a>
+      <nav aria-label="Main navigation"><a aria-current="page" href="/docs/">Docs</a><a href="https://github.com/pyahu/open-cluster-foundation">GitHub</a></nav>
+    </header>
+    <main class="docs-shell">
+      <aside class="docs-nav" aria-label="Documentation navigation">
+        <p>Documentation</p><a href="/docs/">Getting started</a><a href="/docs/cli/">CLI and toolchain</a><a class="active" href="/docs/architecture/">Architecture</a>
+        <span>Operations</span><a href="https://github.com/pyahu/open-cluster-foundation/blob/main/docs/implementation-decisions.md">Design decisions</a><a href="https://github.com/pyahu/open-cluster-foundation/blob/main/docs/provider-contract.md">Provider contract</a>
+      </aside>
+      <article class="docs-content" id="content">
+        <p class="doc-kicker">Architecture</p>
+        <h1>Boundaries that operators can see.</h1>
+        <p class="doc-lede">OCF separates cloud resources, shared cluster services and application resources. Each layer has a different owner and change cycle.</p>
+
+        <div class="architecture-stack" aria-label="Open Cluster Foundation layers">
+          <section><span>Applications</span><strong>Your manifests and delivery process</strong><p>Application namespaces, databases, topics, queues and routes.</p></section>
+          <section><span>Kubernetes foundation</span><strong>Helmfile profiles</strong><p>Edge, TLS, GitOps, observability and optional service operators.</p></section>
+          <section><span>Cloud foundation</span><strong>Terraform</strong><p>VCN, subnets, security rules, OKE, Bastion and node pools.</p></section>
+          <section><span>Provider</span><strong>OCI today</strong><p>Additional clouds must implement the same provider contract.</p></section>
+        </div>
+
+        <h2>Cloud ownership</h2>
+        <p>Terraform owns the resources declared by the OCI foundation. A small number of security list fields are intentionally shared with the OCI cloud controller because Kubernetes Services need to manage NodePort paths. Those lifecycle boundaries are documented and tested.</p>
+
+        <h2>Cluster service ownership</h2>
+        <p>Helmfile selects releases by profile. The installer orders CRDs and controllers before dependent resources, limits installation concurrency and records a checkpoint after a successful apply.</p>
+
+        <h2>Application ownership</h2>
+        <p>OCF supplies examples for PostgreSQL, Kafka, RabbitMQ, probes and network access. Teams copy and adapt those resources. OCF does not choose application capacity, retention or recovery objectives.</p>
+
+        <h2>Why the split matters</h2>
+        <ul class="doc-list">
+          <li>A Kubernetes profile can evolve without rebuilding the cloud network.</li>
+          <li>A new provider can implement the cloud contract without copying the service layer.</li>
+          <li>Operators can review Terraform plans separately from rendered Kubernetes changes.</li>
+          <li>Existing clusters keep a compatibility path instead of silently receiving fresh defaults.</li>
+        </ul>
+
+        <div class="notice"><strong>Read the rationale</strong><span>The repository keeps detailed safety decisions in the <a href="https://github.com/pyahu/open-cluster-foundation/blob/main/docs/implementation-decisions.md">implementation decisions guide</a>.</span></div>
+      </article>
+    </main>
+    <footer><span>Open Cluster Foundation documentation.</span><a href="/docs/">Back to getting started</a></footer>
+  </body>
+</html>
