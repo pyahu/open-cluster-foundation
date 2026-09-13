@@ -128,4 +128,4 @@ run = "scripts/ci-site.sh"
 
 [tasks."site:serve"]
 description = "Serve the OCF landing page and documentation locally."
-run = "python3 -m http.server 4173 --directory site/dist"
+run = "python3 -m http.server 4173 --directory dist"

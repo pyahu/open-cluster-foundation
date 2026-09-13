@@ -5,7 +5,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-SITE_ROOT="${OCF_ROOT}/site/dist"
+SITE_ROOT="${OCF_ROOT}/dist"
 
 require_command lychee
 require_command rg
@@ -24,7 +24,7 @@ require_file "${SITE_ROOT}/sitemap.xml"
 
 LATEST_RELEASE="$(sed -nE 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$/\1/p' "${OCF_ROOT}/CHANGELOG.md" | head -n 1)"
 E2E_KUBERNETES_VERSION="$(yq -er '.e2e.kubernetesVersion' "${OCF_ROOT}/kubernetes/production-base/versions.yaml")"
-[[ "$(yq -r '.static.directory' "${OCF_ROOT}/.openai/hosting.json")" == "site/dist" ]] || die "site hosting directory must be site/dist"
+[[ "$(yq -r '.static.directory' "${OCF_ROOT}/.openai/hosting.json")" == "dist" ]] || die "site hosting directory must be dist"
 [[ -n "$(yq -r '.project_id // ""' "${OCF_ROOT}/.openai/hosting.json")" ]] || die "site hosting project_id is required"
 rg -Fq "v${LATEST_RELEASE}" "${SITE_ROOT}/docs/index.html" || die "site getting started guide must use v${LATEST_RELEASE}"
 rg -Fq "$E2E_KUBERNETES_VERSION" "${SITE_ROOT}/index.html" || die "site must show tested Kubernetes ${E2E_KUBERNETES_VERSION}"
