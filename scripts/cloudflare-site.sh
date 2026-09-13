@@ -5,7 +5,6 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-SITE_ROOT="${OCF_ROOT}/dist"
 SITE_CONFIG="${OCF_ROOT}/wrangler.toml"
 
 usage() {
@@ -15,7 +14,7 @@ Usage:
   scripts/cloudflare-site.sh deploy [--yes]
 
 Commands:
-  dev       Run the Cloudflare development server on port 4173.
+  dev       Run the Astro development server on port 4173.
   deploy    Deploy main with Cloudflare Workers Static Assets.
 
 The deploy command requires a clean main branch and explicit confirmation.
@@ -29,10 +28,12 @@ load_worker_name() {
 }
 
 run_dev_server() {
-  require_command wrangler
-  require_file "${SITE_ROOT}/index.html"
-  cd "$OCF_ROOT"
-  exec wrangler dev --port "${OCF_SITE_PORT:-4173}"
+  require_command npm
+  cd "${OCF_ROOT}/website"
+  if [[ ! -d node_modules ]]; then
+    npm ci
+  fi
+  exec npm run dev -- --port "${OCF_SITE_PORT:-4173}"
 }
 
 deploy_site() {

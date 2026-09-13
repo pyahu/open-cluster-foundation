@@ -1,0 +1,130 @@
+---
+import Icon from "../components/Icon.astro";
+import LandingLayout from "../layouts/LandingLayout.astro";
+
+const foundations = [
+  {
+    icon: "layers",
+    title: "OCI foundation",
+    text: "Terraform creates the network, private OKE control plane, Bastion path, node pools and security boundaries.",
+    items: ["Remote state with versioning", "Private workers and API endpoint", "Node labels and taints at startup", "Reviewed plan before apply"]
+  },
+  {
+    icon: "shield",
+    title: "Kubernetes foundation",
+    text: "Helmfile profiles install only the services selected for that cluster and preserve compatible upgrades.",
+    items: ["Envoy Gateway and cert manager", "Argo CD", "Prometheus, Grafana, Loki and Tempo", "Optional data service operators"]
+  }
+] as const;
+
+const profiles = [
+  { name: "starter", text: "Edge, TLS, GitOps and observability for a first installation." },
+  { name: "production", text: "Adds database and messaging operators without creating application data." },
+  { name: "production-ha", text: "Adds failure tolerant services and durable observability. Capacity planning is required." },
+  { name: "production-data", text: "Adds Kafka, Kafka Connect and Valkey support for teams that need them." }
+];
+---
+
+<LandingLayout title="Open Cluster Foundation | Production Kubernetes by Pyahu" description="Tested and inspectable building blocks for creating and operating Kubernetes clusters on OCI.">
+  <section class="hero">
+    <div class="hero-grid">
+      <div class="hero-content">
+        <p class="eyebrow"><span class="signal"></span>OCI is implemented today</p>
+        <h1>A Kubernetes foundation <span>you can inspect first.</span></h1>
+        <p class="hero-copy">OCF combines Terraform, Helmfile and a small set of mise tasks. It creates an OKE foundation and installs the cluster services teams usually assemble by hand.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="/docs/">Start with the docs <Icon name="arrow" size={18} /></a>
+          <a class="button quiet" href="https://github.com/pyahu/open-cluster-foundation/releases">Use a tested release</a>
+        </div>
+        <ul class="trust-list" aria-label="Current project evidence">
+          <li><Icon name="check" size={16} />Plan before apply</li>
+          <li><Icon name="check" size={16} />Kubernetes 1.36.1 in CI</li>
+          <li><Icon name="check" size={16} />Pinned toolchain</li>
+        </ul>
+      </div>
+
+      <div class="setup-panel" aria-label="Open Cluster Foundation plan workflow">
+        <div class="panel-bar"><span></span><span></span><span></span><code>ocf / first plan</code></div>
+        <div class="setup-body">
+          <p class="setup-label">Reach a reviewed plan without changing the target</p>
+          <pre><code><span class="prompt">$</span> mise trust
+<span class="prompt">$</span> mise install
+<span class="prompt">$</span> mise run doctor
+
+<span class="prompt">$</span> mise run oci:cluster:plan
+<span class="prompt">$</span> mise run k8s:base:check</code></pre>
+          <div class="setup-result"><span class="result-mark"><Icon name="check" size={17} /></span><div><strong>Inspection complete</strong><p>Review before any apply command</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="support-strip" aria-label="Current project support">
+    <article><span>Cloud foundation</span><strong>OCI OKE</strong><p>Implemented today.</p></article>
+    <article><span>Tested Kubernetes</span><strong>1.36.1</strong><p>Installed by the end to end pipeline.</p></article>
+    <article><span>Change model</span><strong>Plan first</strong><p>Apply requires explicit confirmation.</p></article>
+  </section>
+
+  <section class="section foundation-section" id="foundation" aria-labelledby="foundation-title">
+    <div class="section-heading">
+      <p class="eyebrow">Two clear boundaries</p>
+      <h2 id="foundation-title">Own the cloud foundation. Choose the cluster services.</h2>
+      <p class="section-lead">OCF separates infrastructure and Kubernetes concerns, so operators can see what Terraform owns, what Helmfile installs and where application configuration begins.</p>
+    </div>
+    <div class="foundation-grid">
+      {foundations.map((foundation) => (
+        <article class="foundation-card">
+          <Icon name={foundation.icon} size={25} />
+          <h3>{foundation.title}</h3>
+          <p>{foundation.text}</p>
+          <ul>{foundation.items.map((item) => <li>{item}</li>)}</ul>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="section workflow-section" aria-labelledby="workflow-title">
+    <div class="workflow-copy">
+      <p class="eyebrow">The working loop</p>
+      <h2 id="workflow-title">Inspect, plan and then apply.</h2>
+      <p>The task names describe the action. Commands that inspect stay separate from commands that change infrastructure.</p>
+      <a class="text-link" href="/docs/cli/">Explore the command surface <Icon name="arrow" size={16} /></a>
+    </div>
+    <ol class="workflow-list">
+      <li><span>01</span><div><strong>Check the workstation</strong><code>mise run doctor</code></div></li>
+      <li><span>02</span><div><strong>Review the cloud plan</strong><code>mise run oci:cluster:plan</code></div></li>
+      <li><span>03</span><div><strong>Inspect the cluster target</strong><code>mise run k8s:base:check</code></div></li>
+      <li><span>04</span><div><strong>Render the selected profile</strong><code>mise run k8s:base:render</code></div></li>
+    </ol>
+  </section>
+
+  <section class="section profiles-section" id="profiles" aria-labelledby="profiles-title">
+    <div class="profiles-copy">
+      <p class="eyebrow">Profiles with a purpose</p>
+      <h2 id="profiles-title">Start small. Add stateful services deliberately.</h2>
+      <p>A profile chooses a coherent service set. It does not create application databases, topics, queues or capacity decisions.</p>
+    </div>
+    <div class="profile-grid">
+      {profiles.map((profile) => <article><code>{profile.name}</code><p>{profile.text}</p></article>)}
+    </div>
+  </section>
+
+  <section class="section limits-section" aria-labelledby="limits-title">
+    <div class="section-heading">
+      <p class="eyebrow">Clear limits</p>
+      <h2 id="limits-title">Useful today and honest about what comes next.</h2>
+    </div>
+    <div class="limit-grid">
+      <article><strong>OCI is the implemented cloud.</strong><p>Magalu Cloud and DigitalOcean are plans, not support claims.</p></article>
+      <article><strong>Examples need local decisions.</strong><p>Capacity, credentials, retention and recovery objectives remain with the operator.</p></article>
+      <article><strong>Tests are evidence, not a guarantee.</strong><p>Every release still needs review against the target tenancy and workload.</p></article>
+    </div>
+  </section>
+
+  <section class="final-cta" aria-labelledby="final-title">
+    <p class="eyebrow">Ready to evaluate it?</p>
+    <h2 id="final-title">Reach a reviewed plan before changing anything.</h2>
+    <p>The guide begins with a tested release, installs the pinned tools and stops at inspection before introducing apply commands.</p>
+    <div class="hero-actions center"><a class="button primary" href="/docs/">Read the getting started guide</a><a class="button quiet" href="https://github.com/pyahu/open-cluster-foundation">Inspect the repository</a></div>
+  </section>
+</LandingLayout>

@@ -10,8 +10,10 @@ tags (`vYYYY.M.PATCH`).
 
 - A final remediation report with validation evidence, a read-only production
   compatibility snapshot, a task record and candid remaining limitations.
-- A static landing page with getting started, CLI and architecture guides based
-  on the repository's real `mise` task surface.
+- An Astro landing page and Starlight documentation with getting started, CLI
+  and architecture guides based on the repository's real `mise` task surface.
+- A shared Pyahu visual system with the official mark, product signature,
+  typography and navigation patterns used by the CLI and toolchain websites.
 - Cloudflare Workers Static Assets configuration, a portable build entrypoint,
   browser security headers and protected development and deployment tasks.
 - A concise documentation home and CLI guide organized around operator goals.

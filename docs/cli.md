@@ -99,7 +99,7 @@ Run the focused check while editing. Run all affected checks before committing.
 The E2E task creates its own kubeconfig and does not use the current kubectl
 context.
 
-Run the landing page and web documentation with the pinned Cloudflare runtime:
+Build the Cloudflare assets and run the Astro development server:
 
 ```sh
 mise run site:build

@@ -3,7 +3,12 @@
 set -Eeuo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SITE_ROOT="${PROJECT_ROOT}/dist"
+SITE_ROOT="${PROJECT_ROOT}/website/dist"
+
+cd "${PROJECT_ROOT}/website"
+npm ci
+npm run check
+npm run build
 
 for required_file in \
   index.html \
@@ -11,13 +16,13 @@ for required_file in \
   docs/index.html \
   docs/cli/index.html \
   docs/architecture/index.html \
-  assets/styles.css \
-  assets/docs.css \
-  assets/favicon.svg \
+  assets/mark.svg \
   _headers \
-  robots.txt; do
+  robots.txt \
+  pagefind/pagefind.js \
+  sitemap-index.xml; do
   test -f "${SITE_ROOT}/${required_file}" || {
-    printf 'missing Cloudflare static asset: dist/%s\n' "$required_file" >&2
+    printf 'missing Cloudflare static asset: website/dist/%s\n' "$required_file" >&2
     exit 1
   }
 done
@@ -37,8 +42,8 @@ grep -Fq '[assets]' "${PROJECT_ROOT}/wrangler.toml" || {
   exit 1
 }
 
-grep -Fq 'directory = "./dist"' "${PROJECT_ROOT}/wrangler.toml" || {
-  printf 'Cloudflare static assets directory must be ./dist\n' >&2
+grep -Fq 'directory = "./website/dist"' "${PROJECT_ROOT}/wrangler.toml" || {
+  printf 'Cloudflare static assets directory must be ./website/dist\n' >&2
   exit 1
 }
 
@@ -47,4 +52,4 @@ grep -Fq 'not_found_handling = "404-page"' "${PROJECT_ROOT}/wrangler.toml" || {
   exit 1
 }
 
-printf 'Cloudflare static assets are ready in dist\n'
+printf 'Cloudflare static assets are ready in website/dist\n'

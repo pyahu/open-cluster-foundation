@@ -18,5 +18,8 @@ backend.hcl
 
 .local/
 .wrangler/
+website/.astro/
+website/dist/
+website/node_modules/
 
 kubernetes/production-base/values/local/

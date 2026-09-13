@@ -47,6 +47,11 @@ for document_name in components.md compatibility.md; do
   cmp -s "$expected" "$generated" || die "${expected#"${OCF_ROOT}"/} is stale; run mise run docs:generate"
 done
 
-lychee --offline --no-progress --root-dir "$OCF_ROOT" "${OCF_ROOT}/**/*.md"
+MARKDOWN_FILES=()
+while IFS= read -r markdown_file; do
+  [[ "$markdown_file" == website/* ]] && continue
+  MARKDOWN_FILES+=("${OCF_ROOT}/${markdown_file}")
+done < <(git -C "$OCF_ROOT" ls-files '*.md')
+lychee --offline --no-progress --root-dir "$OCF_ROOT" "${MARKDOWN_FILES[@]}"
 "${SCRIPT_DIR}/ci-site.sh"
 log "documentation checks passed"

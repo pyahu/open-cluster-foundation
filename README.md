@@ -4,6 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/pyahu/open-cluster-foundation?sort=semver)](https://github.com/pyahu/open-cluster-foundation/releases)
 [![License](https://img.shields.io/github/license/pyahu/open-cluster-foundation)](LICENSE)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-tested-326CE5?logo=kubernetes&logoColor=white)](docs/reference/compatibility.md)
+[![Website](https://img.shields.io/badge/website-docs-2563EB)](https://open-cluster-foundation.terson.workers.dev)
 
 Open Cluster Foundation, or OCF, provides readable building blocks for creating
 and operating a Kubernetes foundation. It combines Terraform, Helmfile and a

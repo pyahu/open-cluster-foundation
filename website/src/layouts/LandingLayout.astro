@@ -1,0 +1,77 @@
+---
+import "../styles/landing.css";
+import Icon from "../components/Icon.astro";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const canonical = new URL("/", "https://open-cluster-foundation.terson.workers.dev");
+const navigation = [
+  { href: "#foundation", label: "Foundation" },
+  { href: "#profiles", label: "Profiles" },
+  { href: "/docs/", label: "Docs" },
+  { href: "https://github.com/pyahu/open-cluster-foundation", label: "GitHub", external: true }
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#070b16" />
+    <link rel="icon" href="/assets/mark.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header container" id="top">
+      <a class="brand" href="/" aria-label="Pyahu Open Cluster Foundation home">
+        <img src="/assets/mark.svg" alt="" width="34" height="34" />
+        <span>pyahu<span class="brand-divider">/</span><span class="brand-product">ocf</span></span>
+      </a>
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        {navigation.map((item) => (
+          <a href={item.href} target={item.external ? "_blank" : undefined} rel={item.external ? "noreferrer" : undefined}>{item.label}</a>
+        ))}
+      </nav>
+      <div class="header-actions">
+        <a class="nav-cta" href="/docs/">Get started <Icon name="arrow" size={16} /></a>
+        <details class="mobile-menu">
+          <summary>Menu</summary>
+          <nav aria-label="Mobile navigation">
+            {navigation.map((item) => (
+              <a href={item.href} target={item.external ? "_blank" : undefined} rel={item.external ? "noreferrer" : undefined}>{item.label}</a>
+            ))}
+          </nav>
+        </details>
+      </div>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="site-footer container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="28" height="28" />pyahu<span class="brand-product">ocf</span></a>
+          <p>Inspectable building blocks for production Kubernetes.</p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="/docs/">Documentation</a>
+          <a href="/docs/architecture/">Architecture</a>
+          <a href="https://github.com/pyahu/open-cluster-foundation">GitHub <Icon name="arrow" size={15} /></a>
+          <a href="https://pyahu.io">Pyahu <Icon name="arrow" size={15} /></a>
+        </nav>
+      </div>
+      <p class="footer-legal">© {new Date().getFullYear()} Pyahu · Community</p>
+    </footer>
+  </body>
+</html>

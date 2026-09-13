@@ -2,8 +2,8 @@
 
 The OCF website is deployed through Cloudflare Workers Builds with static
 assets. This is the same hosting model used by the Pyahu toolchain. The
-deployable files live in `dist` and `wrangler.toml` is the source of truth for
-the Worker.
+source lives in `website`, Astro builds the landing page, Starlight builds the
+documentation and `wrangler.toml` is the source of truth for the Worker.
 
 ## Connect the repository
 
@@ -17,9 +17,10 @@ settings:
 | Deploy command | `npx wrangler deploy` |
 | Root directory | empty |
 
-The build script validates the tracked static assets and the Wrangler contract.
-The deploy command reads `[assets]` from `wrangler.toml` and uploads `dist`.
-No runtime environment variables are required.
+The build script installs the locked Node dependencies, type checks the Astro
+source, generates `website/dist` and validates the Wrangler contract. The
+deploy command reads `[assets]` from `wrangler.toml` and uploads the generated
+directory. No runtime environment variables are required.
 
 ## Work locally
 
@@ -54,12 +55,14 @@ The task runs the site checks and requires a clean `main` that matches
 `origin/main`. It asks for deployment confirmation before running
 `wrangler deploy`. Use `--yes` only in an intentional noninteractive workflow.
 
-## Add the public URL
+## Public URL
 
-Cloudflare assigns a `workers.dev` address after the first deployment. Add the
-final public or custom domain to the README only after the address works. At
-that point, add absolute canonical links and a sitemap using the same hostname.
+The current canonical origin is
+`https://open-cluster-foundation.terson.workers.dev`. Astro generates the
+sitemap with that origin. When a custom domain becomes the primary address,
+update `site` in `website/astro.config.mjs` and the canonical value in the
+landing layout in the same change.
 
-The `_headers` file applies the browser security policy to static responses.
-Review it before adding third party scripts, fonts or forms because the content
-security policy blocks those resources by default.
+The `website/public/_headers` file applies the browser security policy to static
+responses. Review it before adding third party scripts, fonts or forms because
+the content security policy blocks those resources by default.
