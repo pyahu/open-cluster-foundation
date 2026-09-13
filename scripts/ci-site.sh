@@ -7,6 +7,8 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 SITE_ROOT="${OCF_ROOT}/dist"
 
+"${SCRIPT_DIR}/cloudflare-build.sh"
+
 require_command lychee
 require_command rg
 require_command yq

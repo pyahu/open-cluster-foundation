@@ -102,6 +102,7 @@ context.
 Run the landing page and web documentation with the pinned Cloudflare runtime:
 
 ```sh
+mise run site:build
 mise run site:dev
 ```
 

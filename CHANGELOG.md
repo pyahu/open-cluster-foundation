@@ -12,8 +12,8 @@ tags (`vYYYY.M.PATCH`).
   compatibility snapshot, a task record and candid remaining limitations.
 - A static landing page with getting started, CLI and architecture guides based
   on the repository's real `mise` task surface.
-- Cloudflare Pages configuration, browser security headers and protected local
-  development and deployment tasks using the pinned Wrangler CLI.
+- Cloudflare Pages configuration, a portable build entrypoint, browser security
+  headers and protected development and deployment tasks using Wrangler.
 - A concise documentation home and CLI guide organized around operator goals.
 
 ### Fixed

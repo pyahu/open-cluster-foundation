@@ -129,6 +129,10 @@ run = "scripts/ci-docs.sh"
 description = "Validate the static OCF landing page and documentation site."
 run = "scripts/ci-site.sh"
 
+[tasks."site:build"]
+description = "Validate the static assets with the Cloudflare Pages build command."
+run = "scripts/cloudflare-build.sh"
+
 [tasks."site:dev"]
 description = "Run the OCF site with the local Cloudflare Pages runtime."
 run = "scripts/cloudflare-pages.sh dev"

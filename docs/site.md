@@ -13,12 +13,16 @@ these settings:
 | --- | --- |
 | Repository | `pyahu/open-cluster-foundation` |
 | Production branch | `main` |
-| Build command | `exit 0` |
+| Build command | `./scripts/cloudflare-build.sh` |
 | Build output directory | `dist` |
 | Root directory | empty |
 
 Git integration publishes changes pushed to `main` and creates preview
 deployments for other branches. No runtime environment variables are required.
+
+The build script uses only POSIX shell tools available in the Cloudflare build
+environment. It validates the tracked static assets and the Wrangler contract
+before Cloudflare uploads `dist`.
 
 Use the project name `open-cluster-foundation` so it matches `wrangler.toml`.
 Choose Git integration when creating the project. A Direct Upload project
@@ -39,6 +43,7 @@ port is already in use.
 Validate the site without starting a server:
 
 ```sh
+mise run site:build
 mise run ci:site
 ```
 
