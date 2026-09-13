@@ -70,6 +70,11 @@ output "kubeconfig" {
   })
 }
 
+output "provider_contract" {
+  description = "Provider-neutral Open Cluster Foundation contract for composition and conformance tests."
+  value       = module.foundation.provider_contract
+}
+
 output "kubeconfig_command" {
   description = "Legacy OCI CLI command retained for compatibility. Automation should use the structured kubeconfig output."
   value       = module.foundation.kubeconfig_command

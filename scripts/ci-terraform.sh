@@ -14,6 +14,7 @@ TERRAFORM_DIRS=(
 
 require_command terraform
 require_command tflint
+require_command yq
 
 log "checking Terraform formatting"
 terraform fmt -check -recursive "${OCF_ROOT}/terraform" "${OCF_ROOT}/templates"
@@ -51,5 +52,8 @@ done
 
 log "linting templates/oci-foundation-instance"
 tflint --chdir="$TEMPLATE_WORK_DIR" --config="${OCF_ROOT}/.tflint.hcl"
+
+log "validating provider contract and standalone module packages"
+"${SCRIPT_DIR}/ci-provider-contract.sh"
 
 log "terraform checks passed"

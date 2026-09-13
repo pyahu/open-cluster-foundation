@@ -75,10 +75,16 @@ Manual updates (Renovate does not cover these):
 ## Adding a cloud provider
 
 Follow the OCI layout: `terraform/<provider>/bootstrap-state` and
-`terraform/<provider>/foundation`, with provider-specific modules under
-`terraform/modules/`. Providers should expose comparable inputs and outputs
-(cluster name, kubernetes version, node pools with labels/taints, CIDR
-allowlists) so the Kubernetes base stays provider-agnostic.
+`terraform/<provider>/foundation`, with a self-contained provider module under
+`terraform/modules/`. Add the provider to `terraform/provider-contract.yaml`,
+map provider terminology to the contract semantics and publish the normalized
+`provider_contract` output. The module needs its own SemVer, manifest,
+changelog, license, example and Terraform tests. `mise run ci:terraform` must
+validate its standalone package before the provider can be marked implemented.
+
+Do not describe a planned provider as supported. Public Terraform Registry
+publication requires a separate public repository named
+`terraform-<provider>-<name>` with the module at its root and SemVer tags.
 
 ## Commits and pull requests
 

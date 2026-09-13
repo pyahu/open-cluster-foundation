@@ -7,6 +7,18 @@ This module creates the network, gateways, OKE cluster and private managed node
 pools. Users should normally run the provider entrypoint or a private instance
 template rather than this module directly.
 
+The module candidate version is `0.1.0` and it implements OCF provider contract
+`1.0.0` through the `provider_contract` output. It is self-contained and can be
+packaged with:
+
+```sh
+scripts/package-terraform-module.sh oci-oke-foundation /absolute/output/path
+```
+
+Public Registry publication still requires moving that package to the
+dedicated public repository `terraform-oci-oke-foundation` and creating a
+SemVer tag there. No Registry address is claimed as published yet.
+
 ## Network Contract
 
 - Dedicated VCN.

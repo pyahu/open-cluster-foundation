@@ -1,0 +1,45 @@
+apiVersion: open-cluster-foundation.io/v1alpha1
+kind: TerraformProviderContract
+metadata:
+  name: managed-kubernetes-foundation
+  version: 1.0.0
+spec:
+  inputs:
+    required:
+      - cluster_name
+      - kubernetes_version
+      - api_endpoint_public_enabled
+      - api_endpoint_allowed_cidrs
+      - ingress_allowed_cidrs
+      - subnet_cidrs
+      - node_pools
+      - tags
+    semantic:
+      network_cidr:
+        oci: vcn_cidr
+  nodePool:
+    required:
+      - size
+      - labels
+      - taints
+    providerExtensionsAllowed: true
+  output: provider_contract
+  outputFields:
+    - schema_version
+    - provider
+    - cluster
+    - network
+    - node_pools
+    - capabilities
+    - kubeconfig
+providers:
+  - name: oci
+    status: implemented
+    modulePath: terraform/modules/oci-oke-foundation
+    moduleVersion: 0.1.0
+    registryAddress: pyahu/oke-foundation/oci
+    registryRepository: terraform-oci-oke-foundation
+  - name: magalu
+    status: planned
+  - name: digitalocean
+    status: planned

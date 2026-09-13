@@ -82,6 +82,22 @@ run "production_contract" {
     condition     = length(oci_logging_log.control_plane) == 1 && length(oci_logging_log.vcn_flow) == 1 && length(oci_core_capture_filter.vcn_flow) == 1
     error_message = "Requested OCI service logs were not planned."
   }
+
+  assert {
+    condition = (
+      output.provider_contract.schema_version == "1.0.0" &&
+      output.provider_contract.provider.name == "oci" &&
+      output.provider_contract.cluster.name == "example-prod" &&
+      output.provider_contract.cluster.api_endpoint_public_enabled == false &&
+      output.provider_contract.network.cidr == "10.42.0.0/16" &&
+      output.provider_contract.node_pools.worker.size == 3 &&
+      length(output.provider_contract.node_pools.worker.labels) == 0 &&
+      output.provider_contract.capabilities.bastion == true &&
+      output.provider_contract.capabilities.cluster_autoscaler == true &&
+      output.provider_contract.kubeconfig.endpoint == "PRIVATE_ENDPOINT"
+    )
+    error_message = "The OCI module does not satisfy provider contract 1.0.0."
+  }
 }
 
 run "existing_cluster_compatibility" {

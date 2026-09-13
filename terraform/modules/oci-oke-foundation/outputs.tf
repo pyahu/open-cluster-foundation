@@ -105,6 +105,54 @@ output "kubeconfig" {
   }
 }
 
+output "provider_contract" {
+  description = "Provider-neutral Open Cluster Foundation contract for composition and conformance tests."
+  value = {
+    schema_version = "1.0.0"
+    provider = {
+      name             = "oci"
+      terraform_source = "oracle/oci"
+    }
+    cluster = {
+      id                          = oci_containerengine_cluster.this.id
+      name                        = var.cluster_name
+      kubernetes_version          = var.kubernetes_version
+      api_endpoint_public_enabled = var.api_endpoint_public_enabled
+    }
+    network = {
+      id   = oci_core_vcn.this.id
+      cidr = var.vcn_cidr
+      subnet_ids = {
+        api_endpoint  = oci_core_subnet.api_endpoint.id
+        load_balancer = oci_core_subnet.load_balancer.id
+        nodes         = oci_core_subnet.nodes.id
+        pods          = oci_core_subnet.pods.id
+      }
+    }
+    node_pools = {
+      for name, pool in var.node_pools : name => {
+        id          = oci_containerengine_node_pool.this[name].id
+        size        = pool.size
+        labels      = pool.labels
+        taints      = pool.taints
+        autoscaling = pool.autoscaling
+      }
+    }
+    capabilities = {
+      bastion               = var.bastion_enabled
+      cluster_autoscaler    = length([for pool in values(var.node_pools) : pool if pool.autoscaling != null]) > 0
+      control_plane_logging = var.control_plane_logging_enabled
+      network_flow_logging  = var.vcn_flow_logging_enabled
+    }
+    kubeconfig = {
+      cluster_id   = oci_containerengine_cluster.this.id
+      cluster_name = var.cluster_name
+      endpoint     = local.kube_endpoint_mode
+      region       = var.region
+    }
+  }
+}
+
 output "kubeconfig_command" {
   description = "Legacy OCI CLI command retained for compatibility. Automation should use the structured kubeconfig output."
   value = join(" ", [

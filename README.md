@@ -10,9 +10,10 @@ ingress with TLS, full observability with dashboards and alerts, Kafka,
 PostgreSQL with PITR backups, cache — every version pinned, every manifest
 validated against real CRD schemas in CI.
 
-OCI/OKE is the first implemented provider. The structure is intentionally
-multi-provider: the Kubernetes base is provider-agnostic, so Magalu Cloud,
-DigitalOcean and others can be added without touching it.
+OCI/OKE is the only implemented cloud foundation today. The project is not yet
+multi-cloud. Its Kubernetes base is provider-agnostic and its tested provider
+contract is designed so Magalu Cloud, DigitalOcean and other foundations can
+be added without changing that base.
 
 Maintained by [Pyahu](https://github.com/pyahu) for the community. It does not
 install the Pyahu platform — these are reusable building blocks for anyone who
@@ -22,7 +23,7 @@ needs an operable cluster, not a starting point for vendor lock-in.
 
 ```mermaid
 flowchart LR
-  subgraph tf ["Terraform (per provider)"]
+  subgraph tf ["Terraform (OCI implemented)"]
     A["bootstrap-state<br/>remote state bucket"] --> B["foundation<br/>VCN · NSGs · OKE · node pools<br/>taints · metrics-server addon"]
   end
   B -- kubeconfig --> C["Helmfile<br/>pinned versions.yaml"]
@@ -200,8 +201,9 @@ the two-node default pool.
 
 | What | Status |
 | --- | --- |
-| Kubernetes (base layer) | `v1.30+` on any conformant cluster with a default StorageClass |
-| OKE (foundation) | `ENHANCED_CLUSTER`, VCN-native pod networking, tested with `v1.35.x` |
+| Kubernetes (base layer) | Designed for conformant `v1.30+` clusters with a default StorageClass; E2E tested on Kind `v1.36.1` |
+| OKE (foundation) | `ENHANCED_CLUSTER`, VCN-native pod networking, live compatibility checked with `v1.36.1` |
+| Other cloud foundations | Not implemented; Magalu Cloud and DigitalOcean are roadmap only |
 | Component versions | Pinned in [`versions.yaml`](kubernetes/production-base/versions.yaml), checked `2026-06-26`, kept current by Renovate |
 | Toolchain | Pinned in [`mise.toml`](mise.toml) |
 
@@ -221,12 +223,13 @@ the two-node default pool.
 
 ## Roadmap
 
-- Magalu Cloud and DigitalOcean foundations (same inputs/outputs contract).
+- Magalu Cloud and DigitalOcean foundations conforming to the tested provider contract.
 - Cluster Autoscaler / Karpenter as foundation options.
-- Terraform Registry publication of the OKE foundation module.
+- Extraction of the OCI module into `terraform-oci-oke-foundation` and public Terraform Registry publication.
 
-Issues and discussions are open — multi-provider support is exactly the kind
-of work that benefits from community hands.
+Issues and discussions are open. New providers are accepted only with the
+contract, validation and support evidence described in
+[`docs/provider-contract.md`](docs/provider-contract.md).
 
 ## Repository layout
 
@@ -236,7 +239,7 @@ of work that benefits from community hands.
 | Terraform foundation | OCI | [`terraform/oci/foundation`](terraform/oci/foundation/README.md) | Implemented |
 | Terraform foundation | Magalu Cloud | `terraform/magalu/*` | Planned |
 | Terraform foundation | DigitalOcean | `terraform/digitalocean/*` | Planned |
-| Terraform modules | Provider-specific | [`terraform/modules`](terraform/modules) | Implemented |
+| Terraform module | OCI | [`terraform/modules/oci-oke-foundation`](terraform/modules/oci-oke-foundation/README.md) | Implemented, standalone package candidate |
 | Kubernetes base | Any conformant cluster | [`kubernetes/production-base`](kubernetes/production-base/README.md) | Implemented |
 | Instance template | OCI | [`templates/oci-foundation-instance`](templates/oci-foundation-instance/README.md) | Implemented |
 

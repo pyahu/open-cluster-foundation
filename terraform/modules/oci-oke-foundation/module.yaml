@@ -1,0 +1,14 @@
+apiVersion: open-cluster-foundation.io/v1alpha1
+kind: TerraformProviderModule
+metadata:
+  name: oke-foundation
+  version: 0.1.0
+spec:
+  provider: oci
+  terraformProvider: oracle/oci
+  status: implemented
+  contractVersion: 1.0.0
+  registry:
+    address: pyahu/oke-foundation/oci
+    repository: terraform-oci-oke-foundation
+    publication: dedicated-repository-required
