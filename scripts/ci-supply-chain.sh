@@ -94,6 +94,22 @@ validate_remote_artifacts() {
   done
 }
 
+scan_trivy_config() {
+  local target="$1"
+  local scan_output
+
+  shift
+  if ! scan_output="$(trivy config "$@" "$target" 2>&1)"; then
+    printf '%s\n' "$scan_output"
+    return 1
+  fi
+
+  printf '%s\n' "$scan_output"
+  if rg -q '[[:space:]]ERROR[[:space:]]' <<<"$scan_output"; then
+    die "Trivy reported a scanner error for ${target}"
+  fi
+}
+
 run_trivy() {
   local target
   local template_work_dir
@@ -105,16 +121,15 @@ run_trivy() {
   )
 
   for target in terraform kubernetes/production-base test/e2e; do
-    trivy config "${scan_args[@]}" \
-      --skip-files 'kubernetes/production-base/patches/*.yaml' \
-      "${OCF_ROOT}/${target}"
+    scan_trivy_config "${OCF_ROOT}/${target}" "${scan_args[@]}" \
+      --skip-files 'kubernetes/production-base/patches/*.yaml'
   done
 
   template_work_dir="${WORK_DIR}/.local/instances/ci/terraform"
   mkdir -p "$template_work_dir" "${WORK_DIR}/terraform/modules"
   cp -R "${OCF_ROOT}/templates/oci-foundation-instance/." "$template_work_dir/"
   cp -R "${OCF_ROOT}/terraform/modules/oci-oke-foundation" "${WORK_DIR}/terraform/modules/"
-  trivy config "${scan_args[@]}" "$template_work_dir"
+  scan_trivy_config "$template_work_dir" "${scan_args[@]}"
 
   trivy fs \
     --scanners vuln \

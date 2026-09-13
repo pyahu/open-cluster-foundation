@@ -65,6 +65,8 @@ Operational procedures for upgrades, rollback, uninstall and disaster recovery
 are in [`docs/lifecycle.md`](docs/lifecycle.md).
 The rationale behind safety-sensitive defaults and ownership boundaries is in
 [`docs/implementation-decisions.md`](docs/implementation-decisions.md).
+The completed hardening work, evidence and remaining limitations are in the
+[`remediation report`](docs/remediation-report.md).
 
 ## Use a tested release
 

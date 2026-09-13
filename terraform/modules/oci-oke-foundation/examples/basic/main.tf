@@ -10,8 +10,7 @@ terraform {
 }
 
 module "foundation" {
-  source  = "pyahu/oke-foundation/oci"
-  version = "~> 0.1"
+  source = "../.."
 
   tenancy_ocid                  = var.tenancy_ocid
   compartment_ocid              = var.compartment_ocid

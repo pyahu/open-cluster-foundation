@@ -6,6 +6,17 @@ tags (`vYYYY.M.PATCH`).
 
 ## [Unreleased]
 
+### Added
+
+- A final remediation report with validation evidence, a read-only production
+  compatibility snapshot, a task record and candid remaining limitations.
+
+### Fixed
+
+- The packaged OCI module example now resolves its local module instead of the
+  unpublished Registry address, and supply-chain CI fails on Trivy scanner
+  errors instead of accepting an incomplete scan.
+
 ## [2026.9.0] - 2026-09-13
 
 ### Added

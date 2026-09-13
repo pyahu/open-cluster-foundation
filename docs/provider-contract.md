@@ -57,6 +57,8 @@ The command copies only module source, tests, examples, metadata and the
 project license. It excludes local Terraform state, `.terraform` directories
 and dependency lock files. CI initializes, validates and tests the resulting
 standalone tree, which detects accidental dependencies on the monorepo.
+The packaged basic example uses `../..` so scanners exercise the package being
+built instead of an unrelated remote version.
 
 The public Terraform Registry cannot publish this module directly from the
 current repository. It requires a public GitHub repository named

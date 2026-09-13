@@ -42,7 +42,8 @@ while IFS=$'\t' read -r provider module_path module_version registry_address reg
   [[ "$(yq -r '.spec.contractVersion' "$module_manifest")" == "$(yq -r '.metadata.version' "$CONTRACT_FILE")" ]] || die "${module_name} contract version does not match"
   [[ "$(yq -r '.spec.registry.address' "$module_manifest")" == "$registry_address" ]] || die "${module_name} registry address does not match"
   [[ "$(yq -r '.spec.registry.repository' "$module_manifest")" == "$registry_repository" ]] || die "${module_name} registry repository does not match"
-  [[ "$(yq -r '.spec.registry.publication' "$module_manifest")" == "dedicated-repository-required" ]] || die "${module_name} must not claim direct public Registry publication from the monorepo"
+  registry_publication="$(yq -r '.spec.registry.publication' "$module_manifest")"
+  [[ "$registry_publication" == "dedicated-repository-required" ]] || die "${module_name} must not claim direct public Registry publication from the monorepo"
   [[ "$registry_repository" == terraform-"$provider"-* ]] || die "${module_name} registry repository violates the public Registry naming contract"
   [[ "$registry_address" == */"$provider" ]] || die "${module_name} registry address must end with its provider system"
   evidence_mode="$(PROVIDER="$provider" yq -er '.providers[] | select(.name == strenv(PROVIDER)) | .evidence.mode' "$CONTRACT_FILE")"
@@ -52,13 +53,13 @@ while IFS=$'\t' read -r provider module_path module_version registry_address reg
   [[ "$evidence_kubernetes_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "${module_name} evidence Kubernetes version must use major.minor.patch"
   [[ "$evidence_observed_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "${module_name} evidence observation date must use YYYY-MM-DD"
   rg -q "^## ${module_version}$" "${module_directory}/CHANGELOG.md" || die "${module_name} changelog does not contain its current version"
-  rg -q "source[[:space:]]*=[[:space:]]*\"${registry_address}\"" "${module_directory}/examples" -g '*.tf' || die "${module_name} example does not use its intended Registry address"
+  rg -q 'source[[:space:]]*=[[:space:]]*"\.\./\.\."' "${module_directory}/examples" -g '*.tf' || die "${module_name} unpublished example must use its packaged module"
 
   for input_name in $(yq -r '.spec.inputs.required[]' "$CONTRACT_FILE"); do
     rg -q "^variable \"${input_name}\"" "${module_directory}/variables.tf" || die "${module_name} is missing contract input ${input_name}"
   done
   rg -q '^output "provider_contract"' "${module_directory}/outputs.tf" || die "${module_name} is missing the provider_contract output"
-  if rg -n 'source[[:space:]]*=[[:space:]]*"\.\./' "$module_directory" -g '*.tf'; then
+  if rg -n 'source[[:space:]]*=[[:space:]]*"\.\./' "$module_directory" -g '*.tf' -g '!**/examples/**'; then
     die "${module_name} depends on Terraform source outside its package"
   fi
 
