@@ -1,4 +1,7 @@
 [tools]
+node = "24.21.0"
+"npm:wrangler" = "4.131.1"
+
 terraform = "1.15.7"
 tflint = "0.63.1"
 terraform-docs = "0.24.0"
@@ -126,6 +129,10 @@ run = "scripts/ci-docs.sh"
 description = "Validate the static OCF landing page and documentation site."
 run = "scripts/ci-site.sh"
 
-[tasks."site:serve"]
-description = "Serve the OCF landing page and documentation locally."
-run = "python3 -m http.server 4173 --directory dist"
+[tasks."site:dev"]
+description = "Run the OCF site with the local Cloudflare Pages runtime."
+run = "scripts/cloudflare-pages.sh dev"
+
+[tasks."site:deploy"]
+description = "Deploy main to the existing Cloudflare Pages project."
+run = "scripts/cloudflare-pages.sh deploy"

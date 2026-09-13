@@ -99,11 +99,14 @@ Run the focused check while editing. Run all affected checks before committing.
 The E2E task creates its own kubeconfig and does not use the current kubectl
 context.
 
-Serve the landing page and web documentation locally with:
+Run the landing page and web documentation with the pinned Cloudflare runtime:
 
 ```sh
-mise run site:serve
+mise run site:dev
 ```
+
+The [website deployment guide](site.md) documents Cloudflare Pages Git
+integration and the protected manual deploy task.
 
 ## Direct script help
 

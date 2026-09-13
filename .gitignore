@@ -17,5 +17,6 @@ backend.hcl
 *.key
 
 .local/
+.wrangler/
 
 kubernetes/production-base/values/local/

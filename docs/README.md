@@ -120,6 +120,7 @@ Terraform plan or understand the target cluster.
 | Topic | Document |
 | --- | --- |
 | Commands and flags | [CLI and toolchain](cli.md) |
+| Website development and deployment | [Cloudflare Pages](site.md) |
 | Supported versions | [Compatibility reference](reference/compatibility.md) |
 | Installed components | [Component reference](reference/components.md) |
 | Upgrade transitions | [Compatibility and migrations](compatibility.md) |

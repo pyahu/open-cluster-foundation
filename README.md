@@ -5,8 +5,6 @@
 [![License](https://img.shields.io/github/license/pyahu/open-cluster-foundation)](LICENSE)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-tested-326CE5?logo=kubernetes&logoColor=white)](docs/reference/compatibility.md)
 
-[Website and documentation](https://ocf-by-pyahu.pyahu.chatgpt.site/)
-
 Open Cluster Foundation, or OCF, provides readable building blocks for creating
 and operating a Kubernetes foundation. It combines Terraform, Helmfile and a
 small set of `mise` tasks so operators can review every change before applying
@@ -102,6 +100,7 @@ The tasks are grouped by intent:
 | Manage a private instance | `oci:instance:new`, `oci:instance:plan`, `oci:instance:apply`, `oci:instance:kubeconfig` |
 | Inspect the Kubernetes base | `k8s:base:check`, `k8s:base:render` |
 | Install the Kubernetes base | `k8s:base:apply` |
+| Run or publish the website | `site:dev`, `site:deploy` |
 | Run project checks | `ci:docs`, `ci:site`, `ci:scripts`, `ci:terraform`, `ci:kubernetes`, `ci:supply-chain`, `ci:e2e` |
 
 Apply tasks require `--yes` or interactive confirmation. The Kubernetes
@@ -132,6 +131,7 @@ Start with the guide that matches your goal:
 | --- | --- |
 | Understand the project | [Documentation home](docs/README.md) |
 | Learn the commands | [CLI and toolchain](docs/cli.md) |
+| Run or publish the website | [Website deployment](docs/site.md) |
 | Create an OCI foundation | [OCI foundation](terraform/oci/foundation/README.md) |
 | Install cluster services | [Kubernetes production base](kubernetes/production-base/README.md) |
 | Upgrade an existing cluster | [Compatibility and migrations](docs/compatibility.md) |

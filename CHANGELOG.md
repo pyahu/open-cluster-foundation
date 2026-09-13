@@ -10,8 +10,10 @@ tags (`vYYYY.M.PATCH`).
 
 - A final remediation report with validation evidence, a read-only production
   compatibility snapshot, a task record and candid remaining limitations.
-- A public landing page with getting started, CLI and architecture guides based
+- A static landing page with getting started, CLI and architecture guides based
   on the repository's real `mise` task surface.
+- Cloudflare Pages configuration, browser security headers and protected local
+  development and deployment tasks using the pinned Wrangler CLI.
 - A concise documentation home and CLI guide organized around operator goals.
 
 ### Fixed

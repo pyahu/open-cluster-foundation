@@ -1,3 +1,2 @@
 User-agent: *
 Allow: /
-Sitemap: https://ocf-by-pyahu.pyahu.chatgpt.site/sitemap.xml
