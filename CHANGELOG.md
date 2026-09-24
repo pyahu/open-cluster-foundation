@@ -20,6 +20,11 @@ tags (`vYYYY.M.PATCH`).
 
 ### Fixed
 
+- Kafka alert rules now use the `warning` and `critical` severities that the
+  default Alertmanager routes deliver. Container-down and failed-connector
+  alerts were `major`, which no route matched, so they never notified anyone.
+  `TooLargeConsumerGroupLag` and `ScrapeProblem` wait 15 minutes, so a short
+  consumer burst or a slow JMX scrape on a busy node no longer pages.
 - The packaged OCI module example now resolves its local module instead of the
   unpublished Registry address.
 - Supply-chain CI now fails on Trivy scanner errors instead of accepting an
