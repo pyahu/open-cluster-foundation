@@ -164,6 +164,14 @@ Java parsing joins stack traces and JSON parsing promotes level, trace and span
 fields. Unannotated logs remain unchanged to prevent unrelated multiline
 formats from being merged incorrectly.
 
+Alloy runs as a DaemonSet with clustering enabled. `loki.source.kubernetes`
+distributes its targets across the cluster members. Every replica discovers
+every Pod, so without clustering each replica tails each container log through
+the API server. The kubelet then serves every log once per replica and a node
+hosting a verbose Pod spends its CPU in kernel networking. Filtering discovery
+by node is not an alternative because the database pool is tainted and runs no
+Alloy. Members on other nodes tail the logs of its Pods.
+
 Grafana datasource UIDs are fixed because changing a provisioned UID can stop
 Grafana from starting. Its datasource links cover exemplars, structured trace
 metadata and ECS-formatted log lines. Alertmanager credentials are mounted from

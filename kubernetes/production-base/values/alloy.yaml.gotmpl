@@ -1,6 +1,8 @@
 {{- $observabilityScope := env "OCF_OBSERVABILITY_SCOPE" | default "trusted" -}}
 {{- $applicationNamespaceRegex := env "OCF_OBSERVABILITY_APPLICATION_NAMESPACE_REGEX" | default "a^" -}}
 alloy:
+  clustering:
+    enabled: true
   resources:
     requests:
       cpu: 50m
@@ -84,6 +86,10 @@ alloy:
       loki.source.kubernetes "pods" {
         targets    = discovery.relabel.pod_logs.output
         forward_to = [loki.process.pods.receiver]
+
+        clustering {
+          enabled = true
+        }
       }
 
       loki.process "pods" {
