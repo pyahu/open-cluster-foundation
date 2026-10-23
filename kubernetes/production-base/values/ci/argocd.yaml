@@ -1,2 +1,6 @@
 redis-ha:
   enabled: false
+
+redis:
+  image:
+    repository: docker.io/library/redis

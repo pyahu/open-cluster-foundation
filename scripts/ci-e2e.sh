@@ -451,8 +451,7 @@ scale_namespaced_workloads_to_zero strimzi-system
 
 log "preparing S3-compatible storage for CloudNativePG recovery"
 kubectl apply -f "${E2E_DIR}/cnpg-object-store.yaml"
-kubectl -n data rollout status deployment/e2e-minio --timeout=300s
-kubectl -n data wait --for=condition=Complete job/e2e-minio-bucket --timeout=300s
+kubectl -n data rollout status deployment/e2e-s3 --timeout=300s
 
 log "asserting CloudNativePG backup and physical restore preserve data"
 kubectl apply -f "${E2E_DIR}/cnpg-cluster.yaml"

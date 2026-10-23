@@ -20,6 +20,16 @@ tags (`vYYYY.M.PATCH`).
 
 ### Fixed
 
+- Alloy clusters its log targets, so each container log is tailed once instead
+  of once per replica. The node hosting the most verbose Pod no longer spends its
+  CPU serving duplicate log streams from the kubelet.
+- The e2e CloudNativePG backup test uses the Versity S3 Gateway. The pinned
+  MinIO images were removed from Quay and Docker Hub, so the test could not
+  start its object store.
+- The e2e Argo CD Redis pulls from Docker Hub. Anonymous pulls from Amazon ECR
+  Public returned `429 Too Many Requests` on shared GitHub runners.
+- The Kafka alert rule rationale moved from a source comment to the
+  implementation decisions, which the source comment policy requires.
 - Kafka alert rules now use the `warning` and `critical` severities that the
   default Alertmanager routes deliver. Container-down and failed-connector
   alerts were `major`, which no route matched, so they never notified anyone.
