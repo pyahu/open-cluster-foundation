@@ -8,11 +8,6 @@ metadata:
     role: alert-rules
     app: strimzi
 spec:
-  # Severities follow the kube-prometheus-stack convention (warning, critical) so the default
-  # Alertmanager routes deliver them; the upstream Strimzi examples use "major", which no default
-  # route matches. TooLargeConsumerGroupLag waits 15m: a CDC burst above 1000 messages clears in
-  # minutes and is not a failure. ScrapeProblem waits 15m: the JMX exporter can take more than the
-  # 10s scrape timeout on a busy node without the broker being down.
   groups:
     - name: kafka
       rules:

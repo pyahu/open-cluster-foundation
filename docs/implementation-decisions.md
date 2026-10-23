@@ -200,6 +200,12 @@ The following configuration is adapted under Apache License 2.0 terms:
   version 1.0.1 examples. OCF extends Pod-name expressions for KafkaNodePools
   and omits `NoMessageForTooLong`, which is permanently noisy on low-traffic
   Kafka Connect internal topics.
+  The rules use the kube-prometheus-stack severities `warning` and `critical`
+  because the default Alertmanager routes match them. The upstream `major`
+  severity matches no default route. `TooLargeConsumerGroupLag` and
+  `ScrapeProblem` wait 15 minutes. A CDC burst above 1000 messages clears
+  in minutes and the JMX exporter can exceed the 10 second scrape timeout on a
+  busy node while the broker is healthy.
 - CloudNativePG PrometheusRules from
   [CloudNativePG](https://github.com/cloudnative-pg/cloudnative-pg), version
   1.29.1 samples, with OCF metadata.
